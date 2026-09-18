@@ -14,14 +14,14 @@
 |---|---|---|
 | `ci.yml` | PR/push | `flutter analyze`, `flutter test`, `flutter build web` (no deploy) |
 | `deploy-pages.yml` | `main` | build web with `--dart-define` secrets → Pages deploy |
-| `backup.yml` | weekly cron | `pg_dump` → private Storage bucket `backups/` (keep newest 3, prune older in same run) |
+| `backup.yml` | weekly cron | `pg_dump` → `educador-backups` bucket (keep newest 3, prune older in same run) |
 | `keepalive.yml` | daily cron | light authed query to reset Supabase 7-day pause timer |
 
 Secrets (Actions, never in repo): `SUPABASE_URL, SUPABASE_ANON_KEY, CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, SUPABASE_DB_URL`. Function secrets (Supabase dashboard): `VAPID_PRIVATE_KEY, FCM_SERVICE_ACCOUNT_JSON, STORAGE_S3_*`. PR previews point at the staging project.
 
 ## Build order
 
-1. Supabase project + schema + RLS + seed from `lib/data/mock/mock_data.dart` (generate UUIDs, keep a throwaway mock→uuid map); verify with 3 test users (one per role).
+1. Supabase project + schema + RLS + seed from `lib/data/mock/mock_data.dart` (generate UUIDs, keep a throwaway mock→uuid map); enable the `custom_access_token_hook` Auth hook in the dashboard; create the 3 test users (one per role) and verify RLS by querying as each.
 2. Storage buckets + `storage-*-url` functions; test 25MB PDF/MP3 upload.
 3. `AuthRepository` + `session_controller.dart` on Supabase; keep role redirect.
 4. `CourseRepository` (courses/modules/lessons/assignments) → `AddTrailScreen`/`AddCompanyScreen`/`AddEmployeeScreen` write through RLS.

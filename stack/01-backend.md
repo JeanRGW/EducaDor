@@ -41,13 +41,13 @@ No event-log table (activity = `lesson_progress.updated_at`). Quiz inline in `qu
 
 ## Auth + RLS
 
-* `supabase_flutter`, email/pass + recover. Employee invites via `auth.admin.inviteUserByEmail` inside an admin-only function (separate from the `set-claims` trigger below).
-* JWT claims `role`, `company_id` set by the `set-claims` DB trigger on `profiles` write. Session built from `profiles` row (`session_controller.dart` shape unchanged).
-* Tenancy pattern on every tenant table (gestor bypass, empresa own `company_id`, funcionario own `user_id`):
+* `supabase_flutter`, email/pass + recover. Employee invites via `auth.admin.inviteUserByEmail` inside an admin-only function (separate from the Auth hook below).
+* JWT claims `user_role`, `company_id` minted at login by the `custom_access_token_hook` Auth hook reading `profiles` (top-level `role` is reserved – PostgREST does `SET ROLE` from it – hence `user_role`; role/company changes take effect on next login). Session built from `profiles` row (`session_controller.dart` shape unchanged).
+* Tenancy pattern on every tenant table (gestor bypass, empresa own `company_id`, funcionario own `user_id`). `role`/`company_id` on `profiles` are grant-frozen for app roles (`REVOKE UPDATE` col) – identity changes only via service-role admin functions, never from the app.
 
 ```sql
 create policy tenant_all on lesson_progress for all using (
-  (auth.jwt()->>'role') = 'gestor' or user_id = auth.uid()
+  (auth.jwt()->>'user_role') = 'gestor' or user_id = auth.uid()
   or (auth.jwt()->>'company_id')::uuid =
      (select company_id from profiles where id = lesson_progress.user_id));
 ```
@@ -67,7 +67,7 @@ create policy content_read on courses for select using (is_gestor() or exists (
 -- client policies – all access via signed URLs minted by functions (server S3 keys bypass RLS)
 create policy pub_read on storage.objects for select using (bucket_id = 'educador-public');
 create policy pub_write on storage.objects for insert
-  with check (bucket_id = 'educador-public' and (auth.jwt()->>'role') = 'gestor');
+  with check (bucket_id = 'educador-public' and (auth.jwt()->>'user_role') = 'gestor');
 
 -- atomic redemption; advisory lock keeps concurrent redemptions from overspending (no triggers)
 create or replace function redeem_reward(p_reward uuid) returns void language plpgsql as $$
@@ -91,11 +91,11 @@ Views/RPC read via PostgREST, CSV export in Flutter. No BigQuery, no counter col
 
 ## Edge Functions (Deno, 500k/mo free)
 
-`set-claims` (DB trigger on profiles: role/company_id claims) · `storage-upload-url` / `storage-download-url` (S3 SigV4 presign against the Storage endpoint) · `issue-certificate` (app-invoked after final lesson, idempotency key = progress row; code `{prefix}-{6-char}`, `UNIQUE` + retry) · `push-on-assign` (FCM send, invoked by the app – no DB triggers anywhere).
+`custom_access_token_hook` (Auth hook, enabled in dashboard: `user_role`/`company_id` claims) · `storage-upload-url` / `storage-download-url` (S3 SigV4 presign against the Storage endpoint) · `issue-certificate` (app-invoked after final lesson, idempotency key = progress row; code `{prefix}-{6-char}`, `UNIQUE` + retry) · `push-on-assign` (FCM send, invoked by the app – no DB triggers anywhere).
 
 ## Files on Supabase Storage via S3 (presigned only, app holds no keys)
 
-Buckets: `educador-public` (public covers/avatars) + `educador-private` (PDF/MP3/audio/backups, signed GET 1h). Same names/layout as a future R2 setup. Dashboard per bucket: `file_size_limit` 50MB + matching MIME allowlist (defense-in-depth behind the function check). Keys: `courses/{courseId}/{uuid}-{slug}.pdf`, `covers/{courseId}.webp`, `avatars/{userId}.webp`.
+Buckets: `educador-public` (public covers/avatars) + `educador-private` (PDF/MP3/audio, signed GET 1h) + `educador-backups` (dumps only). Same names/layout as a future R2 setup. Dashboard per bucket: `file_size_limit` 50MB + matching MIME allowlist (defense-in-depth behind the function check). Keys: `courses/{courseId}/{uuid}-{slug}.pdf`, `covers/{courseId}.webp`, `avatars/{userId}.webp`.
 
 Edge Functions use the S3 SDK (SigV4) against `https://<ref>.storage.supabase.co/storage/v1/s3`, so moving to R2 later = new endpoint + creds, zero Flutter changes. Server S3 keys stay in Supabase secrets (they bypass RLS); each function validates the caller JWT itself – one auth path, no session-token mode.
 
