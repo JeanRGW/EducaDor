@@ -21,10 +21,10 @@ Secrets (Actions, never in repo): `SUPABASE_URL, SUPABASE_ANON_KEY, CLOUDFLARE_A
 
 ## Build order
 
-1. Supabase project + schema + RLS + seed from `lib/data/mock/mock_data.dart` (generate UUIDs, keep a throwaway mock→uuid map); enable the `custom_access_token_hook` Auth hook in the dashboard; create the 3 test users (one per role) and verify RLS by querying as each.
-2. Storage buckets + `storage-*-url` functions; test 25MB PDF/MP3 upload.
-3. `AuthRepository` + `session_controller.dart` on Supabase; keep role redirect.
-4. `CourseRepository` (courses/modules/lessons/assignments) → `AddTrailScreen`/`AddCompanyScreen`/`AddEmployeeScreen` write through RLS.
+1. Supabase project + schema + `20260923000000_multi_context.sql` + RLS; verify multi-context RLS with `supabase/tests/multi_context.sql`, seed staging from `mock_data.dart`, configure Auth redirect URLs and hook. No public self-signup; follow `03-onboarding.md` for manual-link invites and first-gestor bootstrap.
+2. `AuthRepository` + context selection/session restoration + admin-only `invite-member` and `accept-invite`; onboard company managers and employees with one identity across companies.
+3. Storage buckets + `storage-*-url` functions; test 25MB PDF/MP3 upload.
+4. `CourseRepository` (courses/modules/lessons/assignments) → `AddTrailScreen` writes through RLS; employees learn only in the `funcionario` context. `AddCompanyScreen`/`AddEmployeeScreen` create invites via Edge Functions.
 5. `ProgressRepository` upsert + certificate fn → `RewardsScreen`/`EmployeeProgressScreen`.
 6. Report views + `charts.dart`, CSV export client-side.
 7. Pages + domain + FCM tokens + `push-on-assign` + 4 workflows + keepalive.

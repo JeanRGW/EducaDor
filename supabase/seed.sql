@@ -21,25 +21,34 @@ values
    'Av. do Contorno, 500', 'Belo Horizonte', 'MG', 'Saúde', true)
 on conflict (id) do nothing;
 
--- ---- profiles (role + company shape matches session_controller.dart) ----
-insert into profiles (id, role, company_id, full_name, email, dept, job_title)
-select u.id, 'gestor', null,
-  'Nome Gestor', 'gestor@educador.com', null, null
+-- ---- base identities + independent access contexts ----
+insert into profiles (id, full_name, email)
+select u.id, 'Nome Gestor', 'gestor@educador.com'
 from auth.users u where u.email = 'gestor@educador.com'
 on conflict (id) do nothing;
 
-insert into profiles (id, role, company_id, full_name, email, dept, job_title)
-select u.id, 'empresa', '10000000-0000-4000-8000-000000000001',
-  'Grupo Santa Maria', 'empresa@educador.com', null, null
+insert into profiles (id, full_name, email)
+select u.id, 'Grupo Santa Maria', 'empresa@educador.com'
 from auth.users u where u.email = 'empresa@educador.com'
 on conflict (id) do nothing;
 
-insert into profiles (id, role, company_id, full_name, email, dept, job_title)
-select u.id, 'funcionario', '10000000-0000-4000-8000-000000000001',
-  'João Silva', 'joao.silva@santamaria.com',
-  'Departamento de Operações', 'Auxiliar de Operações'
+insert into profiles (id, full_name, email)
+select u.id, 'João Silva', 'joao.silva@santamaria.com'
 from auth.users u where u.email = 'joao.silva@santamaria.com'
 on conflict (id) do nothing;
+
+insert into platform_gestors(user_id)
+select id from profiles where email = 'gestor@educador.com'
+on conflict do nothing;
+insert into company_memberships(user_id, company_id, role)
+select id, '10000000-0000-4000-8000-000000000001', 'empresa'
+from profiles where email = 'empresa@educador.com'
+on conflict do nothing;
+insert into company_memberships(user_id, company_id, role, dept, job_title)
+select id, '10000000-0000-4000-8000-000000000001', 'funcionario',
+  'Departamento de Operações', 'Auxiliar de Operações'
+from profiles where email = 'joao.silva@santamaria.com'
+on conflict do nothing;
 
 -- ---- catalog: one course, one module, four lessons (mirrors mock mod-1) ----
 insert into courses (id, title, kind, description, status, created_by)
@@ -78,13 +87,15 @@ values ('20000000-0000-4000-8000-000000000001',
 on conflict do nothing;
 
 -- ---- progress: João completed lesson 1 (10 pts), in progress on lesson 2 ----
-insert into lesson_progress (user_id, lesson_id, status, score, updated_at)
-select u.id, '22000000-0000-4000-8000-000000000001', 'completed', null, now()
+insert into lesson_progress (user_id, company_id, lesson_id, status, score, updated_at)
+select u.id, '10000000-0000-4000-8000-000000000001',
+  '22000000-0000-4000-8000-000000000001', 'completed', null, now()
 from auth.users u where u.email = 'joao.silva@santamaria.com'
 on conflict do nothing;
 
-insert into lesson_progress (user_id, lesson_id, status, score, updated_at)
-select u.id, '22000000-0000-4000-8000-000000000002', 'in_progress', null, now()
+insert into lesson_progress (user_id, company_id, lesson_id, status, score, updated_at)
+select u.id, '10000000-0000-4000-8000-000000000001',
+  '22000000-0000-4000-8000-000000000002', 'in_progress', null, now()
 from auth.users u where u.email = 'joao.silva@santamaria.com'
 on conflict do nothing;
 

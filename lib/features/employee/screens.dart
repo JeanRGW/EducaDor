@@ -11,33 +11,35 @@ import '../../shared/widgets/charts.dart';
 import '../../shared/widgets/common.dart';
 
 // ---------------------------------------------------------------- Home
-class EmployeeHomeScreen extends StatelessWidget {
+class EmployeeHomeScreen extends ConsumerWidget {
   const EmployeeHomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final session = ref.watch(sessionProvider).value;
+    final firstName = session?.user.fullName.split(' ').first ?? 'você';
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
         titleSpacing: 16,
         title: Row(
           children: [
-            const AvatarBadge('JS'),
+            AvatarBadge(session?.user.initials ?? 'JS'),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Olá, João!',
+                   Text('Olá, $firstName!',
                       style: const TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w700,
                           color: AppColors.textPrimary)),
                   Row(
-                    children: const [
-                      SvgIcon(AppIcons.building, size: 13, color: AppColors.primary),
-                      SizedBox(width: 4),
-                      Text('Grupo Santa Maria',
+                     children: [
+                       const SvgIcon(AppIcons.building, size: 13, color: AppColors.primary),
+                       const SizedBox(width: 4),
+                       Text(session?.active?.companyName ?? '',
                           style: TextStyle(
                               fontSize: 12.5,
                               fontWeight: FontWeight.w600,
@@ -47,7 +49,7 @@ class EmployeeHomeScreen extends StatelessWidget {
                 ],
               ),
             ),
-            Container(
+            if (const String.fromEnvironment('SUPABASE_URL').isEmpty) Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
                 color: AppColors.successBg,
@@ -945,20 +947,22 @@ class EmployeeProfileScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final session = ref.watch(sessionProvider).value;
     return Scaffold(
       appBar: AppBar(automaticallyImplyLeading: false),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          const Center(child: AvatarBadge('JS', size: 84)),
+          Center(child: AvatarBadge(session?.user.initials ?? 'JS', size: 84)),
           const SizedBox(height: 12),
-          const Center(
-              child: Text('João Silva',
+          Center(
+              child: Text(session?.user.fullName ?? 'Funcionário',
                   style: TextStyle(
                       fontSize: 20, fontWeight: FontWeight.w800))),
           const SizedBox(height: 4),
-          const Center(
-              child: Text('Departamento de Operações',
+          Center(
+              child: Text(const String.fromEnvironment('SUPABASE_URL').isEmpty
+                  ? 'Departamento de Operações' : 'Funcionário',
                   style: TextStyle(fontSize: 14, color: AppColors.textMuted))),
           const SizedBox(height: 10),
           Center(
@@ -969,7 +973,7 @@ class EmployeeProfileScreen extends ConsumerWidget {
                 color: AppColors.successBg,
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: const Text('Grupo Santa Maria',
+              child: Text(session?.active?.companyName ?? '',
                   style: TextStyle(
                       fontSize: 12.5,
                       fontWeight: FontWeight.w600,
@@ -977,7 +981,7 @@ class EmployeeProfileScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 20),
-          Row(
+          if (const String.fromEnvironment('SUPABASE_URL').isEmpty) Row(
             children: const [
               Expanded(child: _ProfileStat(value: '3', label: 'Completo')),
               Expanded(child: _ProfileStat(value: '1', label: 'Certificado')),
@@ -1011,10 +1015,15 @@ class EmployeeProfileScreen extends ConsumerWidget {
             chevron: true,
           ),
           const SizedBox(height: 8),
+          if ((session?.contexts.length ?? 0) > 1) ...[
+            OutlinedButton(onPressed: () => context.go('/contexts'),
+              child: const Text('Trocar perfil')),
+            const SizedBox(height: 12),
+          ],
           OutlinedButton(
-            onPressed: () {
-              ref.read(sessionProvider.notifier).logout();
-              context.go('/welcome');
+            onPressed: () async {
+              await ref.read(sessionProvider.notifier).logout();
+              if (context.mounted) context.go('/welcome');
             },
             style: OutlinedButton.styleFrom(
               minimumSize: const Size.fromHeight(52),
@@ -1029,7 +1038,7 @@ class EmployeeProfileScreen extends ConsumerWidget {
               children: [
                 SvgIcon(AppIcons.logout, size: 18),
                 SizedBox(width: 8),
-                Text('Log Out',
+                Text('Sair',
                     style: TextStyle(
                         fontWeight: FontWeight.w700, fontSize: 15)),
               ],

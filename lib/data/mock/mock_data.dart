@@ -14,7 +14,6 @@ class MockData {
     fullName: 'Nome Gestor',
     email: 'gestor@educador.com',
     initials: 'AM',
-    role: Role.gestor,
   );
 
   static const empresaUser = User(
@@ -22,7 +21,6 @@ class MockData {
     fullName: 'Grupo Santa Maria',
     email: 'empresa@educador.com',
     initials: 'GS',
-    role: Role.empresa,
   );
 
   static const funcionarioUser = User(
@@ -30,10 +28,6 @@ class MockData {
     fullName: 'João Silva',
     email: 'joao.silva@santamaria.com',
     initials: 'JS',
-    role: Role.funcionario,
-    department: 'Departamento de Operações',
-    jobTitle: 'Auxiliar de Operações',
-    companyId: 'c-santa-maria',
   );
 
   // ---- Companies ----

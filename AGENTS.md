@@ -1,6 +1,6 @@
 # AGENTS.md – EducaDor
 
-Flutter training platform. 3 roles: `gestor` (platform admin), `empresa` (company admin, scoped to `company_id`), `funcionario` (employee, scoped to self + company). UI mocks exist in `lib/features/`; backend plan is decided – follow it, do not re-propose alternatives unless asked.
+Flutter training platform. One Auth user may have the global `gestor` role and any number of company memberships (`empresa` manager and/or `funcionario` employee, including both in one company). The user selects a role/company context after login; the only available context is selected automatically. An `empresa` context monitors completion and manages invites but cannot learn; the same person must switch to a `funcionario` context to take courses. UI mocks exist in `lib/features/`; backend plan is decided – follow it, do not re-propose alternatives unless asked.
 
 Source of truth for backend: `stack/01-backend.md` (data/files/video/push) + `stack/02-ship.md` (hosting/CI/roadmap/costs). This file is the working contract for agents.
 
@@ -22,23 +22,23 @@ The stack is locked – do not improvise alternatives, ask instead.
 ## Repo map
 
 * `lib/app/` – app shell, theme. `lib/core/router.dart` – role redirects + SPA routes (must keep Pages fallback `/* → /index.html`).
-* `lib/data/models/models.dart` – `Role`, `User.companyId`, `Course/Module/Lesson` (lesson `kind: video/audio/pdf/quiz/reading`, `status: locked/inProgress/completed`).
+* `lib/data/models/models.dart` – base `User`, `AccessContext(role, companyId)`, `Course/Module/Lesson` (lesson `kind: video/audio/pdf/quiz/reading`, `status: locked/inProgress/completed`).
 * `lib/data/mock/mock_data.dart` – seed source for Supabase seed. Do not extend mocks; add real repos instead.
 * `lib/data/repositories/repositories.dart` – **the seam**. All backend access goes here as `*Repository` + Riverpod providers. `features/` and `shared/widgets/` must never import `supabase_flutter`, `firebase_*`, or S3 SDKs directly.
-* `lib/data/session/session_controller.dart` – session built from `profiles` row (`role`, `company_id`), not from mocks.
+* `lib/data/session/session_controller.dart` – session built from base `profiles` plus `available_contexts()`/`selected_context()`; active context is checked by DB per Auth session.
 * `lib/features/{auth,gestor,company,employee}/screens.dart` – role UIs. `AddTrailScreen` content types map to `lessons.kind`; `Liberar para:` maps to `assignments(course_id,company_id)`.
-* `stack/` – backend docs (2 files). `.github/workflows/` – CI (to be created per `stack/02-ship.md`).
+* `stack/` – backend, shipping, onboarding docs. `scripts/bootstrap_gestor.py` – trusted first-gestor bootstrap. `.github/workflows/` – CI (to be created per `stack/02-ship.md`).
 
 ## Patterns (must follow)
 
-1. **Tenancy in DB, not client.** Every query filtered by `company_id`. RLS: gestor bypass, empresa `company_id = own`, funcionario `user_id = own`. Never trust client-side filtering. JWT claims `user_role`, `company_id` minted at login by the `custom_access_token_hook` Auth hook (top-level `role` is reserved by PostgREST – never rename back; employee invites go through a separate admin-only function).
+1. **Tenancy and active role in DB, not client.** `profiles` is identity only; `platform_gestors` and `company_memberships(user_id, company_id, role)` grant independent contexts. `select_context()` validates membership and stores the choice against the signed Auth JWT's `session_id`; `context_role()`/`own_company_id()` validate it on each DB operation. RLS: gestor global, empresa own-company management/reports only (no lesson reads or progress writes), funcionario assigned content and own progress in the active company. No single-role `user_role`/`company_id` JWT claims. Never trust client-side filtering. `invite-member`/`accept-invite` are admin-only Edge Functions separate from the Auth hook.
 2. **Files via presigned URLs (S3 protocol, R2-compatible).** Flutter holds no storage keys. Flow: `POST /functions/v1/storage-upload-url` (Supabase JWT) → PUT directly → save `file_key`/`cover_key` in Postgres. Reads via `storage-download-url` (1h) or public bucket URL. Buckets/keys/SDK calls must stay R2-compatible (endpoint + creds swap only; S3 SDK confined to Edge Functions). MIME allowlist: `pdf,mp3,webp,png,jpg` (no `mp4` – video is YouTube-only); upload cap 50MB (= Supabase Free per-file ceiling); covers client-resized to WebP.
 3. **Video is YouTube-only.** `lessons(video_provider, video_id, file_key)` with `video_provider` CHECK-gated to `'youtube'`. Playback via `youtube_player_flutter`, save `position_sec` for resume. `AddTrailScreen` video = YouTube URL/ID field (no upload). Client-reported completion is accepted MVP risk (see `01-backend.md`).
-4. **Reports as SQL, export client-side.** Use views/RPC (`completion_by_company`, `ranking(company_id)`, etc.), no BigQuery, no denormalized counter collections. CSV export in Flutter.
+4. **Reports as SQL, export client-side.** Use guarded views/RPC (`completion_by_company`, `employee_completion`, `ranking(company_id)`, etc.); all progress/certificates/redemptions and derived balances are company-scoped. No BigQuery or denormalized counter collections. CSV export in Flutter.
 5. **Push via app-invoked function → FCM.** `firebase_messaging` token → upsert `fcm_tokens`. After the app inserts `assignments`/`certificates` it calls `push-on-assign` directly (no DB triggers; missed pushes acceptable, no resend UI in v1). Server sends via FCM HTTP v1 using service-account secret stored in Supabase secrets only.
 6. **Env/secrets.** Public (baked at build): `SUPABASE_URL`, `SUPABASE_ANON_KEY` via `--dart-define`. Secret (never in app): Supabase service-role, Supabase S3 access keys, FCM service account → Supabase Function secrets / Actions secrets only.
-7. **Free-tier discipline (egress budget).** PWA shell stays on Pages (zero Supabase egress). Covers/avatars via the public bucket (cached egress – keep WebP <200KB). PDFs/audio via short-lived signed URLs (metered egress). Video is YouTube-only (never Storage) to protect the 5GB quota. Paginate everything (`.range(0,49)`), no polling (Realtime only for ranking), cache signed URLs per session, no `bytea` columns, no event-log tables (activity from `lesson_progress.updated_at`; balances derived from `lessons.points`, no ledger table).
-8. **PWA.** `flutter build web --pwa-strategy offline-first`; `index.html` no-cache, assets immutable; add new routes to Pages SPA fallback; register new web URLs in Supabase Auth URL config.
+7. **Free-tier discipline (egress budget).** PWA shell stays on Pages (zero Supabase egress). Covers/avatars via the public bucket (cached egress – keep WebP <200KB). PDFs/audio via short-lived signed URLs (metered egress). Video is YouTube-only (never Storage) to protect the 5GB quota. Paginate everything (`.range(0,49)`), no polling (Realtime only for ranking), cache signed URLs per session, no `bytea` columns, no event-log tables (activity from `lesson_progress.updated_at`; balances derived from `lessons.points`, no ledger table). `membership_invites` and `session_contexts` store current authorization state, not events.
+8. **PWA.** `flutter build web --pwa-strategy offline-first`; `index.html` no-cache, assets immutable; Pages SPA fallback covers `/contexts`, `/invite/accept`, `/set-password`; register web URLs in Supabase Auth URL config. Manual invite links are bearer credentials: never log/store plaintext, only give to authorized inviters for private handoff. First gestor bootstrap is operator-only, never a public signup page.
 9. **MFA (when added).** TOTP only (free). Gate gestor writes with restrictive `aal2` policy; empresa/funcionario opt-in.
 
 ## Commands

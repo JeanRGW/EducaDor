@@ -5,17 +5,59 @@ import 'package:go_router/go_router.dart';
 import '../../app/theme.dart';
 import '../../data/mock/mock_data.dart';
 import '../../data/models/models.dart';
+import '../../data/repositories/repositories.dart';
 import '../../data/session/session_controller.dart';
 import '../../shared/widgets/app_icons.dart';
 import '../../shared/widgets/charts.dart';
 import '../../shared/widgets/common.dart';
 
 // ---------------------------------------------------------------- Dashboard
-class CompanyDashboardScreen extends StatelessWidget {
+class CompanyDashboardScreen extends ConsumerWidget {
   const CompanyDashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    const backend = String.fromEnvironment('SUPABASE_URL');
+    if (backend.isNotEmpty) {
+      final company = ref.watch(sessionProvider).value?.active;
+      final companyId = company?.companyId;
+      return Scaffold(
+        appBar: AppBar(title: Text(company?.companyName ?? 'Empresa'),
+          automaticallyImplyLeading: false),
+        body: companyId == null ? const Center(child: Text('Selecione uma empresa.'))
+          : FutureBuilder<double?>(
+            future: ref.read(reportRepositoryProvider).completion(companyId),
+            builder: (context, snapshot) {
+              if (snapshot.hasError) {
+                return const Center(child: Text('Não foi possível carregar os dados da empresa.'));
+              }
+              if (!snapshot.hasData && snapshot.connectionState != ConnectionState.done) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              final percent = snapshot.data;
+              return ListView(padding: const EdgeInsets.all(16), children: [
+                AppCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Conclusão dos treinamentos',
+                      style: TextStyle(fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 12),
+                    Text(percent == null ? 'Nenhuma trilha liberada' :
+                      '${percent.toStringAsFixed(1)}%',
+                      style: const TextStyle(fontSize: 28,
+                        fontWeight: FontWeight.w800, color: AppColors.primary)),
+                    const SizedBox(height: 10),
+                    ProgressBar((percent ?? 0) / 100),
+                  ])),
+                const SizedBox(height: 20),
+                PrimaryButton('Ver funcionários',
+                  onPressed: () => context.go('/empresa/funcionarios')),
+                const SizedBox(height: 12),
+                OutlinedButton(onPressed: () => context.go('/empresa/relatorios'),
+                  child: const Text('Ver conclusão da empresa')),
+              ]);
+            }),
+      );
+    }
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
@@ -148,20 +190,29 @@ class _HighlightRow extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------- Employees list
-class EmployeesScreen extends StatefulWidget {
+class EmployeesScreen extends ConsumerStatefulWidget {
   const EmployeesScreen({super.key});
 
   @override
-  State<EmployeesScreen> createState() => _EmployeesScreenState();
+  ConsumerState<EmployeesScreen> createState() => _EmployeesScreenState();
 }
 
-class _EmployeesScreenState extends State<EmployeesScreen> {
+class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
   int _chip = 0;
-  final List<String> _filters = [
-    'Todos os funcionários (142)',
-    'Ativos (142)',
-    'De licença (14)'
-  ];
+  final List<String> _filters = ['Todos os funcionários', 'Ativos', 'De licença'];
+  late Future<List<Employee>> _employees;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  void _load() {
+    final companyId = ref.read(sessionProvider).value?.active?.companyId;
+    _employees = companyId == null ? Future.value([]) :
+      ref.read(employeeRepositoryProvider).all(companyId);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -173,7 +224,11 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         backgroundColor: AppColors.primary,
-        onPressed: () => context.push('/empresa/employee/add'),
+        tooltip: 'Convidar funcionário',
+        onPressed: () async {
+          await context.push('/empresa/employee/add');
+          if (mounted) setState(_load);
+        },
         child: const SvgIcon(AppIcons.plus, color: Colors.white),
       ),
       body: CustomScrollView(
@@ -195,14 +250,23 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
               ),
             ),
           ),
-          SliverPadding(
-            padding: const EdgeInsets.all(16),
-            sliver: SliverList.builder(
-              itemCount: MockData.employees.length,
-              itemBuilder: (context, i) => _EmployeeCard(
-                  employee: MockData.employees[i]),
-            ),
-          ),
+          FutureBuilder<List<Employee>>(future: _employees,
+            builder: (context, snapshot) {
+              if (snapshot.hasError) {
+                return const SliverToBoxAdapter(
+                  child: Center(child: Text('Não foi possível carregar funcionários.')));
+              }
+              if (!snapshot.hasData) {
+                return const SliverToBoxAdapter(
+                  child: Center(child: CircularProgressIndicator()));
+              }
+              final employees = snapshot.data!.where((employee) => _chip == 0 ||
+                (_chip == 1 && employee.status == EmployeeStatus.active) ||
+                (_chip == 2 && employee.status == EmployeeStatus.onLeave)).toList();
+              return SliverPadding(padding: const EdgeInsets.all(16),
+                sliver: SliverList.builder(itemCount: employees.length,
+                  itemBuilder: (context, i) => _EmployeeCard(employee: employees[i])));
+            }),
         ],
       ),
     );
@@ -270,57 +334,15 @@ class _EmployeeCard extends StatelessWidget {
           const SizedBox(height: 12),
           Row(
             children: [
-              Expanded(
-                child: Text('Última atividade: ${employee.lastActivity}',
+               Expanded(
+                 child: Text(employee.lastActivity.isEmpty ? 'Ativo' :
+                   'Última atividade: ${employee.lastActivity}',
                     style: const TextStyle(
                         fontSize: 12, color: AppColors.textMuted)),
               ),
               const SvgIcon(AppIcons.chevronRight, color: AppColors.textMuted),
             ],
           ),
-        ],
-      ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------- Add employee
-class AddEmployeeScreen extends StatelessWidget {
-  const AddEmployeeScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Adicionar novo funcionário'),
-        leading: IconButton(
-          icon: const SvgIcon(AppIcons.arrowBack),
-          onPressed: () => context.pop(),
-        ),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          const FormFieldLabel(label: 'Nome completo', hint: 'Marcelo Hadas'),
-          const FormFieldLabel(label: 'Email', hint: 'antony@gmail.com'),
-          const FormFieldLabel(
-            label: 'Departamento',
-            isDropdown: true,
-            items: ['Estruturas', 'RH', 'Administração', 'TI'],
-            value: 'Estruturas',
-          ),
-          const FormFieldLabel(
-              label: 'Cargo / Especialidade', hint: 'Encarregado de Obras'),
-          const FormFieldLabel(label: 'Numero', hint: '(31) 99882-1212'),
-          const FormFieldLabel(label: 'Data de nascimento', hint: '01/02/2026'),
-          const FormFieldLabel(
-              label: 'Endereço', hint: 'Rua, número, bairro'),
-          const SizedBox(height: 4),
-          PrimaryButton('Cadastrar Funcionário', onPressed: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Funcionário cadastrado.')));
-            context.pop();
-          }),
         ],
       ),
     );
@@ -623,20 +645,22 @@ class CompanyProfileScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final session = ref.watch(sessionProvider).value;
     return Scaffold(
       appBar: AppBar(automaticallyImplyLeading: false),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          const Center(child: AvatarBadge('GS', size: 84)),
+          Center(child: AvatarBadge(session?.user.initials ?? 'GS', size: 84)),
           const SizedBox(height: 12),
-          const Center(
-              child: Text('Grupo Santa Maria',
+          Center(
+              child: Text(session?.active?.companyName ?? 'Empresa',
                   style: TextStyle(
                       fontSize: 20, fontWeight: FontWeight.w800))),
           const SizedBox(height: 4),
-          const Center(
-              child: Text('CNPJ: 12.345.678/0001-90',
+          Center(
+              child: Text(const String.fromEnvironment('SUPABASE_URL').isEmpty
+                  ? 'CNPJ: 12.345.678/0001-90' : session?.user.email ?? '',
                   style: TextStyle(fontSize: 14, color: AppColors.textMuted))),
           const SizedBox(height: 10),
           Center(
@@ -647,7 +671,8 @@ class CompanyProfileScreen extends ConsumerWidget {
                 color: AppColors.successBg,
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: const Text('300 Funcionários',
+               child: Text(const String.fromEnvironment('SUPABASE_URL').isEmpty
+                   ? '300 Funcionários' : 'Gestor da empresa',
                   style: TextStyle(
                       fontSize: 12.5,
                       fontWeight: FontWeight.w600,
@@ -655,6 +680,14 @@ class CompanyProfileScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 24),
+          PrimaryButton('Convidar gestor da empresa',
+            onPressed: () => context.push('/empresa/manager/add')),
+          const SizedBox(height: 12),
+          if ((session?.contexts.length ?? 0) > 1) ...[
+            OutlinedButton(onPressed: () => context.go('/contexts'),
+              child: const Text('Trocar perfil')),
+            const SizedBox(height: 12),
+          ],
           const _MenuRow('Notificações'),
           const _MenuRow('Lembretes automáticos de treinamento'),
           const _MenuRow('Gerenciar Departamento'),
@@ -662,9 +695,9 @@ class CompanyProfileScreen extends ConsumerWidget {
           const _MenuRow('Suporte', subtitle: '24/7 dedicated admin line'),
           const SizedBox(height: 8),
           OutlinedButton(
-            onPressed: () {
-              ref.read(sessionProvider.notifier).logout();
-              context.go('/welcome');
+            onPressed: () async {
+              await ref.read(sessionProvider.notifier).logout();
+              if (context.mounted) context.go('/welcome');
             },
             style: OutlinedButton.styleFrom(
               minimumSize: const Size.fromHeight(52),

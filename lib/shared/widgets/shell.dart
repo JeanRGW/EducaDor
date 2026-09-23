@@ -20,15 +20,15 @@ List<TabItem> tabsForRole(Role role) {
         TabItem('Módulos', AppIcons.book),
         TabItem('Progresso', AppIcons.reports),
         TabItem('Recompensas', AppIcons.rewards),
-        TabItem('Profile', AppIcons.profile),
+        TabItem('Perfil', AppIcons.profile),
       ];
     case Role.empresa:
       return const [
         TabItem('Início', AppIcons.grid),
         TabItem('Funcionários', AppIcons.employees),
-        TabItem('Conteúdos', AppIcons.book),
+        TabItem('Gestores', AppIcons.employees),
         TabItem('Relatórios', AppIcons.reports),
-        TabItem('Profile', AppIcons.profile),
+        TabItem('Perfil', AppIcons.profile),
       ];
     case Role.gestor:
       return const [
@@ -36,7 +36,7 @@ List<TabItem> tabsForRole(Role role) {
         TabItem('Empresas', AppIcons.companies),
         TabItem('Conteúdo', AppIcons.book),
         TabItem('Relatórios', AppIcons.reports),
-        TabItem('Profile', AppIcons.profile),
+        TabItem('Perfil', AppIcons.profile),
       ];
   }
 }

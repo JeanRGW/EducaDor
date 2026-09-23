@@ -15,37 +15,54 @@ class User {
   final String fullName;
   final String email;
   final String initials;
-  final Role role;
-  final String? department;
-  final String? jobTitle;
-  final String? companyId;
 
   const User({
     required this.id,
     required this.fullName,
     required this.email,
     required this.initials,
-    required this.role,
-    this.department,
-    this.jobTitle,
-    this.companyId,
   });
+}
+
+class AccessContext {
+  final Role role;
+  final String? companyId;
+  final String companyName;
+
+  const AccessContext({
+    required this.role,
+    this.companyId,
+    required this.companyName,
+  });
+
+  String get label => switch (role) {
+    Role.gestor => 'Gestor · Plataforma',
+    Role.empresa => 'Gestor da empresa · $companyName',
+    Role.funcionario => 'Funcionário · $companyName',
+  };
 }
 
 class AppSession {
   final User user;
-  final Company? company;
-  final Employee? employee;
+  final List<AccessContext> contexts;
+  final AccessContext? active;
+  final bool needsPassword;
 
-  const AppSession({required this.user, this.company, this.employee});
+  const AppSession({
+    required this.user,
+    required this.contexts,
+    this.active,
+    this.needsPassword = false,
+  });
 
-  Role get role => user.role;
+  Role? get role => active?.role;
 
   String get homePath => switch (role) {
-        Role.funcionario => '/funcionario/home',
-        Role.empresa => '/empresa/home',
-        Role.gestor => '/gestor/home',
-      };
+    Role.funcionario => '/funcionario/home',
+    Role.empresa => '/empresa/home',
+    Role.gestor => '/gestor/home',
+    null => '/contexts',
+  };
 }
 
 class Company {

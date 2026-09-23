@@ -1,17 +1,29 @@
-# educador
+# EducaDOR
 
-A new Flutter project.
+Flutter training platform with one account and selectable platform/company roles.
+Onboarding is invitation-only. A company manager can monitor completion and
+invite colleagues; they must switch to an employee context to take courses.
 
-## Getting Started
+## Local setup
 
-This project is a starting point for a Flutter application.
+Read [the onboarding runbook](stack/03-onboarding.md) for Supabase staging,
+migrations, Auth URLs, Edge Function secrets and first-gestor provisioning.
+Backend contracts and shipping notes are in [stack/01-backend.md](stack/01-backend.md)
+and [stack/02-ship.md](stack/02-ship.md).
 
-A few resources to get you started if this is your first Flutter project:
+```bash
+flutter pub get
+flutter run -d chrome --dart-define=SUPABASE_URL=https://YOUR_PROJECT.supabase.co \
+  --dart-define=SUPABASE_ANON_KEY=YOUR_PUBLIC_KEY
+flutter analyze
+flutter test
+```
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+Build the Pages PWA with the same public defines and
+`flutter build web --release --pwa-strategy offline-first`. The `web/_redirects`
+rule serves direct `/invite/accept`, `/contexts`, and `/set-password` paths.
+Without Supabase defines, the welcome screen renders, but sign-in and
+invitations require a configured staging project.
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+`supabase/tests/multi_context.sql` checks selected-session tenancy and role
+restrictions on an **isolated** PostgreSQL database after applying migrations.
