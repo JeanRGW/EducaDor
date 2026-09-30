@@ -293,36 +293,81 @@ class SessionErrorScreen extends ConsumerWidget {
 }
 
 Future<void> showInviteLink(BuildContext context, String link) async {
+  var confirmingClose = false;
+
+  Future<void> confirmClose(BuildContext dialogContext) async {
+    if (confirmingClose) return;
+    confirmingClose = true;
+    final close = await showDialog<bool>(
+      context: dialogContext,
+      builder: (confirmContext) => AlertDialog(
+        title: const Text('Fechar sem copiar?'),
+        content: const Text(
+          'Este link não poderá ser visto novamente. Para recuperá-lo, será '
+          'preciso gerar um novo link em Convites pendentes.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(confirmContext, false),
+            child: const Text('Voltar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(confirmContext, true),
+            child: const Text('Fechar sem copiar'),
+          ),
+        ],
+      ),
+    );
+    confirmingClose = false;
+    if (close == true && dialogContext.mounted) Navigator.pop(dialogContext);
+  }
+
   await showDialog<void>(
     context: context,
-    builder: (dialogContext) => AlertDialog(
-      title: const Text('Convite criado'),
-      content: const Text(
-        'Compartilhe o link por um canal privado. '
-        'Ele expira em breve e dá acesso à conta do convidado.',
+    barrierDismissible: false,
+    builder: (dialogContext) => PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) confirmClose(dialogContext);
+      },
+      child: AlertDialog(
+        title: const Text('Convite criado'),
+        content: const Text(
+          'Compartilhe o link por um canal privado. '
+          'Copie agora: após fechar, só é possível gerar um novo link.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => confirmClose(dialogContext),
+            child: const Text('Fechar sem copiar'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              try {
+                await Clipboard.setData(ClipboardData(text: link));
+              } catch (_) {
+                if (dialogContext.mounted && context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text('Não foi possível copiar o link. Tente novamente.'),
+                  ));
+                }
+                return;
+              }
+              if (dialogContext.mounted) {
+                Navigator.pop(dialogContext);
+              }
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Link copiado. Compartilhe com segurança.'),
+                  ),
+                );
+              }
+            },
+            child: const Text('Copiar link'),
+          ),
+        ],
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(dialogContext),
-          child: const Text('Fechar'),
-        ),
-        FilledButton(
-          onPressed: () async {
-            await Clipboard.setData(ClipboardData(text: link));
-            if (dialogContext.mounted) {
-              Navigator.pop(dialogContext);
-            }
-            if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Link copiado. Compartilhe com segurança.'),
-                ),
-              );
-            }
-          },
-          child: const Text('Copiar link'),
-        ),
-      ],
     ),
   );
 }

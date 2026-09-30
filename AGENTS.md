@@ -11,7 +11,7 @@ Source of truth for backend: `stack/01-backend.md` (data/files/video/push) + `st
 | Auth + DB + Functions | Supabase, region `sa-east-1` | Postgres + RLS + RPC + Edge Functions. No custom API server. |
 | Files (PDF/MP3/covers) | Supabase Storage via S3 protocol | `educador-public` (covers/avatars) + `educador-private` (PDF/audio). Presigned URLs only, R2-compatible layout for later swap. |
 | Video | YouTube Unlisted only | Store `video_provider` (CHECK-gated `'youtube'`) + `video_id`, never MP4 bytes anywhere. Corporate networks must whitelist `youtube.com`. |
-| PWA hosting | Cloudflare Pages, `educador.rgw.app` | Serves `build/web`, unlimited BW. Supabase hosts no HTML. |
+| PWA hosting | Cloudflare Pages, `app.educador.rgw.app` | Serves `build/web`, unlimited BW. Supabase hosts no HTML. |
 | Push | FCM on Firebase Spark (messaging only) | Tokens stored in Supabase `fcm_tokens`. No Firestore/Storage/Hosting. |
 | CI | GitHub Actions | lint/test/build web, Pages deploy, weekly `pg_dump` to private Storage bucket, daily keep-alive vs 7-day pause. |
 
@@ -36,7 +36,7 @@ The stack is locked – do not improvise alternatives, ask instead.
 3. **Video is YouTube-only.** `lessons(video_provider, video_id, file_key)` with `video_provider` CHECK-gated to `'youtube'`. Playback via `youtube_player_flutter`, save `position_sec` for resume. `AddTrailScreen` video = YouTube URL/ID field (no upload). Client-reported completion is accepted MVP risk (see `01-backend.md`).
 4. **Reports as SQL, export client-side.** Use guarded views/RPC (`completion_by_company`, `employee_completion`, `ranking(company_id)`, etc.); all progress/certificates/redemptions and derived balances are company-scoped. No BigQuery or denormalized counter collections. CSV export in Flutter.
 5. **Push via app-invoked function → FCM.** `firebase_messaging` token → upsert `fcm_tokens`. After the app inserts `assignments`/`certificates` it calls `push-on-assign` directly (no DB triggers; missed pushes acceptable, no resend UI in v1). Server sends via FCM HTTP v1 using service-account secret stored in Supabase secrets only.
-6. **Env/secrets.** Public (baked at build): `SUPABASE_URL`, `SUPABASE_ANON_KEY` via `--dart-define`. Secret (never in app): Supabase service-role, Supabase S3 access keys, FCM service account → Supabase Function secrets / Actions secrets only.
+6. **Env/secrets.** Public (baked at build): `SUPABASE_URL`, `SUPABASE_ANON_KEY` (the publishable key) in `config/staging.public.json` via `--dart-define-from-file`. Secret (never in app): Supabase service-role, Supabase S3 access keys, FCM service account → Supabase Function secrets / Actions secrets only.
 7. **Free-tier discipline (egress budget).** PWA shell stays on Pages (zero Supabase egress). Covers/avatars via the public bucket (cached egress – keep WebP <200KB). PDFs/audio via short-lived signed URLs (metered egress). Video is YouTube-only (never Storage) to protect the 5GB quota. Paginate everything (`.range(0,49)`), no polling (Realtime only for ranking), cache signed URLs per session, no `bytea` columns, no event-log tables (activity from `lesson_progress.updated_at`; balances derived from `lessons.points`, no ledger table). `membership_invites` and `session_contexts` store current authorization state, not events.
 8. **PWA.** `flutter build web --pwa-strategy offline-first`; `index.html` no-cache, assets immutable; Pages SPA fallback covers `/contexts`, `/invite/accept`, `/set-password`; register web URLs in Supabase Auth URL config. Manual invite links are bearer credentials: never log/store plaintext, only give to authorized inviters for private handoff. First gestor bootstrap is operator-only, never a public signup page.
 9. **MFA (when added).** TOTP only (free). Gate gestor writes with restrictive `aal2` policy; empresa/funcionario opt-in.
@@ -46,11 +46,11 @@ The stack is locked – do not improvise alternatives, ask instead.
 ```bash
 flutter analyze
 flutter test
-flutter build web --release --pwa-strategy offline-first --dart-define=SUPABASE_URL=... --dart-define=SUPABASE_ANON_KEY=... --dart-define=VAPID_PUBLIC_KEY=...
-npx wrangler pages deploy build/web --project-name=educador
+flutter build web --release --pwa-strategy offline-first --dart-define-from-file=config/staging.public.json
+CLOUDFLARE_ACCOUNT_ID=785b73d97c037eb906aae65de518cad6 npx wrangler pages deploy build/web --project-name=educador --branch=main
 ```
 
-Supabase changes: edit migrations, never hand-edit prod DB; seed from `mock_data.dart`; keep staging on 2nd free project.
+Supabase changes: edit migrations, never hand-edit prod DB; seed from `mock_data.dart`; keep staging on 2nd free project. `supabase/config.toml` is local-only (localhost Auth Site URL); never push it to staging without reviewing the remote config diff.
 
 ## Workflow
 

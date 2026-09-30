@@ -11,6 +11,7 @@ import '../auth/onboarding_screens.dart';
 import '../../shared/widgets/app_icons.dart';
 import '../../shared/widgets/charts.dart';
 import '../../shared/widgets/common.dart';
+import '../auth/pending_invites.dart';
 
 // ---------------------------------------------------------------- Dashboard
 class GestorDashboardScreen extends StatelessWidget {
@@ -155,6 +156,7 @@ class CompaniesScreen extends ConsumerStatefulWidget {
 
 class _CompaniesScreenState extends ConsumerState<CompaniesScreen> {
   int _chip = 0;
+  int _pendingRevision = 0;
   final List<String> _filters = ['Todas as empresas', 'Ativas', 'Inativas'];
   late Future<List<Company>> _companies;
 
@@ -164,7 +166,10 @@ class _CompaniesScreenState extends ConsumerState<CompaniesScreen> {
     _load();
   }
 
-  void _load() => _companies = ref.read(companyRepositoryProvider).all();
+  void _load() {
+    _companies = ref.read(companyRepositoryProvider).all();
+    _pendingRevision++;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -201,6 +206,20 @@ class _CompaniesScreenState extends ConsumerState<CompaniesScreen> {
                 ],
               ),
             ),
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            sliver: SliverToBoxAdapter(child: FutureBuilder<List<Company>>(
+              future: _companies,
+              builder: (context, snapshot) => PendingInvitesSection(
+                key: ValueKey(_pendingRevision),
+                role: Role.empresa,
+                companyNames: {
+                  for (final company in snapshot.data ?? <Company>[])
+                    company.id: company.name,
+                },
+              ),
+            )),
           ),
           FutureBuilder<List<Company>>(future: _companies,
             builder: (context, snapshot) {
@@ -880,11 +899,18 @@ class _PopularRow extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------- Profile
-class GestorProfileScreen extends ConsumerWidget {
+class GestorProfileScreen extends ConsumerStatefulWidget {
   const GestorProfileScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<GestorProfileScreen> createState() => _GestorProfileScreenState();
+}
+
+class _GestorProfileScreenState extends ConsumerState<GestorProfileScreen> {
+  int _pendingRevision = 0;
+
+  @override
+  Widget build(BuildContext context) {
     final session = ref.watch(sessionProvider).value;
     return Scaffold(
       appBar: AppBar(automaticallyImplyLeading: false),
@@ -908,7 +934,15 @@ class GestorProfileScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 24),
           PrimaryButton('Convidar gestor da plataforma',
-            onPressed: () => context.push('/gestor/manager/add')),
+            onPressed: () async {
+              await context.push('/gestor/manager/add');
+              if (mounted) setState(() => _pendingRevision++);
+            }),
+          const SizedBox(height: 12),
+          PendingInvitesSection(
+            key: ValueKey(_pendingRevision),
+            role: Role.gestor,
+          ),
           const SizedBox(height: 12),
           if ((session?.contexts.length ?? 0) > 1) ...[
             OutlinedButton(onPressed: () => context.go('/contexts'),

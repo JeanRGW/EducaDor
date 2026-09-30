@@ -1,15 +1,31 @@
 -- Run against an isolated local database after all migrations.
 -- Creates its own fixture and rolls back. Requires a privileged psql session.
 begin;
+do $$
+declare table_name text;
+begin
+  for table_name in
+    select tablename from pg_tables where schemaname = 'public'
+  loop
+    if not has_table_privilege('service_role', 'public.' || quote_ident(table_name), 'SELECT')
+      or not has_table_privilege('service_role', 'public.' || quote_ident(table_name), 'INSERT')
+      or not has_table_privilege('service_role', 'public.' || quote_ident(table_name), 'UPDATE')
+      or not has_table_privilege('service_role', 'public.' || quote_ident(table_name), 'DELETE') then
+      raise exception 'Service role lacks access to %', table_name;
+    end if;
+  end loop;
+end $$;
 insert into auth.users(id, email) values
   ('a0000000-0000-4000-8000-000000000001', 'multi-role@example.test'),
-  ('a0000000-0000-4000-8000-000000000002', 'other@example.test');
+  ('a0000000-0000-4000-8000-000000000002', 'other@example.test'),
+  ('a0000000-0000-4000-8000-000000000003', 'person-a@example.test');
 insert into companies(id, name) values
   ('b0000000-0000-4000-8000-000000000001', 'Company A'),
   ('b0000000-0000-4000-8000-000000000002', 'Company B');
 insert into profiles(id, full_name, email) values
   ('a0000000-0000-4000-8000-000000000001', 'Multi Role', 'multi-role@example.test'),
-  ('a0000000-0000-4000-8000-000000000002', 'Other User', 'other@example.test');
+  ('a0000000-0000-4000-8000-000000000002', 'Other User', 'other@example.test'),
+  ('a0000000-0000-4000-8000-000000000003', 'Invited Person', 'Person-A@Example.test');
 insert into platform_gestors(user_id) values
   ('a0000000-0000-4000-8000-000000000001');
 insert into company_memberships(user_id, company_id, role) values
@@ -63,6 +79,9 @@ do $$ begin
   if (select count(*) from pending_invites()) <> 1 then
     raise exception 'Manager saw another company invitation';
   end if;
+  if (select full_name from pending_invites()) is distinct from 'Invited Person' then
+    raise exception 'Pending invite must include the profile name with case-insensitive email matching';
+  end if;
   if (select count(*) from employee_completion(
     'b0000000-0000-4000-8000-000000000001')) <> 1 then
     raise exception 'Manager must see only its company employees';
@@ -99,6 +118,17 @@ do $$ begin
     raise exception 'Client assigned a platform role';
   exception when insufficient_privilege then null;
   end;
+end $$;
+
+select select_context('gestor', null);
+do $$ begin
+  if (select count(*) from pending_invites()) <> 2 then
+    raise exception 'Gestor must see both invitations';
+  end if;
+  if not exists (select 1 from pending_invites()
+      where email = 'person-b@example.test' and full_name is null) then
+    raise exception 'Invitation without a profile must still be returned';
+  end if;
 end $$;
 
 select select_context('funcionario', 'b0000000-0000-4000-8000-000000000001');

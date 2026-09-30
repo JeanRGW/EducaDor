@@ -8,6 +8,7 @@ import '../../data/repositories/repositories.dart';
 import '../../data/session/session_controller.dart';
 import '../../shared/widgets/app_icons.dart';
 import '../../shared/widgets/common.dart';
+import '../auth/pending_invites.dart';
 
 class CompanyManagersScreen extends ConsumerStatefulWidget {
   const CompanyManagersScreen({super.key});
@@ -18,7 +19,8 @@ class CompanyManagersScreen extends ConsumerStatefulWidget {
 }
 
 class _CompanyManagersScreenState extends ConsumerState<CompanyManagersScreen> {
-  late Future<(List<User>, List<String>)> _people;
+  late Future<List<User>> _people;
+  int _pendingRevision = 0;
 
   @override
   void initState() {
@@ -28,11 +30,8 @@ class _CompanyManagersScreenState extends ConsumerState<CompanyManagersScreen> {
 
   void _refresh() {
     final companyId = ref.read(sessionProvider).value!.active!.companyId!;
-    final repo = ref.read(peopleRepositoryProvider);
-    _people = (Future.wait<dynamic>([
-      repo.companyManagers(companyId),
-      repo.pending('empresa'),
-    ])).then((rows) => (rows[0] as List<User>, rows[1] as List<String>));
+    _people = ref.read(peopleRepositoryProvider).companyManagers(companyId);
+    _pendingRevision++;
   }
 
   @override
@@ -49,7 +48,7 @@ class _CompanyManagersScreenState extends ConsumerState<CompanyManagersScreen> {
       },
         child: const SvgIcon(AppIcons.plus, color: Colors.white),
     ),
-    body: FutureBuilder<(List<User>, List<String>)>(
+    body: FutureBuilder<List<User>>(
       future: _people,
       builder: (context, snapshot) {
         if (snapshot.hasError) {
@@ -60,7 +59,7 @@ class _CompanyManagersScreenState extends ConsumerState<CompanyManagersScreen> {
         if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
         }
-        final (members, pending) = snapshot.data!;
+        final members = snapshot.data!;
         return ListView(
           padding: const EdgeInsets.all(16),
           children: [
@@ -91,9 +90,11 @@ class _CompanyManagersScreenState extends ConsumerState<CompanyManagersScreen> {
               ),
               const SizedBox(height: 10),
             ],
-            const SectionHeader('Convites pendentes'),
-            if (pending.isEmpty) const Text('Nenhum convite pendente.'),
-            for (final email in pending) AppCard(child: Text(email)),
+            PendingInvitesSection(
+              key: ValueKey(_pendingRevision),
+              role: Role.empresa,
+              companyId: ref.read(sessionProvider).value!.active!.companyId!,
+            ),
           ],
         );
       },

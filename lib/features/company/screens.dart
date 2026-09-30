@@ -10,6 +10,7 @@ import '../../data/session/session_controller.dart';
 import '../../shared/widgets/app_icons.dart';
 import '../../shared/widgets/charts.dart';
 import '../../shared/widgets/common.dart';
+import '../auth/pending_invites.dart';
 
 // ---------------------------------------------------------------- Dashboard
 class CompanyDashboardScreen extends ConsumerWidget {
@@ -199,6 +200,7 @@ class EmployeesScreen extends ConsumerStatefulWidget {
 
 class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
   int _chip = 0;
+  int _pendingRevision = 0;
   final List<String> _filters = ['Todos os funcionários', 'Ativos', 'De licença'];
   late Future<List<Employee>> _employees;
 
@@ -212,6 +214,7 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
     final companyId = ref.read(sessionProvider).value?.active?.companyId;
     _employees = companyId == null ? Future.value([]) :
       ref.read(employeeRepositoryProvider).all(companyId);
+    _pendingRevision++;
   }
 
   @override
@@ -250,6 +253,15 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
               ),
             ),
           ),
+          if (ref.read(sessionProvider).value?.active?.companyId case final String companyId)
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              sliver: SliverToBoxAdapter(child: PendingInvitesSection(
+                key: ValueKey(_pendingRevision),
+                role: Role.funcionario,
+                companyId: companyId,
+              )),
+            ),
           FutureBuilder<List<Employee>>(future: _employees,
             builder: (context, snapshot) {
               if (snapshot.hasError) {

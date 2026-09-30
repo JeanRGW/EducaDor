@@ -31,24 +31,52 @@ def main() -> None:
     email, name = sys.argv[1].strip().lower(), sys.argv[2].strip()
     if not email or not name:
         raise SystemExit("Email and full name are required")
+    if not all(os.environ.get(key) for key in (
+        "SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "APP_ORIGIN"
+    )):
+        raise SystemExit("SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY and APP_ORIGIN are required")
     existing = request("/rest/v1/platform_gestors?select=user_id&limit=1")
     if existing:
         raise SystemExit("A platform gestor already exists. Invite others from the app.")
 
+    # A failed first run may have created an unconfirmed Auth user but not its
+    # profile. Refuse every other partial state rather than promoting it.
+    users = request("/auth/v1/admin/users?page=1&per_page=2")["users"]
+    pending_user = None
+    if users:
+        if (len(users) != 1 or users[0].get("email", "").lower() != email
+                or users[0].get("email_confirmed_at")):
+            raise SystemExit("Auth users already exist. Inspect staging before bootstrapping.")
+        pending_user = users[0]
+        profile = request(
+            "/rest/v1/profiles?" + urlencode({"select": "id", "id": f"eq.{pending_user['id']}"})
+        )
+        if profile:
+            raise SystemExit("A partial profile already exists. Inspect staging before retrying.")
+
     redirect = os.environ["APP_ORIGIN"].rstrip("/") + "/set-password"
     link_data = request(
         "/auth/v1/admin/generate_link?" + urlencode({"redirect_to": redirect}),
-        method="POST", body={"type": "invite", "email": email},
+        method="POST", body={"type": "magiclink" if pending_user else "invite", "email": email},
     )
-    user = link_data["user"]
-    request("/rest/v1/profiles", method="POST", body={
-        "id": user["id"], "full_name": name, "email": email,
+    user_id = link_data.get("id")
+    action_link = link_data.get("action_link")
+    if (not isinstance(user_id, str) or not isinstance(action_link, str)
+            or link_data.get("email", "").lower() != email
+            or (pending_user and user_id != pending_user["id"])):
+        raise SystemExit("Could not validate generated link. Inspect staging before retrying.")
+    profile = request("/rest/v1/profiles", method="POST", body={
+        "id": user_id, "full_name": name, "email": email,
         "needs_password": True,
     })
-    request("/rest/v1/platform_gestors", method="POST", body={"user_id": user["id"]})
+    if len(profile) != 1 or profile[0].get("id") != user_id:
+        raise SystemExit("Could not verify the profile. Inspect staging before retrying.")
+    grant = request("/rest/v1/platform_gestors", method="POST", body={"user_id": user_id})
+    if len(grant) != 1 or grant[0].get("user_id") != user_id:
+        raise SystemExit("Could not verify the gestor grant. Inspect staging before retrying.")
     # Only release the bearer link AFTER both grants have succeeded.
     print("Share this short-lived link privately with the first gestor:")
-    print(link_data["action_link"])
+    print(action_link)
 
 
 if __name__ == "__main__":

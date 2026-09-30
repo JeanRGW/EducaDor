@@ -117,16 +117,6 @@ class PeopleRepository {
       );
     }).toList();
   }
-
-  Future<List<String>> pending(String role) async {
-    final client = _client;
-    if (client == null) return [];
-    final rows = await client.rpc('pending_invites') as List<dynamic>;
-    return rows
-        .where((row) => (row as Map<String, dynamic>)['role'] == role)
-        .map((row) => (row as Map<String, dynamic>)['email'] as String)
-        .toList();
-  }
 }
 
 class ReportRepository {
@@ -240,6 +230,35 @@ class AuthRepository {
 }
 
 class InvitationRepository {
+  Future<List<PendingInvitation>> pending({Role? role, String? companyId}) async {
+    final client = _client;
+    if (client == null) return [];
+    final rows = await client.rpc('pending_invites') as List<dynamic>;
+    return rows.map((row) {
+      final data = row as Map<String, dynamic>;
+      return PendingInvitation(
+        name: data['full_name'] as String?,
+        email: data['email'] as String,
+        role: Role.values.byName(data['role'] as String),
+        companyId: data['company_id'] as String?,
+      );
+    }).where((invite) =>
+        (role == null || invite.role == role) &&
+        (companyId == null || invite.companyId == companyId)).toList();
+  }
+
+  Future<String> regenerate(PendingInvitation invite) async {
+    final client =
+        _client ?? (throw StateError('Configure o Supabase para convidar.'));
+    final response = await client.functions.invoke('invite-member', body: {
+      'action': 'regenerate',
+      'role': invite.role.name,
+      'email': invite.email,
+      if (invite.companyId != null) 'companyId': invite.companyId,
+    });
+    return (response.data as Map<String, dynamic>)['link'] as String;
+  }
+
   Future<String> invite({
     required Role role,
     required String name,

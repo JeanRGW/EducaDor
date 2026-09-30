@@ -1,14 +1,14 @@
 # 02 – Ship (hosting + CI + roadmap + costs + fallbacks)
 
-## PWA hosting (Cloudflare Pages, `educador.rgw.app`)
+## PWA hosting (Cloudflare Pages, `app.educador.rgw.app`)
 
-* Build in CI: `flutter build web --release --pwa-strategy offline-first --dart-define=SUPABASE_URL=... --dart-define=SUPABASE_ANON_KEY=... --dart-define=VAPID_PUBLIC_KEY=...`; deploy `build/web` via `wrangler pages deploy build/web --project-name=educador`.
+* Staging public build inputs live in `config/staging.public.json`. Build with `flutter build web --release --pwa-strategy offline-first --dart-define-from-file=config/staging.public.json`; deploy `build/web` with `CLOUDFLARE_ACCOUNT_ID=785b73d97c037eb906aae65de518cad6 npx wrangler pages deploy build/web --project-name=educador --branch=main`. Add `VAPID_PUBLIC_KEY` only when web push is implemented.
 * SPA fallback `/* → /index.html` (routes in `lib/core/router.dart` must survive refresh). Headers: `index.html` no-cache, `assets/*` immutable 1y.
-* `educador.rgw.app` CNAME → `*.pages.dev` (auto SSL; automatic if `rgw.app` DNS is on Cloudflare). Public covers served from the public Storage bucket (cached egress). Supabase Auth URL config: `Site URL=https://educador.rgw.app` + `localhost` + preview URLs. Anon key in bundle is safe with RLS; service-role never in app. Offline = app shell cached, Supabase reads show offline banner.
+* `app.educador.rgw.app` CNAME → `educador-ayp.pages.dev` in the `rgw.app` Cloudflare zone. Public covers served from the public Storage bucket (cached egress). Supabase Auth Site URL: `https://app.educador.rgw.app/`, with invite/password callbacks plus trusted localhost/preview URLs allowed. Publishable key in the bundle is safe with RLS; service-role never in the app. Offline = app shell cached, Supabase reads show offline banner.
 
 * Web push: VAPID keypair (public key in build, private in function secrets) + `firebase-messaging-sw.js` in `build/web`; tokens use the same `fcm_tokens` upsert.
 
-## CI (`.github/workflows/`, per AGENTS.md secrets rule)
+## Planned CI (`.github/workflows/` not yet created, per AGENTS.md secrets rule)
 
 | File | Trigger | Does |
 |---|---|---|
@@ -17,11 +17,11 @@
 | `backup.yml` | weekly cron | `pg_dump` → `educador-backups` bucket (keep newest 3, prune older in same run) |
 | `keepalive.yml` | daily cron | light authed query to reset Supabase 7-day pause timer |
 
-Secrets (Actions, never in repo): `SUPABASE_URL, SUPABASE_ANON_KEY, CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, SUPABASE_DB_URL`. Function secrets (Supabase dashboard): `VAPID_PRIVATE_KEY, FCM_SERVICE_ACCOUNT_JSON, STORAGE_S3_*`. PR previews point at the staging project.
+Public staging inputs (`SUPABASE_URL`, `SUPABASE_ANON_KEY` publishable key, `CLOUDFLARE_ACCOUNT_ID`) may be versioned; use environment-specific public values for other projects. True secrets (Actions, never in repo): `CLOUDFLARE_API_TOKEN, SUPABASE_DB_URL` (with password). Function secrets (Supabase dashboard): `VAPID_PRIVATE_KEY, FCM_SERVICE_ACCOUNT_JSON, STORAGE_S3_*`; the managed Supabase service-role key stays server-side. PR previews point at the staging project.
 
 ## Build order
 
-1. Supabase project + schema + `20260923000000_multi_context.sql` + RLS; verify multi-context RLS with `supabase/tests/multi_context.sql`, seed staging from `mock_data.dart`, configure Auth redirect URLs and hook. No public self-signup; follow `03-onboarding.md` for manual-link invites and first-gestor bootstrap.
+1. Supabase project + schema + `20260923000000_multi_context.sql` + `20260925000000_service_role_grants.sql` + RLS; verify multi-context RLS with `supabase/tests/multi_context.sql`, seed staging from `mock_data.dart` only when test users exist, configure Auth redirect URLs and hook. No public self-signup; follow `03-onboarding.md` for manual-link invites and first-gestor bootstrap.
 2. `AuthRepository` + context selection/session restoration + admin-only `invite-member` and `accept-invite`; onboard company managers and employees with one identity across companies.
 3. Storage buckets + `storage-*-url` functions; test 25MB PDF/MP3 upload.
 4. `CourseRepository` (courses/modules/lessons/assignments) → `AddTrailScreen` writes through RLS; employees learn only in the `funcionario` context. `AddCompanyScreen`/`AddEmployeeScreen` create invites via Edge Functions.

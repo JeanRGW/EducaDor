@@ -4,6 +4,18 @@ Flutter training platform with one account and selectable platform/company roles
 Onboarding is invitation-only. A company manager can monitor completion and
 invite colleagues; they must switch to an employee context to take courses.
 
+## Staging
+
+The staging app runs at https://app.educador.rgw.app (Cloudflare Pages project
+`educador`); Supabase is in `sa-east-1`. The repository's
+[`config/staging.public.json`](config/staging.public.json) contains only the
+project URL and publishable client key. `SUPABASE_ANON_KEY` is the existing Dart
+define name, even though its value is a publishable key. These values are
+already visible in any web build; row-level security protects the data.
+
+Authentication, context selection and invitations use Supabase. Several
+course and dashboard screens still use mock data.
+
 ## Local setup
 
 Read [the onboarding runbook](stack/03-onboarding.md) for Supabase staging,
@@ -13,17 +25,38 @@ and [stack/02-ship.md](stack/02-ship.md).
 
 ```bash
 flutter pub get
-flutter run -d chrome --dart-define=SUPABASE_URL=https://YOUR_PROJECT.supabase.co \
-  --dart-define=SUPABASE_ANON_KEY=YOUR_PUBLIC_KEY
+flutter run -d chrome --web-port=8080 \
+  --dart-define-from-file=config/staging.public.json
+# With an Android device or emulator running, find its ID first:
+flutter devices
+flutter run -d YOUR_ANDROID_DEVICE_ID \
+  --dart-define-from-file=config/staging.public.json
 flutter analyze
 flutter test
 ```
 
-Build the Pages PWA with the same public defines and
-`flutter build web --release --pwa-strategy offline-first`. The `web/_redirects`
-rule serves direct `/invite/accept`, `/contexts`, and `/set-password` paths.
-Without Supabase defines, the welcome screen renders, but sign-in and
-invitations require a configured staging project.
+Replace `YOUR_ANDROID_DEVICE_ID` with the ID reported by `flutter devices` on
+your machine; emulator IDs are local and may differ between developers.
+
+## Manual staging deploy
+
+```bash
+flutter build web --release --pwa-strategy offline-first \
+  --dart-define-from-file=config/staging.public.json
+CLOUDFLARE_ACCOUNT_ID=785b73d97c037eb906aae65de518cad6 \
+  npx wrangler pages deploy build/web --project-name=educador --branch=main
+```
+
+Log in with `npx wrangler login --device` first if needed. The `web/_redirects`
+rule serves direct `/invite/accept`, `/contexts` and `/set-password` paths.
+Without public defines the welcome screen renders, but sign-in and invitations
+cannot use staging. The Android release build still needs Internet permission
+and a real signing key before store distribution.
+
+Never put a service-role key, database password, Cloudflare token or invitation
+link in the public JSON file or the repository. `supabase/config.toml` configures
+**local** Supabase development (localhost Auth URL); do not run
+`supabase config push` against staging without reviewing the differences.
 
 `supabase/tests/multi_context.sql` checks selected-session tenancy and role
 restrictions on an **isolated** PostgreSQL database after applying migrations.

@@ -65,6 +65,20 @@ class AppSession {
   };
 }
 
+class PendingInvitation {
+  final String? name;
+  final String email;
+  final Role role;
+  final String? companyId;
+
+  const PendingInvitation({
+    this.name,
+    required this.email,
+    required this.role,
+    this.companyId,
+  });
+}
+
 class Company {
   final String id;
   final String name;

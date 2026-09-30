@@ -12,10 +12,14 @@ Deno.serve(async (req) => {
   try {
     const input = await req.json();
     const role = input.role as string;
+    const regenerate = input.action === 'regenerate';
     const name = (input.name as string | undefined)?.trim();
     const email = (input.email as string | undefined)?.trim().toLowerCase();
-    if (!['gestor', 'empresa', 'funcionario'].includes(role) ||
-      !name || name.length > 200 || !email || email.length > 320 ||
+    if ((input.action && !regenerate) ||
+      !['gestor', 'empresa', 'funcionario'].includes(role) ||
+      (!regenerate && (!name || name.length > 200)) ||
+      (regenerate && input.company) ||
+      !email || email.length > 320 ||
       !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
       return respond(req, { error: 'Invalid invitation' }, 400);
     }
@@ -32,7 +36,9 @@ Deno.serve(async (req) => {
     const appOrigin = Deno.env.get('APP_ORIGIN');
     if (!appOrigin) return respond(req, { error: 'Invitation origin not configured' }, 503);
     let companyId: string | null = role === 'gestor' ? null : input.companyId ?? null;
-    if (companyId && !/^[0-9a-fA-F-]{36}$/.test(companyId)) {
+    if ((regenerate && role === 'gestor' && input.companyId != null) ||
+      (companyId && (typeof companyId !== 'string' ||
+        !/^[0-9a-fA-F-]{36}$/.test(companyId)))) {
       return respond(req, { error: 'Invalid company' }, 400);
     }
     let createdCompany = false;
@@ -61,14 +67,67 @@ Deno.serve(async (req) => {
       if (!company) return respond(req, { error: 'Company unavailable' }, 400);
     }
 
-    const { data: existing } = await admin.from('profiles')
+    const { data: existing, error: profileLookupError } = await admin.from('profiles')
       .select('id').ilike('email', email).maybeSingle();
+    if (profileLookupError) {
+      if (createdCompany) await admin.from('companies').delete().eq('id', companyId!);
+      return respond(req, { error: 'Account unavailable' }, 400);
+    }
     if (existing) {
-      const { data: grant } = role === 'gestor'
+      const { data: grant, error: grantError } = role === 'gestor'
         ? await admin.from('platform_gestors').select('user_id').eq('user_id', existing.id).maybeSingle()
         : await admin.from('company_memberships').select('user_id')
           .eq('user_id', existing.id).eq('company_id', companyId!).eq('role', role).maybeSingle();
-      if (grant) return respond(req, { error: 'Access already exists' }, 409);
+      if (grantError || grant) {
+        if (createdCompany) await admin.from('companies').delete().eq('id', companyId!);
+        return respond(req, { error: grantError ? 'Could not check access' : 'Access already exists' },
+          grantError ? 500 : 409);
+      }
+    }
+    if (regenerate) {
+      if (!existing) return respond(req, { error: 'Account unavailable' }, 409);
+      let pendingQuery = admin.from('membership_invites').select('id,token_hash')
+        .eq('email', email).eq('role', role)
+        .gt('expires_at', new Date().toISOString());
+      pendingQuery = companyId === null
+        ? pendingQuery.is('company_id', null)
+        : pendingQuery.eq('company_id', companyId);
+      const { data: pending, error: pendingError } = await pendingQuery.maybeSingle();
+      if (pendingError || !pending) {
+        return respond(req, { error: 'Invitation no longer pending' }, 409);
+      }
+      const { data: account, error: accountError } =
+        await admin.auth.admin.getUserById(existing.id);
+      if (accountError || !account.user || account.user.email?.toLowerCase() !== email) {
+        return respond(req, { error: 'Account unavailable' }, 409);
+      }
+
+      const token = newToken();
+      const target = `${appOrigin.replace(/\/$/, '')}/invite/accept?token=${token}`;
+      let link = target;
+      if (!account.user.email_confirmed_at) {
+        const { data: generated, error: linkError } = await admin.auth.admin.generateLink({
+          type: 'invite', email, options: { redirectTo: target },
+        });
+        if (linkError || generated.user?.id !== existing.id ||
+          !generated.properties?.action_link) {
+          return respond(req, { error: 'Could not reissue account link' }, 400);
+        }
+        link = generated.properties.action_link;
+      }
+
+      // Compare-and-swap prevents concurrent regenerations from returning two
+      // apparently valid links. The former invitation token stops working.
+      const { data: rotated, error: rotateError } = await admin.from('membership_invites')
+        .update({ token_hash: await tokenHash(token),
+          expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString() })
+        .eq('id', pending.id).eq('token_hash', pending.token_hash)
+        .gt('expires_at', new Date().toISOString())
+        .select('id').maybeSingle();
+      if (rotateError || !rotated) {
+        return respond(req, { error: 'Invitation changed. Refresh and try again' }, 409);
+      }
+      return respond(req, { link });
     }
     let expiredQuery = admin.from('membership_invites').delete()
       .eq('email', email).eq('role', role)
