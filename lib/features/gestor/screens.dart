@@ -12,6 +12,8 @@ import '../../shared/widgets/app_icons.dart';
 import '../../shared/widgets/charts.dart';
 import '../../shared/widgets/common.dart';
 import '../auth/pending_invites.dart';
+import '../content/catalog_screen.dart';
+import '../content/publish_video_screen.dart';
 
 // ---------------------------------------------------------------- Dashboard
 class GestorDashboardScreen extends StatelessWidget {
@@ -471,6 +473,9 @@ class _ContentManagementScreenState extends State<ContentManagementScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (const String.fromEnvironment('SUPABASE_URL').isNotEmpty) {
+      return const ContentCatalogScreen(platform: true);
+    }
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
@@ -635,6 +640,9 @@ class _AddTrailScreenState extends State<AddTrailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (const String.fromEnvironment('SUPABASE_URL').isNotEmpty) {
+      return const PublishVideoScreen();
+    }
     return Scaffold(
       appBar: AppBar(
         title: const Text('Adicionar Trilha'),

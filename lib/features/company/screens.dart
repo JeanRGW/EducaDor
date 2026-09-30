@@ -11,6 +11,7 @@ import '../../shared/widgets/app_icons.dart';
 import '../../shared/widgets/charts.dart';
 import '../../shared/widgets/common.dart';
 import '../auth/pending_invites.dart';
+import '../content/catalog_screen.dart';
 
 // ---------------------------------------------------------------- Dashboard
 class CompanyDashboardScreen extends ConsumerWidget {
@@ -362,18 +363,22 @@ class _EmployeeCard extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------- Company content
-class CompanyContentScreen extends StatefulWidget {
+class CompanyContentScreen extends ConsumerStatefulWidget {
   const CompanyContentScreen({super.key});
 
   @override
-  State<CompanyContentScreen> createState() => _CompanyContentScreenState();
+  ConsumerState<CompanyContentScreen> createState() => _CompanyContentScreenState();
 }
 
-class _CompanyContentScreenState extends State<CompanyContentScreen> {
+class _CompanyContentScreenState extends ConsumerState<CompanyContentScreen> {
   int _chip = 0;
 
   @override
   Widget build(BuildContext context) {
+    if (const String.fromEnvironment('SUPABASE_URL').isNotEmpty) {
+      final companyId = ref.watch(sessionProvider).value?.active?.companyId;
+      return ContentCatalogScreen(key: ValueKey(companyId), platform: false);
+    }
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
@@ -692,8 +697,8 @@ class CompanyProfileScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 24),
-          PrimaryButton('Convidar gestor da empresa',
-            onPressed: () => context.push('/empresa/manager/add')),
+          PrimaryButton('Gestores da empresa',
+            onPressed: () => context.push('/empresa/gestores')),
           const SizedBox(height: 12),
           if ((session?.contexts.length ?? 0) > 1) ...[
             OutlinedButton(onPressed: () => context.go('/contexts'),

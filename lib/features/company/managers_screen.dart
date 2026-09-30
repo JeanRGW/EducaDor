@@ -38,7 +38,6 @@ class _CompanyManagersScreenState extends ConsumerState<CompanyManagersScreen> {
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
       title: const Text('Gestores da empresa'),
-      automaticallyImplyLeading: false,
     ),
     floatingActionButton: FloatingActionButton(
       tooltip: 'Convidar gestor da empresa',

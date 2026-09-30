@@ -12,7 +12,42 @@ SupabaseClient? get _client =>
     ? Supabase.instance.client
     : null;
 
+String? _publicCoverUrl(String? key) => key == null
+    ? null
+    : '$_supabaseUrl/storage/v1/object/public/educador-public/'
+          '${key.split('/').map(Uri.encodeComponent).join('/')}';
+
 class CompanyRepository {
+  Future<List<CompanyOption>> options({
+    int offset = 0,
+    String search = '',
+  }) async {
+    final client = _client;
+    if (client == null) return [];
+    var query = client.from('companies').select('id,name,active');
+    if (search.trim().isNotEmpty) {
+      final escaped = search
+          .trim()
+          .replaceAll(r'\', r'\\')
+          .replaceAll('%', r'\%')
+          .replaceAll('_', r'\_');
+      query = query.ilike('name', '%$escaped%');
+    }
+    final rows = await query
+        .order('name')
+        .order('id')
+        .range(offset, offset + 49);
+    return rows
+        .map(
+          (row) => CompanyOption(
+            id: row['id'] as String,
+            name: row['name'] as String,
+            active: row['active'] as bool,
+          ),
+        )
+        .toList();
+  }
+
   Future<List<Company>> all() async {
     final client = _client;
     if (client == null) return MockData.companies;
@@ -132,6 +167,154 @@ class ReportRepository {
   }
 }
 
+class ContentRepository {
+  SupabaseClient get _contentClient =>
+      _client ??
+      (throw StateError('Configure o Supabase para gerenciar conteúdo.'));
+
+  Future<List<ManagedContent>> catalog({
+    String search = '',
+    String? kind,
+    int offset = 0,
+  }) async {
+    final client = _client;
+    if (client == null) return [];
+    final rows =
+        await client.rpc(
+              'content_catalog',
+              params: {
+                'p_search': search.trim(),
+                'p_kind': kind,
+                'p_offset': offset,
+                'p_limit': 50,
+              },
+            )
+            as List<dynamic>;
+    return rows.map((item) {
+      final row = item as Map<String, dynamic>;
+      final coverKey = row['cover_key'] as String?;
+      return ManagedContent(
+        id: row['id'] as String,
+        title: row['title'] as String,
+        kind: row['kind'] as String,
+        description: row['description'] as String?,
+        coverUrl: _publicCoverUrl(coverKey),
+        platformEnabled: row['platform_enabled'] as bool,
+        allCompanies: row['all_companies'] as bool,
+        companyEnabled: row['company_enabled'] as bool,
+        companyIds: (row['company_ids'] as List<dynamic>? ?? []).cast<String>(),
+        companyCount: (row['company_count'] as num).toInt(),
+        lessonCount: (row['lesson_count'] as num).toInt(),
+        completionPct: (row['completion_pct'] as num?)?.toDouble(),
+      );
+    }).toList();
+  }
+
+  Future<void> setPlatformEnabled(String courseId, bool enabled) async {
+    await _contentClient.rpc(
+      'set_course_platform_enabled',
+      params: {'p_course': courseId, 'p_enabled': enabled},
+    );
+  }
+
+  Future<void> setCompanyEnabled(String courseId, bool enabled) async {
+    await _contentClient.rpc(
+      'set_course_company_enabled',
+      params: {'p_course': courseId, 'p_enabled': enabled},
+    );
+  }
+
+  Future<void> setAudience(String courseId, ContentAudience audience) async {
+    await _contentClient.rpc(
+      'set_course_audience',
+      params: {
+        'p_course': courseId,
+        'p_all_companies': audience.allCompanies,
+        'p_company_ids': audience.companyIds,
+      },
+    );
+  }
+
+  Future<String> publishVideo({
+    required String title,
+    required String description,
+    required String moduleTitle,
+    required String videoId,
+    required ContentAudience audience,
+  }) async =>
+      await _contentClient.rpc(
+            'publish_video_trail',
+            params: {
+              'p_title': title.trim(),
+              'p_description': description.trim(),
+              'p_module_title': moduleTitle.trim(),
+              'p_video_id': videoId,
+              'p_all_companies': audience.allCompanies,
+              'p_company_ids': audience.companyIds,
+            },
+          )
+          as String;
+}
+
+class CourseRepository {
+  LearningCourse _course(Map<String, dynamic> row) => LearningCourse(
+    id: row['id'] as String,
+    title: row['title'] as String,
+    description: row['description'] as String?,
+    coverUrl: _publicCoverUrl(row['cover_key'] as String?),
+  );
+
+  Future<List<LearningCourse>> available({int offset = 0}) async {
+    final client = _client;
+    if (client == null) return [];
+    final rows = await client
+        .from('courses')
+        .select('id,title,description,cover_key')
+        .order('created_at', ascending: false)
+        .order('id')
+        .range(offset, offset + 49);
+    return rows.map(_course).toList();
+  }
+
+  Future<LearningCourse?> byId(String id) async {
+    final client = _client;
+    if (client == null) return null;
+    final row = await client
+        .from('courses')
+        .select('id,title,description,cover_key')
+        .eq('id', id)
+        .maybeSingle();
+    return row == null ? null : _course(row);
+  }
+
+  Future<List<LearningLesson>> lessons(
+    String courseId, {
+    int offset = 0,
+  }) async {
+    final client = _client;
+    if (client == null) return [];
+    final rows = await client
+        .from('lessons')
+        .select('id,title,kind,modules!inner(title,course_id,position)')
+        .eq('modules.course_id', courseId)
+        .order('modules(position)')
+        .order('position')
+        .order('id')
+        .range(offset, offset + 49);
+    return rows
+        .map(
+          (row) => LearningLesson(
+            id: row['id'] as String,
+            title: row['title'] as String,
+            moduleTitle:
+                (row['modules'] as Map<String, dynamic>)['title'] as String,
+            kind: CourseKind.values.byName(row['kind'] as String),
+          ),
+        )
+        .toList();
+  }
+}
+
 class AuthRepository {
   SupabaseClient get _authClient =>
       _client ?? (throw StateError('Configure o Supabase para entrar.'));
@@ -230,32 +413,43 @@ class AuthRepository {
 }
 
 class InvitationRepository {
-  Future<List<PendingInvitation>> pending({Role? role, String? companyId}) async {
+  Future<List<PendingInvitation>> pending({
+    Role? role,
+    String? companyId,
+  }) async {
     final client = _client;
     if (client == null) return [];
     final rows = await client.rpc('pending_invites') as List<dynamic>;
-    return rows.map((row) {
-      final data = row as Map<String, dynamic>;
-      return PendingInvitation(
-        name: data['full_name'] as String?,
-        email: data['email'] as String,
-        role: Role.values.byName(data['role'] as String),
-        companyId: data['company_id'] as String?,
-      );
-    }).where((invite) =>
-        (role == null || invite.role == role) &&
-        (companyId == null || invite.companyId == companyId)).toList();
+    return rows
+        .map((row) {
+          final data = row as Map<String, dynamic>;
+          return PendingInvitation(
+            name: data['full_name'] as String?,
+            email: data['email'] as String,
+            role: Role.values.byName(data['role'] as String),
+            companyId: data['company_id'] as String?,
+          );
+        })
+        .where(
+          (invite) =>
+              (role == null || invite.role == role) &&
+              (companyId == null || invite.companyId == companyId),
+        )
+        .toList();
   }
 
   Future<String> regenerate(PendingInvitation invite) async {
     final client =
         _client ?? (throw StateError('Configure o Supabase para convidar.'));
-    final response = await client.functions.invoke('invite-member', body: {
-      'action': 'regenerate',
-      'role': invite.role.name,
-      'email': invite.email,
-      if (invite.companyId != null) 'companyId': invite.companyId,
-    });
+    final response = await client.functions.invoke(
+      'invite-member',
+      body: {
+        'action': 'regenerate',
+        'role': invite.role.name,
+        'email': invite.email,
+        if (invite.companyId != null) 'companyId': invite.companyId,
+      },
+    );
     return (response.data as Map<String, dynamic>)['link'] as String;
   }
 
@@ -310,6 +504,12 @@ final peopleRepositoryProvider = Provider<PeopleRepository>(
 );
 final reportRepositoryProvider = Provider<ReportRepository>(
   (ref) => ReportRepository(),
+);
+final contentRepositoryProvider = Provider<ContentRepository>(
+  (ref) => ContentRepository(),
+);
+final courseRepositoryProvider = Provider<CourseRepository>(
+  (ref) => CourseRepository(),
 );
 final authRepositoryProvider = Provider<AuthRepository>(
   (ref) => AuthRepository(),

@@ -26,7 +26,7 @@ The stack is locked – do not improvise alternatives, ask instead.
 * `lib/data/mock/mock_data.dart` – seed source for Supabase seed. Do not extend mocks; add real repos instead.
 * `lib/data/repositories/repositories.dart` – **the seam**. All backend access goes here as `*Repository` + Riverpod providers. `features/` and `shared/widgets/` must never import `supabase_flutter`, `firebase_*`, or S3 SDKs directly.
 * `lib/data/session/session_controller.dart` – session built from base `profiles` plus `available_contexts()`/`selected_context()`; active context is checked by DB per Auth session.
-* `lib/features/{auth,gestor,company,employee}/screens.dart` – role UIs. `AddTrailScreen` content types map to `lessons.kind`; `Liberar para:` maps to `assignments(course_id,company_id)`.
+* `lib/features/{auth,gestor,company,employee}/screens.dart` – role UIs. `lib/features/content/` – live catalog, audience picker and YouTube publishing. `Liberar para:` uses `courses.all_companies` or explicit `assignments(course_id,company_id,released)`; company manager management is under Profile, not a main tab.
 * `stack/` – backend, shipping, onboarding docs. `scripts/bootstrap_gestor.py` – trusted first-gestor bootstrap. `.github/workflows/` – CI (to be created per `stack/02-ship.md`).
 
 ## Patterns (must follow)
@@ -40,6 +40,7 @@ The stack is locked – do not improvise alternatives, ask instead.
 7. **Free-tier discipline (egress budget).** PWA shell stays on Pages (zero Supabase egress). Covers/avatars via the public bucket (cached egress – keep WebP <200KB). PDFs/audio via short-lived signed URLs (metered egress). Video is YouTube-only (never Storage) to protect the 5GB quota. Paginate everything (`.range(0,49)`), no polling (Realtime only for ranking), cache signed URLs per session, no `bytea` columns, no event-log tables (activity from `lesson_progress.updated_at`; balances derived from `lessons.points`, no ledger table). `membership_invites` and `session_contexts` store current authorization state, not events.
 8. **PWA.** `flutter build web --pwa-strategy offline-first`; `index.html` no-cache, assets immutable; Pages SPA fallback covers `/contexts`, `/invite/accept`, `/set-password`; register web URLs in Supabase Auth URL config. Manual invite links are bearer credentials: never log/store plaintext, only give to authorized inviters for private handoff. First gestor bootstrap is operator-only, never a public signup page.
 9. **MFA (when added).** TOTP only (free). Gate gestor writes with restrictive `aal2` policy; empresa/funcionario opt-in.
+10. **Content access has three independent gates.** `courses.status = 'released'` is the platform-wide switch; `courses.all_companies` includes future companies or `assignments.released` defines the allowlist; `assignments.company_enabled` is the company's own pause preference (default true, including when no assignment row exists). Managers use guarded metadata/mutation RPCs, never lesson reads. Course/module/lesson reads and progress writes require all three gates. Pauses preserve progress and company preferences; audience changes never reset `company_enabled`. Existing catalogs retain their explicit assignments when migrating; new trails default to all companies.
 
 ## Commands
 

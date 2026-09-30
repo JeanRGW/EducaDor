@@ -5,6 +5,7 @@ import 'package:educador/core/router.dart';
 import 'package:educador/data/models/models.dart';
 import 'package:educador/data/session/session_controller.dart';
 import 'package:educador/features/company/screens.dart';
+import 'package:educador/features/company/managers_screen.dart';
 import 'package:educador/features/auth/screens.dart';
 import 'package:educador/features/auth/onboarding_screens.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -79,6 +80,18 @@ void main() {
     container.read(routerProvider).go('/funcionario/home');
     await tester.pumpAndSettle();
     expect(find.byType(CompanyDashboardScreen), findsOneWidget);
+
+    container.read(routerProvider).go('/empresa/conteudo');
+    await tester.pumpAndSettle();
+    expect(find.byType(CompanyContentScreen), findsOneWidget);
+    expect(find.text('Conteúdo'), findsOneWidget);
+    expect(find.text('Gestores'), findsNothing);
+
+    container.read(routerProvider).go('/empresa/perfil');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Gestores da empresa'));
+    await tester.pumpAndSettle();
+    expect(find.byType(CompanyManagersScreen), findsOneWidget);
 
     final invite = Uri(
       path: '/invite/accept',

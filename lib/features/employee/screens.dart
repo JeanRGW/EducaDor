@@ -9,6 +9,7 @@ import '../../data/session/session_controller.dart';
 import '../../shared/widgets/app_icons.dart';
 import '../../shared/widgets/charts.dart';
 import '../../shared/widgets/common.dart';
+import 'live_courses.dart';
 
 // ---------------------------------------------------------------- Home
 class EmployeeHomeScreen extends ConsumerWidget {
@@ -16,6 +17,9 @@ class EmployeeHomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    if (const String.fromEnvironment('SUPABASE_URL').isNotEmpty) {
+      return const LearningCatalogScreen(title: 'Meus cursos');
+    }
     final session = ref.watch(sessionProvider).value;
     final firstName = session?.user.fullName.split(' ').first ?? 'você';
     return Scaffold(
@@ -259,6 +263,9 @@ class _ModulesScreenState extends State<ModulesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (const String.fromEnvironment('SUPABASE_URL').isNotEmpty) {
+      return const LearningCatalogScreen(title: 'Módulos e cursos');
+    }
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
@@ -390,6 +397,9 @@ class CourseDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (const String.fromEnvironment('SUPABASE_URL').isNotEmpty) {
+      return LearningCourseScreen(courseId: courseId);
+    }
     final course = MockData.courseById(courseId);
     final module = MockData.moduleById('mod-1');
     return Scaffold(

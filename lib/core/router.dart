@@ -129,10 +129,14 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/empresa/manager/add',
         builder: (_, _) => const AddCompanyManagerScreen(),
       ),
+      GoRoute(
+        path: '/empresa/gestores',
+        builder: (_, _) => const CompanyManagersScreen(),
+      ),
       _shell(Role.empresa, [
         _branch('/empresa/home', (_) => const CompanyDashboardScreen()),
         _branch('/empresa/funcionarios', (_) => const EmployeesScreen()),
-        _branch('/empresa/gestores', (_) => const CompanyManagersScreen()),
+        _branch('/empresa/conteudo', (_) => const CompanyContentScreen()),
         _branch('/empresa/relatorios', (_) => const CompanyCompletionScreen()),
         _branch('/empresa/perfil', (_) => const CompanyProfileScreen()),
       ]),

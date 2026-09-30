@@ -24,7 +24,7 @@ session_contexts(session_id uuid primary key, user_id uuid references profiles,
 membership_invites(id uuid primary key, email text, role text, company_id uuid,
   token_hash text unique, expires_at timestamptz); -- pending only; no plaintext links
 courses(id uuid pk, title text, kind text, cover_key text, description text,
-  status text, created_by uuid, created_at timestamptz default now());
+  status text, all_companies bool default true, created_by uuid, created_at timestamptz default now());
 modules(id uuid pk, course_id uuid references courses on delete cascade, title text, position int);
 lessons(id uuid pk, module_id uuid references modules on delete cascade, title text,
   kind check (kind in ('video','audio','pdf','quiz','reading')),
@@ -32,7 +32,8 @@ lessons(id uuid pk, module_id uuid references modules on delete cascade, title t
   video_id text, file_key text, points int not null default 10,
   quiz_json jsonb, position int); -- points: per-task value set by gestor, no universal rule
 assignments(course_id uuid, company_id uuid, released bool default true,
-  primary key (course_id, company_id)); -- "Liberar para:"
+  company_enabled bool default true, primary key (course_id, company_id));
+-- released = platform allowlist; company_enabled = company-wide employee switch
 lesson_progress(user_id uuid, company_id uuid, lesson_id uuid, status text, score int, position_sec int,
   updated_at timestamptz default now(), primary key (user_id, company_id, lesson_id));
 certificates(id uuid pk, user_id uuid, company_id uuid, course_id uuid, code text unique, issued_at timestamptz default now(),
@@ -65,10 +66,8 @@ create policy progress_select on lesson_progress for select using (
 ```sql
 -- content tables: only employees in assigned companies can read lessons;
 -- managers read completion via guarded SQL reports, never lesson content
-create policy content_read on courses for select using (is_gestor() or
-  (context_role() = 'funcionario' and exists (
-  select 1 from assignments a where a.course_id = courses.id
-  and a.company_id = own_company_id() and a.released)));
+create policy content_read on courses for select using (
+  is_gestor() or employee_can_access_course(id));
 -- same shape for modules/lessons (via parent course) and companies (own row).
 -- Global rewards are readable in employee/gestor contexts; per-company catalogs deferred.
 
@@ -83,6 +82,41 @@ create policy pub_write on storage.objects for insert
 `redeem_reward` requires an employee context, locks the user/company balance,
 calculates earned/spent points within that company, and inserts a company-scoped
 redemption. See the full SQL in `supabase/migrations/20260923000000_multi_context.sql`.
+
+### Content access controls
+
+`20260930000001_content_access.sql` separates three gates for each trail:
+
+1. Platform switch: `courses.status` is `released` or `paused`.
+2. Platform audience: `courses.all_companies = true` includes current and future
+   companies without inserting assignments for every company. Otherwise only
+   `assignments.released = true` companies are eligible.
+3. Company switch: `assignments.company_enabled` controls every employee in that
+   company. A missing row defaults to enabled. It never overrides either platform gate.
+
+Existing trails migrate to explicit-company mode, retaining their audience. New
+trails default to all-company mode. Audience replacement changes only `released`,
+so company pause preferences survive removals/re-additions and global pauses.
+Paused content cannot be read or have progress inserted/updated by employees;
+existing progress, balances and certificates remain intact. Reports use audience
+eligibility, not pause state, so pausing does not erase historical completion.
+
+`content_catalog` returns paginated metadata and company-scoped completion only,
+not lessons, private keys or playback links. `set_course_platform_enabled` and
+`set_course_audience` are gestor-only; `set_course_company_enabled` derives the
+company from the active empresa context. The internal audience helper is not
+callable by clients. `employee_can_access_course` checks the active employee
+context and all gates, and is shared by read/progress RLS policies.
+
+The live `Adicionar Trilha` form uses `publish_video_trail` to atomically create
+the course, module, YouTube lesson and audience. PDF/audio uploads and quiz
+authoring remain separate roadmap work; they are not fake-published by this form.
+No video bytes, new service or storage credentials are introduced.
+
+With Supabase configured, employee Home/Modules and course outlines use
+`CourseRepository` and normal RLS-protected reads instead of mock courses.
+Blocked direct course URLs show an unavailable state. Playback/progress UI is
+still separate roadmap work; the live outline does not simulate completion.
 
 ## Reports (SQL, export client-side)
 

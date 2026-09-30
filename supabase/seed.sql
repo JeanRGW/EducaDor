@@ -51,10 +51,10 @@ from profiles where email = 'joao.silva@santamaria.com'
 on conflict do nothing;
 
 -- ---- catalog: one course, one module, four lessons (mirrors mock mod-1) ----
-insert into courses (id, title, kind, description, status, created_by)
+insert into courses (id, title, kind, description, status, created_by, all_companies)
 select '20000000-0000-4000-8000-000000000001', 'Segurança no trabalho', 'course',
   'Aprenda os principais conceitos de segurança do trabalho, prevenção de acidentes e cuidados necessários para manter um ambiente de trabalho seguro e saudável.',
-  'released', u.id
+  'released', u.id, false
 from auth.users u where u.email = 'gestor@educador.com'
 on conflict (id) do nothing;
 

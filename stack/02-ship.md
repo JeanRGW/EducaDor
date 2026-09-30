@@ -24,7 +24,7 @@ Public staging inputs (`SUPABASE_URL`, `SUPABASE_ANON_KEY` publishable key, `CLO
 1. Supabase project + schema + `20260923000000_multi_context.sql` + `20260925000000_service_role_grants.sql` + RLS; verify multi-context RLS with `supabase/tests/multi_context.sql`, seed staging from `mock_data.dart` only when test users exist, configure Auth redirect URLs and hook. No public self-signup; follow `03-onboarding.md` for manual-link invites and first-gestor bootstrap.
 2. `AuthRepository` + context selection/session restoration + admin-only `invite-member` and `accept-invite`; onboard company managers and employees with one identity across companies.
 3. Storage buckets + `storage-*-url` functions; test 25MB PDF/MP3 upload.
-4. `CourseRepository` (courses/modules/lessons/assignments) → `AddTrailScreen` writes through RLS; employees learn only in the `funcionario` context. `AddCompanyScreen`/`AddEmployeeScreen` create invites via Edge Functions.
+4. Live content catalog + `20260930000001_content_access.sql`: platform pause/audience, company-wide employee pause, guarded metadata and atomic YouTube publishing. Verify `supabase/tests/content_access.sql` as well as multi-context RLS. Company Content replaces the Gestores main tab; manager management lives under Profile. `CourseRepository` powers the live employee catalog/outline through RLS; playback, PDF/audio uploads and quiz authoring still follow player/storage/editor work. `AddCompanyScreen`/`AddEmployeeScreen` create invites via Edge Functions.
 5. `ProgressRepository` upsert + certificate fn → `RewardsScreen`/`EmployeeProgressScreen`.
 6. Report views + `charts.dart`, CSV export client-side.
 7. Pages + domain + FCM tokens + `push-on-assign` + 4 workflows + keepalive.

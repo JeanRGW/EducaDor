@@ -26,7 +26,7 @@ List<TabItem> tabsForRole(Role role) {
       return const [
         TabItem('Início', AppIcons.grid),
         TabItem('Funcionários', AppIcons.employees),
-        TabItem('Gestores', AppIcons.employees),
+        TabItem('Conteúdo', AppIcons.book),
         TabItem('Relatórios', AppIcons.reports),
         TabItem('Perfil', AppIcons.profile),
       ];

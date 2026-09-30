@@ -211,6 +211,93 @@ class Course {
   });
 }
 
+class ManagedContent {
+  final String id;
+  final String title;
+  final String kind;
+  final String? description;
+  final String? coverUrl;
+  final bool platformEnabled;
+  final bool allCompanies;
+  final bool companyEnabled;
+  final List<String> companyIds;
+  final int companyCount;
+  final int lessonCount;
+  final double? completionPct;
+
+  const ManagedContent({
+    required this.id,
+    required this.title,
+    required this.kind,
+    this.description,
+    this.coverUrl,
+    required this.platformEnabled,
+    required this.allCompanies,
+    required this.companyEnabled,
+    required this.companyIds,
+    required this.companyCount,
+    required this.lessonCount,
+    this.completionPct,
+  });
+
+  String get kindLabel => switch (kind) {
+    'module' => 'Módulo',
+    'quiz' => 'Quiz',
+    _ => 'Curso',
+  };
+}
+
+class ContentAudience {
+  final bool allCompanies;
+  final List<String> companyIds;
+
+  const ContentAudience({this.allCompanies = true, this.companyIds = const []});
+
+  String get label => allCompanies
+      ? 'Todas as empresas'
+      : '${companyIds.length} ${companyIds.length == 1 ? 'empresa selecionada' : 'empresas selecionadas'}';
+}
+
+class CompanyOption {
+  final String id;
+  final String name;
+  final bool active;
+
+  const CompanyOption({
+    required this.id,
+    required this.name,
+    required this.active,
+  });
+}
+
+class LearningCourse {
+  final String id;
+  final String title;
+  final String? description;
+  final String? coverUrl;
+
+  const LearningCourse({
+    required this.id,
+    required this.title,
+    this.description,
+    this.coverUrl,
+  });
+}
+
+class LearningLesson {
+  final String id;
+  final String title;
+  final String moduleTitle;
+  final CourseKind kind;
+
+  const LearningLesson({
+    required this.id,
+    required this.title,
+    required this.moduleTitle,
+    required this.kind,
+  });
+}
+
 class Reward {
   final String id;
   final String title;
