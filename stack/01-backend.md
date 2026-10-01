@@ -81,11 +81,11 @@ create policy pub_write on storage.objects for insert
 
 `redeem_reward` requires an employee context, locks the user/company balance,
 calculates earned/spent points within that company, and inserts a company-scoped
-redemption. See the full SQL in `supabase/migrations/20260923000000_multi_context.sql`.
+redemption. See the full SQL in `supabase/migrations/20260930000003_multi_context_content.sql`.
 
 ### Content access controls
 
-`20260930000001_content_access.sql` separates three gates for each trail:
+`20260930000003_multi_context_content.sql` separates three gates for each trail:
 
 1. Platform switch: `courses.status` is `released` or `paused`.
 2. Platform audience: `courses.all_companies = true` includes current and future

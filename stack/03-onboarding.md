@@ -28,9 +28,9 @@ it does not push Auth settings or run the sample seed. Do **not** run
 
 ## Set up staging before inviting anyone
 
-1. Apply migrations in order, including `20260923000000_multi_context.sql` and
-   `20260925000000_service_role_grants.sql`.
-   The later migration moves legacy roles to `platform_gestors` and
+1. Apply the two foundation migrations, then
+   `20260930000003_multi_context_content.sql`.
+   The consolidated migration moves legacy roles to `platform_gestors` and
    `company_memberships`, and backfills progress/certificates/redemptions with
    the user's former company. It aborts if a legacy learning record has no
    company, rather than assigning it arbitrarily.
@@ -69,6 +69,51 @@ npx supabase functions deploy accept-invite --project-ref lrlqmkamgncdgppyqnvu
 These commands do not run `supabase/seed.sql`; it contains throwaway sample
 identities and must never be applied to production. The managed Supabase Auth
 and service-role Function secrets are supplied by Supabase, not committed here.
+
+## One-time consolidation of already-upgraded databases
+
+`20260930000003_multi_context_content.sql` joins these branch migrations in
+their original order, including data backfills and intermediate definitions:
+
+* `20260923000000_multi_context.sql`
+* `20260925000000_service_role_grants.sql`
+* `20260930000000_pending_invite_names.sql`
+* `20260930000001_content_access.sql`
+* `20260930000002_video_publishing.sql`
+
+This was an explicitly approved exception to retaining applied migrations.
+The foundation migrations remain unchanged. Do not use schema-only squashing:
+it omits the legacy data transformations.
+Linked staging (`lrlqmkamgncdgppyqnvu`) completed this history-only repair on
+2026-09-30; its application schema, permissions and data were verified unchanged.
+
+For a new database or one with only the foundation applied, run the normal
+migration workflow. For a database that already applied all five original
+versions, **never execute the consolidated SQL again**. Before changing its
+history, confirm the linked project and all five applied versions, pause
+migration deployments, save private schema/data and migration-history backups,
+and verify schema/permission equivalence. A partially upgraded database must
+finish the original sequence from commit `e127abe` before this repair; do not
+mark missing changes as applied.
+
+Only after those checks and explicit operator approval, repair history without
+changing application tables. Mark the replacement first so an interrupted
+repair cannot leave it pending for execution:
+
+```bash
+npx supabase migration repair --linked --status applied 20260930000003
+npx supabase migration repair --linked --status reverted \
+  20260923000000 20260925000000 20260930000000 20260930000001 20260930000002
+npx supabase migration list --linked
+npx supabase db push --linked --dry-run
+```
+
+The final history must contain the two foundation versions and
+`20260930000003`, with no pending migrations. Compare the application schema and
+data with the pre-repair snapshots. If either repair is interrupted, inspect
+history before resuming; do not deploy while local and remote history differ.
+Never use `db reset --linked` for this operation. Keep backups outside the
+repository and retain `e127abe` for recovery of the original SQL.
 
 ## First platform gestor
 
