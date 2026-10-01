@@ -5,30 +5,36 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/theme.dart';
-import '../../data/models/models.dart';
-import '../../data/repositories/repositories.dart';
 import '../../data/session/session_controller.dart';
 import '../../shared/widgets/app_icons.dart';
 import '../../shared/widgets/common.dart';
 import '../../shared/widgets/logo.dart';
 
 // ---------------------------------------------------------------- Splash
-class SplashScreen extends StatefulWidget {
+class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
 
   @override
-  State<SplashScreen> createState() => _SplashScreenState();
+  ConsumerState<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> {
+class _SplashScreenState extends ConsumerState<SplashScreen> {
   Timer? _timer;
+  bool _elapsed = false;
 
   @override
   void initState() {
     super.initState();
     _timer = Timer(const Duration(milliseconds: 1800), () {
-      if (mounted) context.go('/welcome');
+      _elapsed = true;
+      _continueIfReady();
     });
+  }
+
+  void _continueIfReady() {
+    if (mounted && _elapsed && !ref.read(sessionProvider).isLoading) {
+      context.go('/welcome');
+    }
   }
 
   @override
@@ -39,6 +45,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(sessionProvider, (_, _) => _continueIfReady());
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -115,12 +122,14 @@ class WelcomeScreen extends StatelessWidget {
                     children: [
                       Expanded(
                         child: PrimaryButton('Entrar',
-                            onPressed: () => context.go('/role-select')),
+                            onPressed: () => context.go('/login')),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: OutlinedButton(
-                          onPressed: () => context.go('/role-select'),
+                          onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text(
+                              'Abra o link de convite recebido para criar sua conta.'))),
                           style: OutlinedButton.styleFrom(
                             minimumSize: const Size.fromHeight(52),
                             side: const BorderSide(color: AppColors.border),
@@ -128,7 +137,7 @@ class WelcomeScreen extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(12)),
                             foregroundColor: AppColors.primary,
                           ),
-                          child: const Text('Criar Conta',
+                          child: const Text('Tenho um convite',
                               style: TextStyle(
                                   fontWeight: FontWeight.w700,
                                   fontSize: 16)),
@@ -146,77 +155,10 @@ class WelcomeScreen extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------- Role select
-class RoleSelectScreen extends StatelessWidget {
-  const RoleSelectScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              AppColors.authGradientTop,
-              AppColors.authGradientBottom,
-            ],
-          ),
-        ),
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            Positioned(
-              top: 120,
-              child: const LogoLockup(
-                  size: 150, color: Color(0x33FFFFFF)),
-            ),
-            SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _roleButton(context, 'GESTOR', Role.gestor),
-                    const SizedBox(height: 18),
-                    _roleButton(context, 'EMPRESA', Role.empresa),
-                    const SizedBox(height: 18),
-                    _roleButton(context, 'FUNCIONÁRIO', Role.funcionario),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _roleButton(BuildContext context, String label, Role role) {
-    return SizedBox(
-      width: double.infinity,
-      child: FilledButton(
-        onPressed: () => context.go('/login', extra: role),
-        style: FilledButton.styleFrom(
-          backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
-          minimumSize: const Size.fromHeight(54),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          textStyle:
-              const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
-        ),
-        child: Text(label),
-      ),
-    );
-  }
-}
-
 // ---------------------------------------------------------------- Login
 class LoginScreen extends ConsumerStatefulWidget {
-  final Role? initialRole;
-  const LoginScreen({super.key, this.initialRole});
+  final String? redirectTo;
+  const LoginScreen({super.key, this.redirectTo});
 
   @override
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
@@ -235,42 +177,28 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.dispose();
   }
 
-  String get _title {
-    switch (widget.initialRole ?? Role.funcionario) {
-      case Role.gestor:
-        return 'Cadastro Gestor';
-      case Role.empresa:
-        return 'Cadastro Empresa';
-      case Role.funcionario:
-        return 'Acesso do Funcionário';
-    }
-  }
-
-  String get _subtitle {
-    switch (widget.initialRole ?? Role.funcionario) {
-      case Role.gestor:
-        return 'Supervisionar o desempenho da educação em toda a plataforma.';
-      case Role.empresa:
-        return 'Insira as credenciais fornecidas pelo seu Gestor';
-      case Role.funcionario:
-        return 'Insira as credenciais fornecidas pelo seu empregador para começar a aprender.';
-    }
-  }
-
   Future<void> _submit() async {
-    final role = widget.initialRole ?? Role.funcionario;
     if (_email.text.trim().isEmpty || _password.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content: Text('Preencha e-mail e senha para continuar.')));
       return;
     }
     setState(() => _loading = true);
-    final auth = ref.read(authRepositoryProvider);
-    final (user, company, employee) =
-        await auth.login(role: role, email: _email.text, password: _password.text);
-    ref.read(sessionProvider.notifier).login(
-        AppSession(user: user, company: company, employee: employee));
-    if (mounted) context.go(user.homePath());
+    try {
+      final session = await ref.read(sessionProvider.notifier)
+          .login(email: _email.text, password: _password.text);
+      if (!mounted) return;
+      final redirect = widget.redirectTo;
+      context.go(redirect != null && redirect.startsWith('/invite/accept?token=')
+          ? redirect : session.needsPassword ? '/set-password' : session.homePath);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Não foi possível entrar. Verifique e-mail e senha.')));
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   @override
@@ -286,26 +214,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(_title,
-                      style: const TextStyle(
+                  const Text('Entrar no EducaDOR',
+                       style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.w800,
                           color: AppColors.textPrimary)),
                   const SizedBox(height: 6),
-                  Text(_subtitle,
-                      style: const TextStyle(
+                  const Text('Use seu e-mail e a senha criada ao aceitar o convite.',
+                       style: TextStyle(
                           fontSize: 14,
                           height: 1.4,
                           color: AppColors.textMuted)),
                   const SizedBox(height: 24),
                   FormFieldLabel(
-                    label: 'Email',
+                    label: 'E-mail',
                     hint: 'email@empresa.com',
                     controller: _email,
                     prefixIcon: const SvgIcon(AppIcons.mail,
                         color: AppColors.textMuted),
                   ),
-                  const Text('PASSWORD',
+                   const Text('SENHA',
                       style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
@@ -316,7 +244,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     controller: _password,
                     obscureText: _obscure,
                     decoration: InputDecoration(
-                      hintText: 'password123',
+                       hintText: 'Sua senha',
                       prefixIcon: const Padding(
                         padding: EdgeInsets.only(left: 16, right: 10),
                         child: SvgIcon(AppIcons.lock,
@@ -356,19 +284,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ),
       ),
     );
-  }
-}
-
-extension on User {
-  String homePath() {
-    switch (role) {
-      case Role.funcionario:
-        return '/funcionario/home';
-      case Role.empresa:
-        return '/empresa/home';
-      case Role.gestor:
-        return '/gestor/home';
-    }
   }
 }
 
@@ -441,16 +356,6 @@ class RecoverPasswordScreen extends StatefulWidget {
 }
 
 class _RecoverPasswordScreenState extends State<RecoverPasswordScreen> {
-  final _newPass = TextEditingController();
-  final _confirm = TextEditingController();
-
-  @override
-  void dispose() {
-    _newPass.dispose();
-    _confirm.dispose();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -463,17 +368,8 @@ class _RecoverPasswordScreenState extends State<RecoverPasswordScreen> {
             child: LogoLockup(size: 90, color: AppColors.primary, showText: true),
           ),
           const SizedBox(height: 24),
-          const FormFieldLabel(label: 'Nova Senha', hint: '••••••••'),
-          const FormFieldLabel(label: 'Confirmar Nova Senha', hint: '••••••••'),
-          const SizedBox(height: 8),
-          PrimaryButton(
-            'Atualizar Senha',
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Senha atualizada.')));
-              context.go('/role-select');
-            },
-          ),
+          const Text('Solicite um link de recuperação ao administrador da plataforma. '
+              'Ele deve confirmar sua identidade antes de compartilhar o link.'),
           const SizedBox(height: 12),
           OutlinedButton(
             onPressed: () => context.go('/login'),

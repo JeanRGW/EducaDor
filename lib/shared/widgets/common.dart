@@ -243,14 +243,16 @@ class FilterChips extends StatelessWidget {
 class SearchField extends StatelessWidget {
   final String hint;
   final VoidCallback? onTap;
+  final ValueChanged<String>? onChanged;
 
-  const SearchField(this.hint, {super.key, this.onTap});
+  const SearchField(this.hint, {super.key, this.onTap, this.onChanged});
 
   @override
   Widget build(BuildContext context) {
     return TextField(
       readOnly: onTap != null,
       onTap: onTap,
+      onChanged: onChanged,
       decoration: InputDecoration(
         hintText: hint,
         prefixIcon:

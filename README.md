@@ -1,17 +1,62 @@
-# educador
+# EducaDOR
 
-A new Flutter project.
+Flutter training platform with one account and selectable platform/company roles.
+Onboarding is invitation-only. A company manager can monitor completion and
+invite colleagues; they must switch to an employee context to take courses.
 
-## Getting Started
+## Staging
 
-This project is a starting point for a Flutter application.
+The staging app runs at https://app.educador.rgw.app (Cloudflare Pages project
+`educador`); Supabase is in `sa-east-1`. The repository's
+[`config/staging.public.json`](config/staging.public.json) contains only the
+project URL and publishable client key. `SUPABASE_ANON_KEY` is the existing Dart
+define name, even though its value is a publishable key. These values are
+already visible in any web build; row-level security protects the data.
 
-A few resources to get you started if this is your first Flutter project:
+Authentication, context selection and invitations use Supabase. Several
+course and dashboard screens still use mock data.
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+## Local setup
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Read [the onboarding runbook](stack/03-onboarding.md) for Supabase staging,
+migrations, Auth URLs, Edge Function secrets and first-gestor provisioning.
+Backend contracts and shipping notes are in [stack/01-backend.md](stack/01-backend.md)
+and [stack/02-ship.md](stack/02-ship.md).
+
+```bash
+flutter pub get
+flutter run -d chrome --web-port=8080 \
+  --dart-define-from-file=config/staging.public.json
+# With an Android device or emulator running, find its ID first:
+flutter devices
+flutter run -d YOUR_ANDROID_DEVICE_ID \
+  --dart-define-from-file=config/staging.public.json
+flutter analyze
+flutter test
+```
+
+Replace `YOUR_ANDROID_DEVICE_ID` with the ID reported by `flutter devices` on
+your machine; emulator IDs are local and may differ between developers.
+
+## Manual staging deploy
+
+```bash
+flutter build web --release --pwa-strategy offline-first \
+  --dart-define-from-file=config/staging.public.json
+CLOUDFLARE_ACCOUNT_ID=785b73d97c037eb906aae65de518cad6 \
+  npx wrangler pages deploy build/web --project-name=educador --branch=main
+```
+
+Log in with `npx wrangler login --device` first if needed. The `web/_redirects`
+rule serves direct `/invite/accept`, `/contexts` and `/set-password` paths.
+Without public defines the welcome screen renders, but sign-in and invitations
+cannot use staging. The Android release build still needs Internet permission
+and a real signing key before store distribution.
+
+Never put a service-role key, database password, Cloudflare token or invitation
+link in the public JSON file or the repository. `supabase/config.toml` configures
+**local** Supabase development (localhost Auth URL); do not run
+`supabase config push` against staging without reviewing the differences.
+
+`supabase/tests/multi_context.sql` checks selected-session tenancy and role
+restrictions on an **isolated** PostgreSQL database after applying migrations.

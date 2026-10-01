@@ -15,37 +15,68 @@ class User {
   final String fullName;
   final String email;
   final String initials;
-  final Role role;
-  final String? department;
-  final String? jobTitle;
-  final String? companyId;
 
   const User({
     required this.id,
     required this.fullName,
     required this.email,
     required this.initials,
-    required this.role,
-    this.department,
-    this.jobTitle,
-    this.companyId,
   });
+}
+
+class AccessContext {
+  final Role role;
+  final String? companyId;
+  final String companyName;
+
+  const AccessContext({
+    required this.role,
+    this.companyId,
+    required this.companyName,
+  });
+
+  String get label => switch (role) {
+    Role.gestor => 'Gestor · Plataforma',
+    Role.empresa => 'Gestor da empresa · $companyName',
+    Role.funcionario => 'Funcionário · $companyName',
+  };
 }
 
 class AppSession {
   final User user;
-  final Company? company;
-  final Employee? employee;
+  final List<AccessContext> contexts;
+  final AccessContext? active;
+  final bool needsPassword;
 
-  const AppSession({required this.user, this.company, this.employee});
+  const AppSession({
+    required this.user,
+    required this.contexts,
+    this.active,
+    this.needsPassword = false,
+  });
 
-  Role get role => user.role;
+  Role? get role => active?.role;
 
   String get homePath => switch (role) {
-        Role.funcionario => '/funcionario/home',
-        Role.empresa => '/empresa/home',
-        Role.gestor => '/gestor/home',
-      };
+    Role.funcionario => '/funcionario/home',
+    Role.empresa => '/empresa/home',
+    Role.gestor => '/gestor/home',
+    null => '/contexts',
+  };
+}
+
+class PendingInvitation {
+  final String? name;
+  final String email;
+  final Role role;
+  final String? companyId;
+
+  const PendingInvitation({
+    this.name,
+    required this.email,
+    required this.role,
+    this.companyId,
+  });
 }
 
 class Company {
@@ -177,6 +208,100 @@ class Course {
     required this.status,
     required this.progress,
     required this.meta,
+  });
+}
+
+class ManagedContent {
+  final String id;
+  final String title;
+  final String kind;
+  final String? description;
+  final String? coverUrl;
+  final bool platformEnabled;
+  final bool allCompanies;
+  final bool companyEnabled;
+  final List<String> companyIds;
+  final int companyCount;
+  final int lessonCount;
+  final double? completionPct;
+
+  const ManagedContent({
+    required this.id,
+    required this.title,
+    required this.kind,
+    this.description,
+    this.coverUrl,
+    required this.platformEnabled,
+    required this.allCompanies,
+    required this.companyEnabled,
+    required this.companyIds,
+    required this.companyCount,
+    required this.lessonCount,
+    this.completionPct,
+  });
+
+  String get kindLabel => switch (kind) {
+    'module' => 'Módulo',
+    'quiz' => 'Quiz',
+    _ => 'Curso',
+  };
+}
+
+class ContentAudience {
+  final bool allCompanies;
+  final List<String> companyIds;
+
+  const ContentAudience({this.allCompanies = true, this.companyIds = const []});
+
+  String get label => allCompanies
+      ? 'Todas as empresas'
+      : '${companyIds.length} ${companyIds.length == 1 ? 'empresa selecionada' : 'empresas selecionadas'}';
+}
+
+class CompanyOption {
+  final String id;
+  final String name;
+  final bool active;
+
+  const CompanyOption({
+    required this.id,
+    required this.name,
+    required this.active,
+  });
+}
+
+class ProfessionalOption {
+  final String id;
+  final String name;
+
+  const ProfessionalOption({required this.id, required this.name});
+}
+
+class LearningCourse {
+  final String id;
+  final String title;
+  final String? description;
+  final String? coverUrl;
+
+  const LearningCourse({
+    required this.id,
+    required this.title,
+    this.description,
+    this.coverUrl,
+  });
+}
+
+class LearningLesson {
+  final String id;
+  final String title;
+  final String moduleTitle;
+  final CourseKind kind;
+
+  const LearningLesson({
+    required this.id,
+    required this.title,
+    required this.moduleTitle,
+    required this.kind,
   });
 }
 

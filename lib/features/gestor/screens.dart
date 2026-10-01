@@ -5,10 +5,15 @@ import 'package:go_router/go_router.dart';
 import '../../app/theme.dart';
 import '../../data/mock/mock_data.dart';
 import '../../data/models/models.dart';
+import '../../data/repositories/repositories.dart';
 import '../../data/session/session_controller.dart';
+import '../auth/onboarding_screens.dart';
 import '../../shared/widgets/app_icons.dart';
 import '../../shared/widgets/charts.dart';
 import '../../shared/widgets/common.dart';
+import '../auth/pending_invites.dart';
+import '../content/catalog_screen.dart';
+import '../content/publish_video_screen.dart';
 
 // ---------------------------------------------------------------- Dashboard
 class GestorDashboardScreen extends StatelessWidget {
@@ -144,16 +149,29 @@ class _ActivityRow extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------- Companies
-class CompaniesScreen extends StatefulWidget {
+class CompaniesScreen extends ConsumerStatefulWidget {
   const CompaniesScreen({super.key});
 
   @override
-  State<CompaniesScreen> createState() => _CompaniesScreenState();
+  ConsumerState<CompaniesScreen> createState() => _CompaniesScreenState();
 }
 
-class _CompaniesScreenState extends State<CompaniesScreen> {
+class _CompaniesScreenState extends ConsumerState<CompaniesScreen> {
   int _chip = 0;
-  final List<String> _filters = ['Todas as empresas', 'Ativa (44)', 'Inativa (3)'];
+  int _pendingRevision = 0;
+  final List<String> _filters = ['Todas as empresas', 'Ativas', 'Inativas'];
+  late Future<List<Company>> _companies;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  void _load() {
+    _companies = ref.read(companyRepositoryProvider).all();
+    _pendingRevision++;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -165,7 +183,11 @@ class _CompaniesScreenState extends State<CompaniesScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         backgroundColor: AppColors.primary,
-        onPressed: () => context.push('/gestor/company/add'),
+        tooltip: 'Adicionar empresa',
+        onPressed: () async {
+          await context.push('/gestor/company/add');
+          if (mounted) setState(_load);
+        },
         child: const SvgIcon(AppIcons.plus, color: Colors.white),
       ),
       body: CustomScrollView(
@@ -188,13 +210,37 @@ class _CompaniesScreenState extends State<CompaniesScreen> {
             ),
           ),
           SliverPadding(
-            padding: const EdgeInsets.all(16),
-            sliver: SliverList.builder(
-              itemCount: MockData.companies.length,
-              itemBuilder: (context, i) =>
-                  _CompanyCardStatic(company: MockData.companies[i]),
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            sliver: SliverToBoxAdapter(child: FutureBuilder<List<Company>>(
+              future: _companies,
+              builder: (context, snapshot) => PendingInvitesSection(
+                key: ValueKey(_pendingRevision),
+                role: Role.empresa,
+                companyNames: {
+                  for (final company in snapshot.data ?? <Company>[])
+                    company.id: company.name,
+                },
+              ),
+            )),
           ),
+          FutureBuilder<List<Company>>(future: _companies,
+            builder: (context, snapshot) {
+              if (snapshot.hasError) {
+                return const SliverToBoxAdapter(
+                  child: Center(child: Text('Não foi possível carregar empresas.')));
+              }
+              if (!snapshot.hasData) {
+                return const SliverToBoxAdapter(
+                  child: Center(child: CircularProgressIndicator()));
+              }
+              final companies = snapshot.data!.where((company) => _chip == 0 ||
+                (_chip == 1 && company.active) ||
+                (_chip == 2 && !company.active)).toList();
+              return SliverPadding(padding: const EdgeInsets.all(16),
+                sliver: SliverList.builder(itemCount: companies.length,
+                  itemBuilder: (context, i) =>
+                    _CompanyCardStatic(company: companies[i])));
+            }),
         ],
       ),
     );
@@ -243,7 +289,7 @@ class _CompanyCardStatic extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Responsible Person',
+                    const Text('Pessoa responsável',
                         style: TextStyle(
                             fontSize: 12, color: AppColors.textMuted)),
                     Text(company.responsibleName,
@@ -263,7 +309,7 @@ class _CompanyCardStatic extends StatelessWidget {
                       const SvgIcon(AppIcons.key,
                           size: 16, color: AppColors.successDarkGreen),
                       const SizedBox(width: 4),
-                      Text('${company.employeeCount}',
+                      Text(company.employeeCount < 0 ? '—' : '${company.employeeCount}',
                           style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w700,
@@ -284,6 +330,15 @@ class _CompanyCardStatic extends StatelessWidget {
               const SvgIcon(AppIcons.chevronRight, color: AppColors.textMuted),
             ],
           ),
+          if (company.active) ...[
+            const SizedBox(height: 8),
+            OutlinedButton(
+              onPressed: () => context.push(
+                '/gestor/company/${company.id}/manager/add',
+              ),
+              child: const Text('Convidar gestor da empresa'),
+            ),
+          ],
         ],
       ),
     );
@@ -291,8 +346,65 @@ class _CompanyCardStatic extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------- Add company
-class AddCompanyScreen extends StatelessWidget {
+class AddCompanyScreen extends ConsumerStatefulWidget {
   const AddCompanyScreen({super.key});
+
+  @override
+  ConsumerState<AddCompanyScreen> createState() => _AddCompanyScreenState();
+}
+
+class _AddCompanyScreenState extends ConsumerState<AddCompanyScreen> {
+  final _name = TextEditingController();
+  final _cnpj = TextEditingController();
+  final _responsible = TextEditingController();
+  final _email = TextEditingController();
+  final _phone = TextEditingController();
+  final _city = TextEditingController();
+  final _state = TextEditingController();
+  final _address = TextEditingController();
+  final _field = TextEditingController();
+  bool _busy = false;
+
+  @override
+  void dispose() {
+    for (final controller in [_name, _cnpj, _responsible, _email,
+      _phone, _city, _state, _address, _field]) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (_name.text.trim().isEmpty || _responsible.text.trim().isEmpty ||
+        !RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(_email.text.trim())) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Informe empresa, responsável e e-mail válidos.')));
+      return;
+    }
+    setState(() => _busy = true);
+    try {
+      final link = await ref.read(invitationRepositoryProvider).invite(
+        role: Role.empresa, name: _responsible.text, email: _email.text,
+        company: {
+          'name': _name.text.trim(), 'cnpj': _cnpj.text.trim(),
+          'responsible': _responsible.text.trim(), 'email': _email.text.trim(),
+          'phone': _phone.text.trim(), 'city': _city.text.trim(),
+          'state': _state.text.trim(), 'address': _address.text.trim(),
+          'field': _field.text.trim(),
+        },
+      );
+      if (!mounted) return;
+      await showInviteLink(context, link);
+      if (mounted) context.pop();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Não foi possível criar a empresa e o convite.')));
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -307,57 +419,40 @@ class AddCompanyScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          const FormFieldLabel(label: 'Nome da Empresa', hint: 'santa maria'),
-          const FormFieldLabel(label: 'CNPJ / TAX ID', hint: '00.000.000/0001-00'),
-          const FormFieldLabel(label: 'Pessoa Responsável', hint: 'nome'),
+          FormFieldLabel(label: 'Nome da Empresa', hint: 'santa maria', controller: _name),
+          FormFieldLabel(label: 'CNPJ', hint: '00.000.000/0001-00', controller: _cnpj),
+          FormFieldLabel(label: 'Primeiro gestor da empresa', hint: 'Nome completo',
+            controller: _responsible),
           Row(
-            children: const [
+            children: [
               Expanded(
                 child: FormFieldLabel(
-                    label: 'Email', hint: 'admin@comp.com'),
+                    label: 'E-mail do gestor', hint: 'admin@comp.com', controller: _email),
               ),
-              SizedBox(width: 12),
+              const SizedBox(width: 12),
               Expanded(
                 child: FormFieldLabel(
-                    label: 'Phone', hint: '(31) 99999-9999'),
+                    label: 'Telefone', hint: '(31) 99999-9999', controller: _phone),
               ),
             ],
           ),
           Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: FormFieldLabel(
-                    label: 'Cidade', hint: 'Belo Horizonte'),
+                    label: 'Cidade', hint: 'Belo Horizonte', controller: _city),
               ),
               const SizedBox(width: 12),
-              const Expanded(
-                child: FormFieldLabel(label: 'Estado', hint: 'MG'),
+              Expanded(
+                child: FormFieldLabel(label: 'Estado', hint: 'MG', controller: _state),
               ),
             ],
           ),
-          const FormFieldLabel(label: 'Endereço', hint: 'Rua, número, bairro'),
-          Row(
-            children: [
-              const Expanded(
-                child: FormFieldLabel(label: 'campo', hint: '150'),
-              ),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: FormFieldLabel(
-                  label: 'Funcionarios',
-                  isDropdown: true,
-                  items: ['150', '300', '500', '1000'],
-                  value: '150',
-                ),
-              ),
-            ],
-          ),
+          FormFieldLabel(label: 'Endereço', hint: 'Rua, número, bairro', controller: _address),
+          FormFieldLabel(label: 'Área de atuação', hint: 'Saúde', controller: _field),
           const SizedBox(height: 4),
-          PrimaryButton('Salvar Empresa', onPressed: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Empresa salva.')));
-            context.pop();
-          }),
+          PrimaryButton(_busy ? 'Criando...' : 'Criar empresa e convite',
+            onPressed: _busy ? null : _submit),
         ],
       ),
     );
@@ -378,6 +473,9 @@ class _ContentManagementScreenState extends State<ContentManagementScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (const String.fromEnvironment('SUPABASE_URL').isNotEmpty) {
+      return const ContentCatalogScreen(platform: true);
+    }
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
@@ -542,6 +640,9 @@ class _AddTrailScreenState extends State<AddTrailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (const String.fromEnvironment('SUPABASE_URL').isNotEmpty) {
+      return const PublishVideoScreen();
+    }
     return Scaffold(
       appBar: AppBar(
         title: const Text('Adicionar Trilha'),
@@ -806,25 +907,33 @@ class _PopularRow extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------- Profile
-class GestorProfileScreen extends ConsumerWidget {
+class GestorProfileScreen extends ConsumerStatefulWidget {
   const GestorProfileScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<GestorProfileScreen> createState() => _GestorProfileScreenState();
+}
+
+class _GestorProfileScreenState extends ConsumerState<GestorProfileScreen> {
+  int _pendingRevision = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final session = ref.watch(sessionProvider).value;
     return Scaffold(
       appBar: AppBar(automaticallyImplyLeading: false),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          const Center(child: AvatarBadge('AM', size: 84)),
+          Center(child: AvatarBadge(session?.user.initials ?? 'AM', size: 84)),
           const SizedBox(height: 12),
-          const Center(
-              child: Text('Nome Gestor',
+          Center(
+              child: Text(session?.user.fullName ?? 'Gestor',
                   style: TextStyle(
                       fontSize: 20, fontWeight: FontWeight.w800))),
           const SizedBox(height: 4),
-          const Center(
-              child: Text('gestor@educador.com',
+          Center(
+              child: Text(session?.user.email ?? '',
                   style: TextStyle(fontSize: 14, color: AppColors.textMuted))),
           const SizedBox(height: 10),
           const Center(
@@ -832,15 +941,31 @@ class GestorProfileScreen extends ConsumerWidget {
                 color: AppColors.successDarkGreen, bg: AppColors.successBg),
           ),
           const SizedBox(height: 24),
+          PrimaryButton('Convidar gestor da plataforma',
+            onPressed: () async {
+              await context.push('/gestor/manager/add');
+              if (mounted) setState(() => _pendingRevision++);
+            }),
+          const SizedBox(height: 12),
+          PendingInvitesSection(
+            key: ValueKey(_pendingRevision),
+            role: Role.gestor,
+          ),
+          const SizedBox(height: 12),
+          if ((session?.contexts.length ?? 0) > 1) ...[
+            OutlinedButton(onPressed: () => context.go('/contexts'),
+              child: const Text('Trocar perfil')),
+            const SizedBox(height: 12),
+          ],
           const _GestorMenuRow(AppIcons.manageAccount, 'Configurações de Conta'),
           const _GestorMenuRow(AppIcons.bell, 'Preferências de notificação'),
           const _GestorMenuRow(AppIcons.shield, 'Segurança e MFA'),
           const _GestorMenuRow(AppIcons.settings, 'Configurações da plataforma'),
           const SizedBox(height: 8),
           OutlinedButton(
-            onPressed: () {
-              ref.read(sessionProvider.notifier).logout();
-              context.go('/welcome');
+            onPressed: () async {
+              await ref.read(sessionProvider.notifier).logout();
+              if (context.mounted) context.go('/welcome');
             },
             style: OutlinedButton.styleFrom(
               minimumSize: const Size.fromHeight(52),
