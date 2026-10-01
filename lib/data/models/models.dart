@@ -270,6 +270,13 @@ class CompanyOption {
   });
 }
 
+class ProfessionalOption {
+  final String id;
+  final String name;
+
+  const ProfessionalOption({required this.id, required this.name});
+}
+
 class LearningCourse {
   final String id;
   final String title;

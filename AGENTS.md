@@ -26,7 +26,7 @@ The stack is locked – do not improvise alternatives, ask instead.
 * `lib/data/mock/mock_data.dart` – seed source for Supabase seed. Do not extend mocks; add real repos instead.
 * `lib/data/repositories/repositories.dart` – **the seam**. All backend access goes here as `*Repository` + Riverpod providers. `features/` and `shared/widgets/` must never import `supabase_flutter`, `firebase_*`, or S3 SDKs directly.
 * `lib/data/session/session_controller.dart` – session built from base `profiles` plus `available_contexts()`/`selected_context()`; active context is checked by DB per Auth session.
-* `lib/features/{auth,gestor,company,employee}/screens.dart` – role UIs. `lib/features/content/` – live catalog, audience picker and YouTube publishing. `Liberar para:` uses `courses.all_companies` or explicit `assignments(course_id,company_id,released)`; company manager management is under Profile, not a main tab.
+* `lib/features/{auth,gestor,company,employee}/screens.dart` – role UIs. `lib/features/content/` – live catalog, audience/professional pickers, cover processing and YouTube publishing. `Liberar para:` uses `courses.all_companies` or explicit `assignments(course_id,company_id,released)`; company manager management is under Profile, not a main tab.
 * `stack/` – backend, shipping, onboarding docs. `scripts/bootstrap_gestor.py` – trusted first-gestor bootstrap. `.github/workflows/` – CI (to be created per `stack/02-ship.md`).
 
 ## Patterns (must follow)

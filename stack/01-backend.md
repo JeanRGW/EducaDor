@@ -109,9 +109,13 @@ callable by clients. `employee_can_access_course` checks the active employee
 context and all gates, and is shared by read/progress RLS policies.
 
 The live `Adicionar Trilha` form uses `publish_video_trail` to atomically create
-the course, module, YouTube lesson and audience. PDF/audio uploads and quiz
-authoring remain separate roadmap work; they are not fake-published by this form.
-No video bytes, new service or storage credentials are introduced.
+the course, module, YouTube lesson, cover key, responsible professional and
+audience. `p_cover_key` accepts only `covers/<id>.webp` keys minted by
+`storage-upload-url`; `p_responsible_id` must reference a platform gestor
+(`created_by` still records the publisher). PDF/audio uploads and quiz
+authoring remain separate roadmap work; the form publishes video only and the
+non-video type tiles are disabled. Failed cover uploads keep the draft on
+screen instead of publishing without the cover.
 
 With Supabase configured, employee Home/Modules and course outlines use
 `CourseRepository` and normal RLS-protected reads instead of mock courses.
@@ -132,9 +136,9 @@ Buckets: `educador-public` (public covers/avatars) + `educador-private` (PDF/MP3
 
 Edge Functions use the S3 SDK (SigV4) against `https://<ref>.storage.supabase.co/storage/v1/s3`, so moving to R2 later = new endpoint + creds, zero Flutter changes. Server S3 keys stay in Supabase secrets (they bypass RLS); each function validates the caller JWT itself – one auth path, no session-token mode.
 
-Upload: `POST /functions/v1/storage-upload-url {prefix, filename, contentType, size}` → `{key, putUrl (15min)}` → Flutter PUTs directly → saves `file_key`/`cover_key`. Read: `POST /functions/v1/storage-download-url {key}` → `{getUrl}`. Reject: missing JWT, wrong `company_id`, `size>50MB`, mime outside `pdf,mp3,webp,png,jpg` (no `mp4` – video is YouTube-only). Server secrets: `STORAGE_S3_ENDPOINT, STORAGE_S3_ACCESS_KEY_ID, STORAGE_S3_SECRET_ACCESS_KEY, STORAGE_BUCKET_PRIVATE, STORAGE_BUCKET_PUBLIC`.
+Upload: `POST /functions/v1/storage-upload-url {prefix, contentType, size}` → `{key, putUrl (15min)}` → Flutter PUTs directly → saves `file_key`/`cover_key`. Covers use `prefix: 'covers'` + `contentType: 'image/webp'` and are gestor-only; other prefixes are rejected. Read: `POST /functions/v1/storage-download-url {key}` → `{getUrl}`. Reject: missing JWT, non-gestor caller, wrong `company_id`, `size>50MB`, non-WebP cover content (no `mp4` – video is YouTube-only). Server secrets: `STORAGE_S3_ENDPOINT, STORAGE_S3_REGION, STORAGE_S3_ACCESS_KEY_ID, STORAGE_S3_SECRET_ACCESS_KEY, STORAGE_BUCKET_PRIVATE, STORAGE_BUCKET_PUBLIC`.
 
-Flutter: covers → WebP 800px <200KB client-side; chunked upload >5MB; cache `getUrl` per session; paginate `.range(0,49)`; public reads straight from the public bucket URL (cached egress), never through PostgREST. Files share the 1GB storage + 5GB egress quotas – keep them small, video stays on YouTube.
+Flutter: covers → WebP 1200px max dimension, <200KB client-side (quality/downscale loop); chunked upload >5MB; cache `getUrl` per session; paginate `.range(0,49)`; public reads straight from the public bucket URL (cached egress), never through PostgREST. Files share the 1GB storage + 5GB egress quotas – keep them small, video stays on YouTube.
 
 ## Video
 

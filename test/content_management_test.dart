@@ -1,12 +1,51 @@
+import 'dart:async';
+import 'dart:typed_data';
+
 import 'package:educador/app/theme.dart';
 import 'package:educador/data/models/models.dart';
 import 'package:educador/data/repositories/repositories.dart';
+import 'package:educador/data/session/session_controller.dart';
 import 'package:educador/features/content/catalog_screen.dart';
+import 'package:educador/features/content/cover_image.dart';
 import 'package:educador/features/content/publish_video_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show MethodChannel;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image/image.dart' as img;
+
+const _gestorUser = User(
+  id: 'gestor',
+  fullName: 'Gestora Marina',
+  email: 'marina@example.test',
+  initials: 'GM',
+);
+
+class _GestorSession extends SessionController {
+  @override
+  Future<AppSession?> build() async => const AppSession(
+    user: _gestorUser,
+    contexts: [],
+    active: AccessContext(role: Role.gestor, companyName: 'Plataforma'),
+  );
+}
+
+class _People extends PeopleRepository {
+  @override
+  Future<List<ProfessionalOption>> platformProfessionals({
+    String search = '',
+  }) async =>
+      [
+            const ProfessionalOption(id: 'gestor', name: 'Gestora Marina'),
+            const ProfessionalOption(id: 'other', name: 'Outro Gestor'),
+          ]
+          .where(
+            (person) =>
+                person.name.toLowerCase().contains(search.toLowerCase()),
+          )
+          .toList();
+}
 
 class _Catalog extends ContentRepository {
   bool platformEnabled = true;
@@ -19,6 +58,40 @@ class _Catalog extends ContentRepository {
   String? kind;
   ContentAudience? publishedAudience;
   String? publishedVideo;
+  String? publishedCover;
+  String? publishedResponsible;
+  int coverUploads = 0;
+
+  @override
+  Future<String> publishVideo({
+    required String title,
+    required String description,
+    required String moduleTitle,
+    required String videoId,
+    required ContentAudience audience,
+    String? coverKey,
+    String? responsibleId,
+  }) async {
+    publishedAudience = audience;
+    publishedVideo = videoId;
+    publishedCover = coverKey;
+    publishedResponsible = responsibleId;
+    return 'content';
+  }
+
+  @override
+  Future<({String key, String putUrl})> requestCoverUpload({
+    required int size,
+  }) async {
+    coverUploads++;
+    return (key: 'covers/test.webp', putUrl: 'https://example.test/put');
+  }
+
+  @override
+  Future<void> uploadCoverBytes({
+    required String putUrl,
+    required Uint8List bytes,
+  }) async {}
 
   @override
   Future<List<ManagedContent>> catalog({
@@ -60,19 +133,6 @@ class _Catalog extends ContentRepository {
   @override
   Future<void> setAudience(String courseId, ContentAudience audience) async {
     this.audience = audience;
-  }
-
-  @override
-  Future<String> publishVideo({
-    required String title,
-    required String description,
-    required String moduleTitle,
-    required String videoId,
-    required ContentAudience audience,
-  }) async {
-    publishedAudience = audience;
-    publishedVideo = videoId;
-    return 'content';
   }
 }
 
@@ -213,13 +273,18 @@ void main() {
     addTearDown(router.dispose);
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [contentRepositoryProvider.overrideWithValue(repo)],
+        overrides: [
+          contentRepositoryProvider.overrideWithValue(repo),
+          peopleRepositoryProvider.overrideWithValue(_People()),
+          sessionProvider.overrideWith(_GestorSession.new),
+        ],
         child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
       ),
     );
     await tester.tap(find.text('Adicionar'));
     await tester.pumpAndSettle();
     expect(find.text('Todas as empresas'), findsOneWidget);
+    expect(find.text('Gestora Marina'), findsOneWidget);
     await tester.enterText(find.byType(TextFormField).at(0), 'Nova trilha');
     await tester.enterText(
       find.byType(TextFormField).at(3),
@@ -230,7 +295,104 @@ void main() {
     await tester.pumpAndSettle();
     expect(repo.publishedVideo, 'abcdefghijk');
     expect(repo.publishedAudience?.allCompanies, isTrue);
+    expect(repo.publishedResponsible, 'gestor');
+    expect(repo.publishedCover, isNull);
+    expect(repo.coverUploads, 0);
     expect(find.text('Trilha publicada.'), findsOneWidget);
+  });
+
+  testWidgets('responsible professional can be changed before publishing', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(800, 1400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final repo = _Catalog();
+    final router = GoRouter(
+      routes: [
+        GoRoute(path: '/', builder: (_, _) => const PublishVideoScreen()),
+      ],
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          contentRepositoryProvider.overrideWithValue(repo),
+          peopleRepositoryProvider.overrideWithValue(_People()),
+          sessionProvider.overrideWith(_GestorSession.new),
+        ],
+        child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Gestora Marina'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Gestora Marina'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Outro Gestor'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Confirmar seleção'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField).at(0), 'Nova trilha');
+    await tester.enterText(
+      find.byType(TextFormField).at(3),
+      'https://youtu.be/abcdefghijk',
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Publicar'), warnIfMissed: false);
+    await tester.pumpAndSettle();
+    expect(repo.publishedResponsible, 'other');
+  });
+
+  testWidgets('cover picker completion after disposal is ignored', (
+    tester,
+  ) async {
+    const channel = MethodChannel('plugins.flutter.io/image_picker');
+    final selection = Completer<String?>();
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      channel,
+      (_) => selection.future,
+    );
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        channel,
+        null,
+      ),
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [sessionProvider.overrideWith(_GestorSession.new)],
+        child: MaterialApp(
+          theme: AppTheme.light,
+          home: const PublishVideoScreen(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Toque para escolher uma imagem'));
+    await tester.tap(find.text('Toque para escolher uma imagem'));
+    await tester.pump();
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+    selection.complete('/unused-cover.png');
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+  });
+
+  test('cover images fit 1200px and 200KB, invalid input is rejected', () {
+    final photo = img.Image(width: 2000, height: 1000);
+    for (final pixel in photo) {
+      pixel
+        ..r = pixel.x % 256
+        ..g = pixel.y % 256
+        ..b = (pixel.x + pixel.y) % 256;
+    }
+    final processed = processCoverImage(img.encodePng(photo))!;
+    final decoded = img.decodeImage(processed)!;
+    expect(decoded.width, 1200);
+    expect(decoded.height, 600);
+    expect(processed.length, lessThanOrEqualTo(200 * 1024));
+    expect(processCoverImage(Uint8List(0)), isNull);
+    expect(processCoverImage(Uint8List.fromList([1, 2, 3])), isNull);
   });
 
   for (final width in [320.0, 1000.0]) {

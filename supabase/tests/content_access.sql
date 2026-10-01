@@ -234,6 +234,27 @@ do $$ declare created uuid; before_count int; begin
       where m.course_id = created and l.video_provider = 'youtube' and l.video_id = 'abcdefghijk') <> 1 then
     raise exception 'Publishing did not create a real YouTube trail';
   end if;
+  created := publish_video_trail('Covered trail', 'Description', 'Module', 'abcdefghijk',
+    true, '{}', 'covers/abc123_test.webp', 'aa000000-0000-4000-8000-000000000001');
+  if (select cover_key from courses where id = created) <> 'covers/abc123_test.webp' or
+    (select responsible_id from courses where id = created) <>
+      'aa000000-0000-4000-8000-000000000001' then
+    raise exception 'Publishing did not store cover and responsible';
+  end if;
+  begin
+    perform publish_video_trail('Bad cover', '', 'Module', 'abcdefghijk',
+      true, '{}', 'private/evil.png', null);
+    raise exception 'Invalid cover accepted';
+  exception when raise_exception then
+    if sqlerrm <> 'Invalid cover' then raise; end if;
+  end;
+  begin
+    perform publish_video_trail('Bad responsible', '', 'Module', 'abcdefghijk',
+      true, '{}', null, 'aa000000-0000-4000-8000-000000000002');
+    raise exception 'Non-gestor responsible accepted';
+  exception when raise_exception then
+    if sqlerrm <> 'Invalid responsible' then raise; end if;
+  end;
   select count(*) into before_count from courses;
   begin
     perform publish_video_trail('Rejected', '', 'Module', 'abcdefghijk', false, '{}');

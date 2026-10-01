@@ -1,4 +1,7 @@
+import 'dart:typed_data';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart' hide User;
 
 import '../mock/mock_data.dart';
@@ -121,6 +124,40 @@ class EmployeeRepository {
 }
 
 class PeopleRepository {
+  Future<List<ProfessionalOption>> platformProfessionals({
+    String search = '',
+  }) async {
+    final client = _client;
+    if (client == null) return [];
+    final grants = await client
+        .from('platform_gestors')
+        .select('user_id')
+        .range(0, 99);
+    final ids = grants.map((row) => row['user_id'] as String).toList();
+    if (ids.isEmpty) return [];
+    var query = client
+        .from('profiles')
+        .select('id,full_name')
+        .inFilter('id', ids);
+    if (search.trim().isNotEmpty) {
+      final escaped = search
+          .trim()
+          .replaceAll(r'\', r'\\')
+          .replaceAll('%', r'\%')
+          .replaceAll('_', r'\_');
+      query = query.ilike('full_name', '%$escaped%');
+    }
+    final rows = await query.order('full_name').order('id').range(0, 49);
+    return rows
+        .map(
+          (row) => ProfessionalOption(
+            id: row['id'] as String,
+            name: row['full_name'] as String,
+          ),
+        )
+        .toList();
+  }
+
   Future<List<User>> companyManagers(String companyId) async {
     final client = _client;
     if (client == null) return [MockData.empresaUser];
@@ -241,6 +278,8 @@ class ContentRepository {
     required String moduleTitle,
     required String videoId,
     required ContentAudience audience,
+    String? coverKey,
+    String? responsibleId,
   }) async =>
       await _contentClient.rpc(
             'publish_video_trail',
@@ -251,9 +290,36 @@ class ContentRepository {
               'p_video_id': videoId,
               'p_all_companies': audience.allCompanies,
               'p_company_ids': audience.companyIds,
+              'p_cover_key': coverKey,
+              'p_responsible_id': responsibleId,
             },
           )
           as String;
+
+  Future<({String key, String putUrl})> requestCoverUpload({
+    required int size,
+  }) async {
+    final response = await _contentClient.functions.invoke(
+      'storage-upload-url',
+      body: {'prefix': 'covers', 'contentType': 'image/webp', 'size': size},
+    );
+    final data = response.data as Map<String, dynamic>;
+    return (key: data['key'] as String, putUrl: data['putUrl'] as String);
+  }
+
+  Future<void> uploadCoverBytes({
+    required String putUrl,
+    required Uint8List bytes,
+  }) async {
+    final response = await http.put(
+      Uri.parse(putUrl),
+      headers: {'Content-Type': 'image/webp'},
+      body: bytes,
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw StateError('Cover upload failed.');
+    }
+  }
 }
 
 class CourseRepository {
