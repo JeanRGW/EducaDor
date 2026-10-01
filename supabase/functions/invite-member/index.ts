@@ -67,8 +67,9 @@ Deno.serve(async (req) => {
       if (!company) return respond(req, { error: 'Company unavailable' }, 400);
     }
 
+    const emailPattern = email.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
     const { data: existing, error: profileLookupError } = await admin.from('profiles')
-      .select('id').ilike('email', email).maybeSingle();
+      .select('id').ilike('email', emailPattern).maybeSingle();
     if (profileLookupError) {
       if (createdCompany) await admin.from('companies').delete().eq('id', companyId!);
       return respond(req, { error: 'Account unavailable' }, 400);
@@ -164,7 +165,7 @@ Deno.serve(async (req) => {
     if (existing) {
       const { data: account, error: accountError } =
         await admin.auth.admin.getUserById(existing.id);
-      if (accountError || !account.user) {
+      if (accountError || !account.user || account.user.email?.toLowerCase() !== email) {
         await admin.from('membership_invites').delete().eq('id', invitation.id);
         if (createdCompany) await admin.from('companies').delete().eq('id', companyId!);
         return respond(req, { error: 'Account unavailable' }, 400);

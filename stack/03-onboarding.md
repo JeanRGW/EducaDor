@@ -121,6 +121,10 @@ or run `supabase/seed.sql` on production.
 
 ## Staging checks
 
+Run `node --test supabase/tests/invite_member.test.mjs` with Node.js 24 to check
+the invitation handler's literal email matching and mismatched-account cleanup
+using mocked Supabase calls; no credentials or live account changes are needed.
+
 Run `flutter analyze`, `flutter test` and
 `supabase/tests/multi_context.sql` on an isolated local database after applying
 the migrations. Verify first-gestor bootstrap, a new company manager, an
