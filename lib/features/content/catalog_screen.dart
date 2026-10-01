@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/theme.dart';
 import '../../data/models/models.dart';
+import '../../data/repositories/gestor_providers.dart';
 import '../../data/repositories/repositories.dart';
 import '../../shared/widgets/app_icons.dart';
 import '../../shared/widgets/common.dart';
@@ -74,6 +75,10 @@ class _ContentCatalogScreenState extends ConsumerState<ContentCatalogScreen> {
     setState(() => _busy.add(item.id));
     try {
       await write();
+      if (widget.platform) {
+        ref.invalidate(gestorDashboardProvider);
+        ref.invalidate(gestorCompletionProvider);
+      }
       if (mounted) await _load();
     } catch (_) {
       if (mounted) {
@@ -118,7 +123,11 @@ class _ContentCatalogScreenState extends ConsumerState<ContentCatalogScreen> {
             backgroundColor: AppColors.successDarkGreen,
             onPressed: () async {
               await context.push('/gestor/trail/add');
-              if (mounted) _load();
+              if (mounted) {
+                ref.invalidate(gestorDashboardProvider);
+                ref.invalidate(gestorCompletionProvider);
+                _load();
+              }
             },
             child: const SvgIcon(AppIcons.compose, color: Colors.white),
           )

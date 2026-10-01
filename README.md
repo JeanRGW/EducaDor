@@ -13,8 +13,11 @@ project URL and publishable client key. `SUPABASE_ANON_KEY` is the existing Dart
 define name, even though its value is a publishable key. These values are
 already visible in any web build; row-level security protects the data.
 
-Authentication, context selection and invitations use Supabase. Several
-course and dashboard screens still use mock data.
+Authentication, context selection and invitations use Supabase. Gestor
+Dashboard, Companies, Content and Reports use live repositories; some company
+and employee screens still use mocks. CSV export remains deferred. Report
+metric definitions and current-completion/activity-period semantics are
+documented in [the backend contract](stack/01-backend.md#gestor-data-integration).
 
 ## Local setup
 
@@ -58,5 +61,7 @@ link in the public JSON file or the repository. `supabase/config.toml` configure
 **local** Supabase development (localhost Auth URL); do not run
 `supabase config push` against staging without reviewing the differences.
 
-`supabase/tests/multi_context.sql` checks selected-session tenancy and role
-restrictions on an **isolated** PostgreSQL database after applying migrations.
+`supabase/tests/multi_context.sql`, `supabase/tests/content_access.sql` and
+`supabase/tests/gestor_data.sql` check selected-session tenancy, content access
+and platform aggregates on an **isolated** PostgreSQL database after applying
+migrations. They create fixtures inside transactions and roll them back.
