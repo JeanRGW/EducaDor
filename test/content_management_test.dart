@@ -54,7 +54,7 @@ class _Catalog extends ContentRepository {
   bool platformEnabled = true;
   bool companyEnabled = true;
   bool failWrite = false;
-  ContentAudience audience = const ContentAudience();
+  ContentAudience currentAudience = const ContentAudience();
   int companyWrites = 0;
   int platformWrites = 0;
   String? search;
@@ -111,9 +111,11 @@ class _Catalog extends ContentRepository {
         kind: 'course',
         platformEnabled: platformEnabled,
         companyEnabled: companyEnabled,
-        allCompanies: audience.allCompanies,
-        companyIds: audience.companyIds,
-        companyCount: audience.allCompanies ? 2 : audience.companyIds.length,
+        allCompanies: currentAudience.allCompanies,
+        companyIds: currentAudience.companyIds,
+        companyCount: currentAudience.allCompanies
+            ? 2
+            : currentAudience.companyIds.length,
         lessonCount: 4,
         completionPct: completionPct,
       ),
@@ -134,8 +136,11 @@ class _Catalog extends ContentRepository {
   }
 
   @override
+  Future<ContentAudience> audience(String courseId) async => currentAudience;
+
+  @override
   Future<void> setAudience(String courseId, ContentAudience audience) async {
-    this.audience = audience;
+    currentAudience = audience;
   }
 }
 
@@ -179,24 +184,37 @@ class _PagedCatalog extends _Catalog {
   }
 }
 
-Future<void> _showCatalog(
+Future<GoRouter> _showCatalog(
   WidgetTester tester,
   _Catalog repo, {
   bool platform = false,
 }) async {
+  final router = GoRouter(
+    initialLocation: '/',
+    routes: [
+      GoRoute(
+        path: '/',
+        builder: (_, _) => ContentCatalogScreen(platform: platform),
+      ),
+      GoRoute(
+        path: '/gestor/course/:id',
+        builder: (_, state) =>
+            Scaffold(body: Text('Detalhes ${state.pathParameters['id']}')),
+      ),
+    ],
+  );
+  addTearDown(router.dispose);
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
         contentRepositoryProvider.overrideWithValue(repo),
         companyRepositoryProvider.overrideWithValue(_Companies()),
       ],
-      child: MaterialApp(
-        theme: AppTheme.light,
-        home: ContentCatalogScreen(platform: platform),
-      ),
+      child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
     ),
   );
   await tester.pumpAndSettle();
+  return router;
 }
 
 void main() {
@@ -262,6 +280,7 @@ void main() {
     await _showCatalog(tester, repo);
     expect(find.text('84%'), findsOneWidget);
     expect(find.text('Liberar para'), findsNothing);
+    expect(find.text('Editar'), findsNothing);
     await tester.tap(find.byType(Switch));
     await tester.pumpAndSettle();
     expect(repo.companyWrites, 1);
@@ -295,34 +314,29 @@ void main() {
     expect(find.textContaining('Não foi possível atualizar'), findsOneWidget);
   });
 
-  testWidgets('platform can pause and choose an explicit company audience', (
-    tester,
-  ) async {
+  testWidgets('platform can pause from the catalog card', (tester) async {
     final repo = _Catalog();
     await _showCatalog(tester, repo, platform: true);
     await tester.tap(find.byType(Switch));
     await tester.pumpAndSettle();
     expect(repo.platformWrites, 1);
     expect(repo.companyEnabled, isTrue);
-    await tester.tap(find.text('Liberar para'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byType(SwitchListTile));
-    await tester.pumpAndSettle();
-    expect(
-      tester
-          .widget<FilledButton>(
-            find.widgetWithText(FilledButton, 'Confirmar seleção'),
-          )
-          .onPressed,
-      isNull,
-    );
-    await tester.tap(find.text('Santa Maria'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Confirmar seleção'));
-    await tester.pumpAndSettle();
-    expect(repo.audience.allCompanies, isFalse);
-    expect(repo.audience.companyIds, ['a']);
     expect(repo.platformEnabled, isFalse);
+    expect(find.text('Pausado pela plataforma'), findsOneWidget);
+  });
+
+  testWidgets('platform edit button opens course details', (tester) async {
+    final repo = _Catalog();
+    final router = await _showCatalog(tester, repo, platform: true);
+    expect(find.text('Editar'), findsOneWidget);
+    expect(find.text('Liberar para'), findsNothing);
+    await tester.ensureVisible(find.text('Editar'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Editar'));
+    await tester.pumpAndSettle();
+    expect(find.text('Detalhes content'), findsOneWidget);
+    expect(router.canPop(), isTrue);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('search and kind filters query the real repository', (
@@ -366,7 +380,8 @@ void main() {
         tester.getCenter(find.byType(Switch)).dx,
         lessThan(tester.getTopLeft(find.text('Acesso liberado')).dx),
       );
-      expect(find.text('Liberar para'), findsOneWidget);
+      expect(find.text('Editar'), findsOneWidget);
+      expect(find.text('Liberar para'), findsNothing);
       expect(
         tester
             .widget<FloatingActionButton>(find.byType(FloatingActionButton))
@@ -382,7 +397,7 @@ void main() {
         AppColors.textMuted,
       );
       expect(find.text('84%'), findsOneWidget);
-      expect(find.text('Liberar para'), findsOneWidget);
+      expect(find.text('Editar'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );
@@ -427,7 +442,7 @@ void main() {
         ..title =
             'Segurança no trabalho e cuidados com a saúde dos funcionários'
         ..completionPct = null
-        ..audience = const ContentAudience(
+        ..currentAudience = const ContentAudience(
           allCompanies: false,
           companyIds: ['a'],
         );

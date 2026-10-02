@@ -63,6 +63,24 @@ class SessionController extends AsyncNotifier<AppSession?> {
     return session;
   }
 
+  void discardContext(Role role, String? companyId) {
+    final session = state.value;
+    if (session == null) return;
+    bool matches(AccessContext access) =>
+        access.role == role && access.companyId == companyId;
+    state = AsyncData(
+      AppSession(
+        user: session.user,
+        contexts: session.contexts.where((access) => !matches(access)).toList(),
+        active: session.active != null && matches(session.active!)
+            ? null
+            : session.active,
+        needsPassword: session.needsPassword,
+      ),
+    );
+    sessionRefresh.refresh();
+  }
+
   Future<void> select(AccessContext context) async {
     await ref.read(authRepositoryProvider).selectContext(context);
     final session = state.value;

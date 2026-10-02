@@ -185,10 +185,68 @@ selector does not re-query or filter the current company-completion section.
 
 Dashboard, Companies and Reports include loading, empty, retry and refresh
 states. Gestor content routes reuse the real catalog and YouTube publisher
-without mock fallbacks. CSV export, profile settings/MFA, notifications and
+without mock fallbacks. CSV export, MFA, notifications and
 non-video authoring remain deferred. Test the queries with
 `supabase/tests/gestor_data.sql` on an isolated database; never apply fixtures or
 new migrations to shared/staging databases without operator approval.
+
+### Gestor lifecycle management
+
+`20261002000000_gestor_management.sql` adds guarded company edits and
+pause/reactivation, paginated platform/company gestor directories, scoped access
+revocation, own-profile editing, and course metadata/lesson editing. Verify with
+`supabase/tests/gestor_management.sql` on an isolated database first.
+
+* Company detail is `/gestor/company/:id`. Pausing sets `companies.active=false`:
+  both manager and employee contexts become unusable immediately in DB checks.
+  Memberships, progress, certificates and company content preferences remain;
+  reactivation restores eligibility. Company contact edits do not change any
+  manager's Auth email or identity. The company list card shows "Convidar gestor
+  da empresa" and "Editar" as matching outlined buttons in one row; there is no
+  separate blue text button.
+* `/gestor/gestores` and `/gestor/company/:id/gestores` list accepted grants with
+  literal name/email search and 50-row pages. `revoke_gestor_access` removes only
+  the chosen grant and its selected session contexts, plus any matching pending
+  invitation. It never deletes the identity, employee memberships, other
+  companies, learning records, or authorship. Both the platform and each company
+  must retain at least one accepted gestor, even for inactive companies. Table
+  locks serialize competing removals; the active caller is revalidated after
+  waiting. Self-revocation clears the local context before session refresh so a
+  failed network refresh cannot retain the old privileged UI context.
+* Invitation acceptance is now `accept_membership_invite`, callable only by
+  service-role inside `accept-invite`. The verified identity comes from the
+  function caller, never the request body. Grant creation and invitation
+  consumption are atomic and share the revocation lock order, preventing a
+  previously fetched invitation from recreating a removed grant.
+* `/gestor/perfil/edit` edits own name, phone, birth date and address. The RPC
+  derives identity from `auth.uid()`; email and roles are never writable. The
+  session reload updates name/initials throughout the app. If reload fails after
+  saving, retry reload without duplicating the profile write. The form reuses the
+  Gestor field labels above each input, the read-only access-email card, and the
+  teal outlined date selector shared with the other management screens. Avatar,
+  Auth email changes, password settings, notification preferences and MFA remain
+  deferred.
+* `/gestor/course/:id` edits title, description, cover and responsible, and lists
+  lessons in stable module/lesson order with 50-row pages. Existing module/lesson
+  titles and YouTube IDs can be edited. The "Liberar para" audience selector lives
+  inside this screen: it loads the current audience through the guarded
+  `gestor_course_audience` RPC and saves through the existing `set_course_audience`
+  RPC, so company pause preferences survive audience changes. The platform catalog
+  card keeps only the pause switch and an "Editar" button with the card's outlined
+  teal treatment; there is no separate audience button on the card. Course editing
+  updates rows in place, never recreates IDs or changes positions, points,
+  progress, certificates, status or `company_enabled`. Replacing a video requires UI confirmation: existing
+  completion and resume positions are intentionally retained, not interpreted
+  as completion of newly substituted content. Renaming a module affects all its
+  lessons. Previously credited responsible gestors remain valid when unchanged
+  after grant revocation; new responsible selections require a current grant.
+  Adding/deleting/reordering lessons, non-video body editing and drafts remain
+  deferred.
+
+Deployment order: apply the migration after operator approval, deploy the updated
+`accept-invite` Edge Function, then ship Flutter. Do not deploy the function
+before its server-only RPC exists. No staging migration or deployment is implicit
+in these source changes.
 
 ## Edge Functions (Deno, 500k/mo free)
 

@@ -18,6 +18,10 @@ Dashboard, Companies, Content and Reports use live repositories; some company
 and employee screens still use mocks. CSV export remains deferred. Report
 metric definitions and current-completion/activity-period semantics are
 documented in [the backend contract](stack/01-backend.md#gestor-data-integration).
+Gestor lifecycle routes support company edits/pause, manager grant revocation,
+own-profile edits and progress-preserving course/video edits. Deployment order
+and boundaries are documented under
+[Gestor lifecycle management](stack/01-backend.md#gestor-lifecycle-management).
 
 ## Local setup
 
@@ -61,7 +65,8 @@ link in the public JSON file or the repository. `supabase/config.toml` configure
 **local** Supabase development (localhost Auth URL); do not run
 `supabase config push` against staging without reviewing the differences.
 
-`supabase/tests/multi_context.sql`, `supabase/tests/content_access.sql` and
-`supabase/tests/gestor_data.sql` check selected-session tenancy, content access
-and platform aggregates on an **isolated** PostgreSQL database after applying
+`supabase/tests/multi_context.sql`, `supabase/tests/content_access.sql`,
+`supabase/tests/gestor_data.sql` and `supabase/tests/gestor_management.sql` check
+selected-session tenancy, content access, platform aggregates and guarded
+lifecycle operations on an **isolated** PostgreSQL database after applying
 migrations. They create fixtures inside transactions and roll them back.

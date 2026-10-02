@@ -29,6 +29,36 @@ String formatDate(DateTime date) =>
     '${date.day.toString().padLeft(2, '0')} '
     '${monthLabel(date)} ${date.year}';
 
+class CompanyFieldRow extends StatelessWidget {
+  final Widget first;
+  final Widget second;
+  final int firstFlex;
+  const CompanyFieldRow({
+    super.key,
+    required this.first,
+    required this.second,
+    this.firstFlex = 1,
+  });
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      if (constraints.maxWidth < 320 ||
+          MediaQuery.textScalerOf(context).scale(12) > 16) {
+        return Column(children: [first, second]);
+      }
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(flex: firstFlex, child: first),
+          const SizedBox(width: 12),
+          Expanded(child: second),
+        ],
+      );
+    },
+  );
+}
+
 class DataErrorCard extends StatelessWidget {
   final String message;
   final VoidCallback retry;

@@ -10,7 +10,6 @@ import '../../data/repositories/gestor_providers.dart';
 import '../../data/repositories/repositories.dart';
 import '../../shared/widgets/app_icons.dart';
 import '../../shared/widgets/common.dart';
-import 'audience_picker.dart';
 
 class ContentCatalogScreen extends ConsumerStatefulWidget {
   final bool platform;
@@ -93,21 +92,6 @@ class _ContentCatalogScreenState extends ConsumerState<ContentCatalogScreen> {
     } finally {
       if (mounted) setState(() => _busy.remove(item.id));
     }
-  }
-
-  Future<void> _audience(ManagedContent item) async {
-    final audience = await pickContentAudience(
-      context,
-      ContentAudience(
-        allCompanies: item.allCompanies,
-        companyIds: item.companyIds,
-      ),
-    );
-    if (audience == null || !mounted) return;
-    await _change(
-      item,
-      () => ref.read(contentRepositoryProvider).setAudience(item.id, audience),
-    );
   }
 
   @override
@@ -243,7 +227,12 @@ class _ContentCatalogScreenState extends ConsumerState<ContentCatalogScreen> {
                       ? repo.setPlatformEnabled(item.id, enabled)
                       : repo.setCompanyEnabled(item.id, enabled);
                 }),
-                onAudience: widget.platform ? () => _audience(item) : null,
+                onDetails: widget.platform
+                    ? () async {
+                        await context.push('/gestor/course/${item.id}');
+                        if (mounted) await _load();
+                      }
+                    : null,
               ),
             ),
           if (_more)
@@ -267,7 +256,7 @@ class ManagedContentCard extends StatelessWidget {
   final bool platform;
   final bool busy;
   final ValueChanged<bool> onToggle;
-  final VoidCallback? onAudience;
+  final VoidCallback? onDetails;
 
   const ManagedContentCard({
     super.key,
@@ -275,7 +264,7 @@ class ManagedContentCard extends StatelessWidget {
     required this.platform,
     required this.busy,
     required this.onToggle,
-    this.onAudience,
+    this.onDetails,
   });
 
   @override
@@ -517,13 +506,13 @@ class ManagedContentCard extends StatelessWidget {
                             fontWeight: FontWeight.w600,
                           ),
                         ),
-                        onPressed: busy ? null : onAudience,
+                        onPressed: busy ? null : onDetails,
                         icon: const SvgIcon(
-                          AppIcons.companies,
+                          AppIcons.edit,
                           color: AppColors.successDarkGreen,
                           size: 16,
                         ),
-                        label: const Text('Liberar para'),
+                        label: const Text('Editar'),
                       ),
                     ),
                 ],

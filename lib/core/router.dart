@@ -14,6 +14,10 @@ import '../features/company/screens.dart';
 import '../features/company/managers_screen.dart';
 import '../features/company/completion_screen.dart';
 import '../features/gestor/screens.dart';
+import '../features/gestor/company_detail_screen.dart';
+import '../features/gestor/managers_screen.dart';
+import '../features/gestor/profile_edit_screen.dart';
+import '../features/content/course_edit_screen.dart';
 
 const _authRoutes = ['/splash', '/welcome', '/login', '/recover'];
 
@@ -143,6 +147,24 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       // ---- Gestor (super admin) ----
       GoRoute(
+        path: '/gestor/gestores',
+        builder: (_, _) => const GestorManagersScreen(),
+      ),
+      GoRoute(
+        path: '/gestor/perfil/edit',
+        builder: (_, _) => const ProfileEditScreen(),
+      ),
+      GoRoute(
+        path: '/gestor/course/:id',
+        builder: (_, state) =>
+            CourseEditScreen(courseId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/gestor/company/:id/gestores',
+        builder: (_, state) =>
+            GestorManagersScreen(companyId: state.pathParameters['id']!),
+      ),
+      GoRoute(
         path: '/gestor/company/add',
         builder: (_, _) => const AddCompanyScreen(),
       ),
@@ -159,6 +181,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/gestor/trail/add',
         builder: (_, _) => const AddTrailScreen(),
+      ),
+      GoRoute(
+        path: '/gestor/company/:id',
+        builder: (_, state) =>
+            CompanyDetailScreen(companyId: state.pathParameters['id']!),
       ),
       _shell(Role.gestor, [
         _branch('/gestor/home', (_) => const GestorDashboardScreen()),
