@@ -7,6 +7,7 @@ import '../../data/models/models.dart';
 import '../../data/repositories/repositories.dart';
 import '../../data/session/session_controller.dart';
 import '../../shared/widgets/app_icons.dart';
+import '../../shared/widgets/admin_styles.dart';
 import '../../shared/widgets/common.dart';
 import '../auth/onboarding_screens.dart';
 import '../auth/pending_invites.dart';
@@ -114,87 +115,122 @@ class _AddCompanyScreenState extends ConsumerState<AddCompanyScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: const Text('Adicionar empresa'),
-      leading: IconButton(
-        icon: const SvgIcon(AppIcons.arrowBack),
-        onPressed: () => context.pop(),
+  Widget build(BuildContext context) => Theme(
+    data: AdminStyles.formTheme(Theme.of(context)),
+    child: Scaffold(
+      appBar: AppBar(
+        title: const Text('Adicionar empresa'),
+        leading: IconButton(
+          tooltip: 'Voltar',
+          icon: const SvgIcon(
+            AppIcons.arrowBack,
+            size: 20,
+            color: AppColors.successDarkGreen,
+          ),
+          onPressed: () => context.pop(),
+        ),
+      ),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+        children: [
+          FormFieldLabel(
+            label: 'Nome da Empresa',
+            compact: true,
+            hint: 'santa maria',
+            controller: _name,
+          ),
+          FormFieldLabel(
+            label: 'CNPJ',
+            compact: true,
+            hint: '00.000.000/0001-00',
+            controller: _cnpj,
+          ),
+          FormFieldLabel(
+            label: 'Primeiro gestor da empresa',
+            compact: true,
+            hint: 'Nome completo',
+            controller: _responsible,
+          ),
+          _CompanyFieldRow(
+            first: FormFieldLabel(
+              label: 'E-mail do gestor',
+              compact: true,
+              hint: 'admin@comp.com',
+              controller: _email,
+            ),
+            second: FormFieldLabel(
+              label: 'Telefone',
+              compact: true,
+              hint: '(31) 99999-9999',
+              controller: _phone,
+            ),
+          ),
+          FormFieldLabel(
+            label: 'Endereço',
+            compact: true,
+            hint: 'Rua, número, bairro',
+            controller: _address,
+          ),
+          _CompanyFieldRow(
+            firstFlex: 3,
+            first: FormFieldLabel(
+              label: 'Cidade',
+              compact: true,
+              hint: 'Belo Horizonte',
+              controller: _city,
+            ),
+            second: FormFieldLabel(
+              label: 'Estado',
+              compact: true,
+              hint: 'MG',
+              controller: _state,
+            ),
+          ),
+          FormFieldLabel(
+            label: 'Área de atuação',
+            compact: true,
+            hint: 'Saúde',
+            controller: _field,
+          ),
+          const SizedBox(height: 4),
+          PrimaryButton(
+            _busy ? 'Criando...' : 'Criar empresa e convite',
+            compact: true,
+            color: AppColors.successDarkGreen,
+            onPressed: _busy ? null : _submit,
+          ),
+        ],
       ),
     ),
-    body: ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        FormFieldLabel(
-          label: 'Nome da Empresa',
-          hint: 'santa maria',
-          controller: _name,
-        ),
-        FormFieldLabel(
-          label: 'CNPJ',
-          hint: '00.000.000/0001-00',
-          controller: _cnpj,
-        ),
-        FormFieldLabel(
-          label: 'Primeiro gestor da empresa',
-          hint: 'Nome completo',
-          controller: _responsible,
-        ),
-        Row(
-          children: [
-            Expanded(
-              child: FormFieldLabel(
-                label: 'E-mail do gestor',
-                hint: 'admin@comp.com',
-                controller: _email,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: FormFieldLabel(
-                label: 'Telefone',
-                hint: '(31) 99999-9999',
-                controller: _phone,
-              ),
-            ),
-          ],
-        ),
-        Row(
-          children: [
-            Expanded(
-              child: FormFieldLabel(
-                label: 'Cidade',
-                hint: 'Belo Horizonte',
-                controller: _city,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: FormFieldLabel(
-                label: 'Estado',
-                hint: 'MG',
-                controller: _state,
-              ),
-            ),
-          ],
-        ),
-        FormFieldLabel(
-          label: 'Endereço',
-          hint: 'Rua, número, bairro',
-          controller: _address,
-        ),
-        FormFieldLabel(
-          label: 'Área de atuação',
-          hint: 'Saúde',
-          controller: _field,
-        ),
-        const SizedBox(height: 4),
-        PrimaryButton(
-          _busy ? 'Criando...' : 'Criar empresa e convite',
-          onPressed: _busy ? null : _submit,
-        ),
-      ],
-    ),
+  );
+}
+
+class _CompanyFieldRow extends StatelessWidget {
+  final Widget first;
+  final Widget second;
+  final int firstFlex;
+  const _CompanyFieldRow({
+    required this.first,
+    required this.second,
+    this.firstFlex = 1,
+  });
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      if (constraints.maxWidth < 320 ||
+          MediaQuery.textScalerOf(context).scale(12) > 16) {
+        return Column(children: [first, second]);
+      }
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(flex: firstFlex, child: first),
+          const SizedBox(width: 12),
+          Expanded(child: second),
+        ],
+      );
+    },
   );
 }
 
@@ -211,93 +247,184 @@ class _GestorProfileScreenState extends ConsumerState<GestorProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final session = ref.watch(sessionProvider).value;
-    return Scaffold(
-      appBar: AppBar(automaticallyImplyLeading: false),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Center(child: AvatarBadge(session?.user.initials ?? '', size: 84)),
-          const SizedBox(height: 12),
-          Center(
-            child: Text(
-              session?.user.fullName ?? 'Gestor',
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Center(
-            child: Text(
-              session?.user.email ?? '',
-              style: const TextStyle(fontSize: 14, color: AppColors.textMuted),
-            ),
-          ),
-          const SizedBox(height: 10),
-          const Center(
-            child: StatusChip(
-              'SUPER ADMIN',
-              color: AppColors.successDarkGreen,
-              bg: AppColors.successBg,
-            ),
-          ),
-          const SizedBox(height: 24),
-          PrimaryButton(
-            'Convidar gestor da plataforma',
-            onPressed: () async {
-              await context.push('/gestor/manager/add');
-              if (mounted) setState(() => _pendingRevision++);
-            },
-          ),
-          const SizedBox(height: 12),
-          PendingInvitesSection(
-            key: ValueKey((_pendingRevision, session?.user.id)),
-            role: Role.gestor,
-          ),
-          const SizedBox(height: 12),
-          if ((session?.contexts.length ?? 0) > 1) ...[
-            OutlinedButton(
-              onPressed: () => context.go('/contexts'),
-              child: const Text('Trocar perfil'),
-            ),
-            const SizedBox(height: 12),
-          ],
-          const _GestorMenuRow(
-            AppIcons.manageAccount,
-            'Configurações de Conta',
-          ),
-          const _GestorMenuRow(AppIcons.bell, 'Preferências de notificação'),
-          const _GestorMenuRow(AppIcons.shield, 'Segurança e MFA'),
-          const _GestorMenuRow(
-            AppIcons.settings,
-            'Configurações da plataforma',
-          ),
-          const SizedBox(height: 8),
-          OutlinedButton(
-            onPressed: () async {
-              await ref.read(sessionProvider.notifier).logout();
-              if (context.mounted) context.go('/welcome');
-            },
-            style: OutlinedButton.styleFrom(
-              minimumSize: const Size.fromHeight(52),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              side: const BorderSide(color: AppColors.danger),
-              foregroundColor: AppColors.danger,
-              backgroundColor: AppColors.dangerBg,
-            ),
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                SvgIcon(AppIcons.logout, size: 18),
-                SizedBox(width: 8),
-                Text(
-                  'Sair',
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+    return Theme(
+      data: AdminStyles.screenTheme(Theme.of(context)),
+      child: Scaffold(
+        body: SafeArea(
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 24,
                 ),
-              ],
-            ),
+                decoration: const BoxDecoration(
+                  color: AppColors.surface,
+                  border: Border(bottom: BorderSide(color: AppColors.border)),
+                ),
+                child: Column(
+                  children: [
+                    Container(
+                      width: 72,
+                      height: 72,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: AppColors.successBg,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: AppColors.successDarkGreen,
+                          width: 2,
+                        ),
+                      ),
+                      child: Text(
+                        session?.user.initials ?? '',
+                        style: const TextStyle(
+                          fontFamily: AppFonts.outfit,
+                          fontSize: 28,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.successDarkGreen,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Center(
+                      child: Text(
+                        session?.user.fullName ?? 'Gestor',
+                        textAlign: TextAlign.center,
+                        style: AdminStyles.formTitle,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Center(
+                      child: Text(
+                        session?.user.email ?? '',
+                        textAlign: TextAlign.center,
+                        style: AdminStyles.body.copyWith(fontSize: 12),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    const Center(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: AppColors.successBg,
+                          borderRadius: BorderRadius.all(Radius.circular(20)),
+                        ),
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
+                          child: Text(
+                            'SUPER ADMIN',
+                            style: TextStyle(
+                              fontFamily: AppFonts.inter,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.successDarkGreen,
+                              height: 1.2,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    PrimaryButton(
+                      'Convidar gestor da plataforma',
+                      compact: true,
+                      color: AppColors.successDarkGreen,
+                      onPressed: () async {
+                        await context.push('/gestor/manager/add');
+                        if (mounted) setState(() => _pendingRevision++);
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    PendingInvitesSection(
+                      key: ValueKey((_pendingRevision, session?.user.id)),
+                      role: Role.gestor,
+                    ),
+                    const SizedBox(height: 12),
+                    if ((session?.contexts.length ?? 0) > 1) ...[
+                      OutlinedButton(
+                        onPressed: () => context.go('/contexts'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.successDarkGreen,
+                          minimumSize: const Size.fromHeight(48),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          side: const BorderSide(color: AppColors.border),
+                          textStyle: const TextStyle(
+                            fontFamily: AppFonts.inter,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        child: const Text('Trocar perfil'),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    const _GestorMenuRow(
+                      AppIcons.accountEdit,
+                      'Configurações de Conta',
+                    ),
+                    const _GestorMenuRow(
+                      AppIcons.bell,
+                      'Preferências de notificação',
+                    ),
+                    const _GestorMenuRow(AppIcons.security, 'Segurança e MFA'),
+                    const _GestorMenuRow(
+                      AppIcons.settings,
+                      'Configurações da plataforma',
+                    ),
+                    OutlinedButton(
+                      onPressed: () async {
+                        await ref.read(sessionProvider.notifier).logout();
+                        if (context.mounted) context.go('/welcome');
+                      },
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(48),
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        side: const BorderSide(color: AppColors.danger),
+                        foregroundColor: AppColors.danger,
+                        backgroundColor: AppColors.dangerBg,
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        children: [
+                          SvgIcon(
+                            AppIcons.userOff,
+                            size: 20,
+                            color: AppColors.danger,
+                          ),
+                          SizedBox(width: 12),
+                          Text(
+                            'Sair',
+                            style: TextStyle(
+                              fontFamily: AppFonts.inter,
+                              fontWeight: FontWeight.w500,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -310,8 +437,9 @@ class _GestorMenuRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    margin: const EdgeInsets.only(bottom: 10),
-    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+    constraints: const BoxConstraints(minHeight: 48),
+    margin: const EdgeInsets.only(bottom: 8),
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
     decoration: BoxDecoration(
       color: AppColors.surface,
       borderRadius: BorderRadius.circular(12),
@@ -319,15 +447,22 @@ class _GestorMenuRow extends StatelessWidget {
     ),
     child: Row(
       children: [
-        SvgIcon(icon, size: 20, color: AppColors.successDarkGreen),
+        SvgIcon(icon, size: 18, color: AppColors.successDarkGreen),
         const SizedBox(width: 12),
         Expanded(
           child: Text(
             label,
-            style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600),
+            style: AdminStyles.body.copyWith(
+              fontSize: 14,
+              color: AppColors.textPrimary,
+            ),
           ),
         ),
-        const SvgIcon(AppIcons.chevronRight, color: AppColors.textMuted),
+        const SvgIcon(
+          AppIcons.chevronRight,
+          size: 16,
+          color: AppColors.textMuted,
+        ),
       ],
     ),
   );

@@ -27,7 +27,9 @@ abstract class AppIcons {
   static const String arrowBack = 'assets/icons/arrow_back.svg';
   static const String bell = 'assets/icons/bell.svg';
   static const String logout = 'assets/icons/logout.svg';
+  static const String userOff = 'assets/icons/user_off.svg';
   static const String download = 'assets/icons/download.svg';
+  static const String fileDownload = 'assets/icons/file_download.svg';
   static const String calendar = 'assets/icons/calendar.svg';
   static const String lock = 'assets/icons/lock.svg';
   static const String mail = 'assets/icons/mail.svg';
@@ -38,6 +40,7 @@ abstract class AppIcons {
   static const String gift = 'assets/icons/gift.svg';
   static const String coffee = 'assets/icons/coffee.svg';
   static const String headphones = 'assets/icons/headphones.svg';
+  static const String microphone = 'assets/icons/microphone.svg';
   static const String headset = 'assets/icons/headset.svg';
   static const String camera = 'assets/icons/camera.svg';
   static const String eye = 'assets/icons/eye.svg';
@@ -47,9 +50,12 @@ abstract class AppIcons {
   static const String help = 'assets/icons/help.svg';
   static const String settings = 'assets/icons/settings.svg';
   static const String shield = 'assets/icons/shield.svg';
+  static const String security = 'assets/icons/security.svg';
   static const String manageAccount = 'assets/icons/manage_account.svg';
+  static const String accountEdit = 'assets/icons/account_edit.svg';
   static const String groups = 'assets/icons/groups.svg';
   static const String play = 'assets/icons/play.svg';
+  static const String playCircle = 'assets/icons/play_circle.svg';
   static const String pdf = 'assets/icons/pdf.svg';
   static const String quiz = 'assets/icons/quiz.svg';
   static const String fire = 'assets/icons/fire.svg';

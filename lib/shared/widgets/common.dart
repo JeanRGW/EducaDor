@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/theme.dart';
 import 'app_icons.dart';
+import 'admin_styles.dart';
 
 Color colorFromHex(String hex) {
   var h = hex.replaceAll('#', '');
@@ -16,6 +17,7 @@ class AppCard extends StatelessWidget {
   final VoidCallback? onTap;
   final Color? color;
   final bool showBorder;
+  final double borderRadius;
 
   const AppCard({
     super.key,
@@ -24,6 +26,7 @@ class AppCard extends StatelessWidget {
     this.onTap,
     this.color,
     this.showBorder = true,
+    this.borderRadius = 14,
   });
 
   @override
@@ -33,7 +36,7 @@ class AppCard extends StatelessWidget {
       padding: padding,
       decoration: BoxDecoration(
         color: color ?? AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(borderRadius),
         border: showBorder
             ? Border.all(color: AppColors.border)
             : Border.all(color: Colors.transparent),
@@ -42,7 +45,7 @@ class AppCard extends StatelessWidget {
     );
     if (onTap == null) return content;
     return InkWell(
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(borderRadius),
       onTap: onTap,
       child: content,
     );
@@ -87,6 +90,7 @@ class PrimaryButton extends StatelessWidget {
   final VoidCallback? onPressed;
   final bool expanded;
   final Color? color;
+  final bool compact;
 
   const PrimaryButton(
     this.label, {
@@ -94,6 +98,7 @@ class PrimaryButton extends StatelessWidget {
     this.onPressed,
     this.expanded = true,
     this.color,
+    this.compact = false,
   });
 
   @override
@@ -103,9 +108,13 @@ class PrimaryButton extends StatelessWidget {
       style: FilledButton.styleFrom(
         backgroundColor: color ?? AppColors.primary,
         foregroundColor: Colors.white,
-        minimumSize: Size(expanded ? double.infinity : 120, 52),
+        minimumSize: Size(expanded ? double.infinity : 120, compact ? 46 : 52),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+        textStyle: TextStyle(
+          fontFamily: AppFonts.inter,
+          fontSize: 16,
+          fontWeight: compact ? FontWeight.w600 : FontWeight.w700,
+        ),
       ),
       child: Text(label),
     );
@@ -197,6 +206,7 @@ class FilterChips extends StatelessWidget {
   final ValueChanged<int> onSelected;
   final Color activeColor;
   final bool outlined;
+  final bool plainInactive;
 
   const FilterChips({
     super.key,
@@ -205,12 +215,14 @@ class FilterChips extends StatelessWidget {
     required this.onSelected,
     this.activeColor = AppColors.successDarkGreen,
     this.outlined = false,
+    this.plainInactive = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final compact = outlined || plainInactive;
     return SizedBox(
-      height: outlined ? 28 : 36,
+      height: compact ? 28 : 36,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: options.length,
@@ -220,7 +232,7 @@ class FilterChips extends StatelessWidget {
           return GestureDetector(
             onTap: () => onSelected(i),
             child: Container(
-              padding: EdgeInsets.symmetric(horizontal: outlined ? 12 : 14),
+              padding: EdgeInsets.symmetric(horizontal: compact ? 12 : 14),
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 color: outlined
@@ -229,6 +241,8 @@ class FilterChips extends StatelessWidget {
                           : AppColors.background
                     : active
                     ? activeColor
+                    : plainInactive
+                    ? Colors.transparent
                     : AppColors.chipBg,
                 borderRadius: BorderRadius.circular(20),
                 border: outlined
@@ -238,7 +252,7 @@ class FilterChips extends StatelessWidget {
               child: Text(
                 options[i],
                 style: TextStyle(
-                  fontSize: outlined ? 12 : 13,
+                  fontSize: compact ? 12 : 13,
                   fontWeight: outlined ? FontWeight.w500 : FontWeight.w600,
                   color: outlined
                       ? active
@@ -246,6 +260,8 @@ class FilterChips extends StatelessWidget {
                             : const Color(0xFF475569)
                       : active
                       ? Colors.white
+                      : plainInactive
+                      ? const Color(0xFF475569)
                       : AppColors.textPrimary,
                 ),
               ),
@@ -384,6 +400,7 @@ class FormFieldLabel extends StatelessWidget {
   final ValueChanged<String>? onChanged;
   final bool isMultiline;
   final Widget? prefixIcon;
+  final bool compact;
 
   const FormFieldLabel({
     super.key,
@@ -396,6 +413,7 @@ class FormFieldLabel extends StatelessWidget {
     this.onChanged,
     this.isMultiline = false,
     this.prefixIcon,
+    this.compact = false,
   });
 
   @override
@@ -403,12 +421,17 @@ class FormFieldLabel extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label.toUpperCase(),
-            style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textMuted,
-                letterSpacing: 0.6)),
+        Text(
+          compact ? label : label.toUpperCase(),
+          style: compact
+              ? AdminStyles.fieldLabel
+              : const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textMuted,
+                  letterSpacing: 0.6,
+                ),
+        ),
         const SizedBox(height: 6),
         if (isDropdown)
           _dropdown(context)

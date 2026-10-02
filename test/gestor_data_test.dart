@@ -353,6 +353,16 @@ void main() {
     (tester) async {
       final repo = _Reports();
       await _show(tester, const GestorReportsScreen(), reports: repo);
+      final heading = find.text('Conclusão pela Empresa');
+      expect(
+        find.ancestor(of: heading, matching: find.byType(AppCard)),
+        findsOneWidget,
+      );
+      final completionBar = tester.widget<ReportBarRow>(
+        find.byType(ReportBarRow).first,
+      );
+      expect(completionBar.compact, isTrue);
+      expect(completionBar.color, AppColors.successDarkGreen);
       expect(find.text('38%'), findsOneWidget);
       expect(find.text('Sem dados'), findsOneWidget);
       await tester.scrollUntilVisible(find.text('Curso real'), 200);
@@ -395,6 +405,9 @@ void main() {
     expect(export.onPressed, isNull);
     expect(find.text('Nenhuma empresa cadastrada.'), findsOneWidget);
     expect(find.text('Nenhuma conclusão no período.'), findsOneWidget);
+    final popularEmpty = find.text('Nenhuma conclusão no período.');
+    expect(tester.widget<Text>(popularEmpty).style!.fontSize, 12);
+    expect(tester.widget<Text>(popularEmpty).textAlign, TextAlign.center);
     await tester.scrollUntilVisible(
       find.text('Nenhuma atividade no período.'),
       200,
@@ -403,6 +416,7 @@ void main() {
     final emptyState = find.text('Nenhuma atividade no período.');
     final card = find.ancestor(of: emptyState, matching: find.byType(AppCard));
     expect(tester.widget<Text>(emptyState).textAlign, TextAlign.center);
+    expect(tester.widget<Text>(emptyState).style!.fontSize, 12);
     expect(
       tester.getCenter(emptyState).dx,
       closeTo(tester.getCenter(card).dx, 0.1),

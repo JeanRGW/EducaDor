@@ -8,6 +8,7 @@ import '../../app/theme.dart';
 import '../../data/models/models.dart';
 import '../../data/repositories/gestor_providers.dart';
 import '../../shared/widgets/app_icons.dart';
+import '../../shared/widgets/admin_styles.dart';
 import '../../shared/widgets/charts.dart';
 import '../../shared/widgets/common.dart';
 import 'widgets.dart';
@@ -96,118 +97,197 @@ class _GestorReportsScreenState extends ConsumerState<GestorReportsScreen> {
     ];
     final companies = [for (final page in pages) ...?page.asData?.value];
     final data = activity.asData?.value;
-    return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        titleSpacing: 16,
-        title: const Text('Relatórios e Análises'),
-        actions: const [
-          IconButton(
-            tooltip: 'Exportar CSV',
-            onPressed: null,
-            icon: SvgIcon(AppIcons.download, color: AppColors.textMuted),
-          ),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: _refresh,
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16),
-          children: [
-            AppCard(
-              padding: EdgeInsets.zero,
-              onTap: _pickPeriod,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
-                ),
-                child: Row(
-                  children: [
-                    const SvgIcon(
-                      AppIcons.calendar,
-                      size: 16,
-                      color: AppColors.textMuted,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        '${formatDate(_period.from)} - ${formatDate(_period.to)}',
-                        style: const TextStyle(fontSize: 13),
-                      ),
-                    ),
-                    const SvgIcon(
-                      AppIcons.chevronDown,
-                      size: 18,
-                      color: AppColors.textMuted,
-                    ),
-                  ],
-                ),
+    return Theme(
+      data: AdminStyles.screenTheme(Theme.of(context)),
+      child: Scaffold(
+        appBar: AppBar(
+          automaticallyImplyLeading: false,
+          titleSpacing: 16,
+          toolbarHeight: 52,
+          backgroundColor: AppColors.surface,
+          titleTextStyle: AdminStyles.pageTitle,
+          title: const Text('Relatórios e Análises'),
+          actions: const [
+            IconButton(
+              tooltip: 'Exportar CSV',
+              onPressed: null,
+              icon: SvgIcon(
+                AppIcons.fileDownload,
+                size: 20,
+                color: AppColors.textMuted,
               ),
             ),
-            const SizedBox(height: 12),
-            const SectionHeader('Conclusão pela Empresa'),
-            for (var i = 0; i < pages.length; i++)
-              if (pages[i].hasError)
-                DataErrorCard(
-                  message: 'Não foi possível carregar a conclusão.',
-                  retry: () => ref.invalidate(gestorCompletionProvider(i * 50)),
-                ),
-            if (pages.first.isLoading) const DataSkeleton(chart: true),
-            if (companies.isNotEmpty)
-              AppCard(
-                child: Column(
-                  children: [
-                    for (final company in companies)
-                      if (company.percent != null)
-                        ReportBarRow(company.company, company.percent!)
-                      else
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          child: Row(
-                            children: [
-                              Expanded(child: Text(company.company)),
-                              const Text('Sem dados'),
-                            ],
-                          ),
-                        ),
-                  ],
-                ),
-              ),
-            if (companies.isEmpty && pages.first.asData != null)
-              const AppCard(child: Text('Nenhuma empresa cadastrada.')),
-            if (_offset > 0 && pages.last.isLoading) const DataSkeleton(),
-            if (pages.last.asData?.value.length == 50)
-              TextButton(
-                onPressed: () => setState(() => _offset += 50),
-                child: const Text('Carregar mais empresas'),
-              ),
-            const SizedBox(height: 12),
-            const SectionHeader('Conteúdo mais popular'),
-            if (activity.hasError)
-              DataErrorCard(
-                message: 'Não foi possível carregar a atividade.',
-                retry: () =>
-                    ref.invalidate(gestorActivityReportProvider(_period)),
-              ),
-            if (activity.isLoading) const DataSkeleton(chart: true),
-            if (data != null)
-              AppCard(
-                child: Column(
-                  children: [
-                    if (data.popularContent.isEmpty)
-                      const Text('Nenhuma conclusão no período.'),
-                    for (var i = 0; i < data.popularContent.length; i++)
-                      _PopularRow(rank: i + 1, entry: data.popularContent[i]),
-                  ],
-                ),
-              ),
-            const SizedBox(height: 12),
-            const SectionHeader('Engajamento mensal dos usuários'),
-            if (activity.isLoading) const DataSkeleton(chart: true),
-            if (data != null) _engagement(data.engagement),
           ],
+        ),
+        body: RefreshIndicator(
+          onRefresh: _refresh,
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.only(bottom: 16),
+            children: [
+              Container(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                decoration: const BoxDecoration(
+                  color: AppColors.surface,
+                  border: Border(bottom: BorderSide(color: AppColors.border)),
+                ),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(minHeight: 32),
+                  child: AppCard(
+                    borderRadius: 8,
+                    color: AppColors.background,
+                    padding: EdgeInsets.zero,
+                    onTap: _pickPeriod,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      child: Row(
+                        children: [
+                          const SvgIcon(
+                            AppIcons.calendar,
+                            size: 16,
+                            color: Color(0xFF475569),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              '${formatDate(_period.from)} - ${formatDate(_period.to)}',
+                              style: AdminStyles.fieldText,
+                            ),
+                          ),
+                          const SvgIcon(
+                            AppIcons.chevronDown,
+                            size: 16,
+                            color: Color(0xFF475569),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (var i = 0; i < pages.length; i++)
+                      if (pages[i].hasError)
+                        DataErrorCard(
+                          message: 'Não foi possível carregar a conclusão.',
+                          retry: () =>
+                              ref.invalidate(gestorCompletionProvider(i * 50)),
+                        ),
+                    if (pages.first.isLoading) const DataSkeleton(chart: true),
+                    if (companies.isNotEmpty)
+                      AppCard(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Conclusão pela Empresa',
+                              style: AdminStyles.cardTitle,
+                            ),
+                            const SizedBox(height: 8),
+                            for (final company in companies)
+                              if (company.percent != null)
+                                ReportBarRow(
+                                  company.company,
+                                  company.percent!,
+                                  compact: true,
+                                  color: AppColors.successDarkGreen,
+                                )
+                              else
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 8,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          company.company,
+                                          style: AdminStyles.body.copyWith(
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Sem dados',
+                                        style: AdminStyles.emptyState.copyWith(
+                                          color: AppColors.textMuted,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                          ],
+                        ),
+                      ),
+                    if (companies.isEmpty && pages.first.asData != null)
+                      const AppCard(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Conclusão pela Empresa',
+                              style: AdminStyles.cardTitle,
+                            ),
+                            SizedBox(height: 12),
+                            _ReportEmptyState('Nenhuma empresa cadastrada.'),
+                          ],
+                        ),
+                      ),
+                    if (_offset > 0 && pages.last.isLoading)
+                      const DataSkeleton(),
+                    if (pages.last.asData?.value.length == 50)
+                      TextButton(
+                        onPressed: () => setState(() => _offset += 50),
+                        child: const Text('Carregar mais empresas'),
+                      ),
+                    const SizedBox(height: 16),
+                    if (activity.hasError)
+                      DataErrorCard(
+                        message: 'Não foi possível carregar a atividade.',
+                        retry: () => ref.invalidate(
+                          gestorActivityReportProvider(_period),
+                        ),
+                      ),
+                    if (activity.isLoading) const DataSkeleton(chart: true),
+                    if (data != null)
+                      AppCard(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Conteúdo mais popular',
+                              style: AdminStyles.cardTitle,
+                            ),
+                            const SizedBox(height: 12),
+                            if (data.popularContent.isEmpty)
+                              const _ReportEmptyState(
+                                'Nenhuma conclusão no período.',
+                              ),
+                            for (var i = 0; i < data.popularContent.length; i++)
+                              _PopularRow(
+                                rank: i + 1,
+                                entry: data.popularContent[i],
+                              ),
+                          ],
+                        ),
+                      ),
+                    const SizedBox(height: 16),
+                    if (activity.isLoading) const DataSkeleton(chart: true),
+                    if (data != null) _engagement(data.engagement),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -216,34 +296,53 @@ class _GestorReportsScreenState extends ConsumerState<GestorReportsScreen> {
   Widget _engagement(List<EngagementMonth> rows) {
     final max = rows.fold<int>(1, (max, row) => math.max(max, row.activeUsers));
     return AppCard(
-      child: rows.every((row) => row.activeUsers == 0)
-          ? const Center(
-              child: Text(
-                'Nenhuma atividade no período.',
-                textAlign: TextAlign.center,
-              ),
-            )
-          : Semantics(
-              label: rows
-                  .map(
-                    (row) =>
-                        '${monthLabel(row.month)} ${row.month.year}: '
-                        '${row.activeUsers} usuários ativos',
-                  )
-                  .join('; '),
-              child: BarChart(
-                rows
-                    .map(
-                      (row) => MapEntry(
-                        '${monthLabel(row.month)}/${row.month.year % 100}',
-                        row.activeUsers / max,
-                      ),
-                    )
-                    .toList(),
-              ),
-            ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Engajamento mensal dos usuários',
+            style: AdminStyles.cardTitle,
+          ),
+          const SizedBox(height: 16),
+          rows.every((row) => row.activeUsers == 0)
+              ? const _ReportEmptyState('Nenhuma atividade no período.')
+              : Semantics(
+                  label: rows
+                      .map(
+                        (row) =>
+                            '${monthLabel(row.month)} ${row.month.year}: '
+                            '${row.activeUsers} usuários ativos',
+                      )
+                      .join('; '),
+                  child: BarChart(
+                    rows
+                        .map(
+                          (row) => MapEntry(
+                            '${monthLabel(row.month)}/${row.month.year % 100}',
+                            row.activeUsers / max,
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ),
+        ],
+      ),
     );
   }
+}
+
+class _ReportEmptyState extends StatelessWidget {
+  final String text;
+  const _ReportEmptyState(this.text);
+
+  @override
+  Widget build(BuildContext context) => Center(
+    child: Text(
+      text,
+      textAlign: TextAlign.center,
+      style: AdminStyles.emptyState,
+    ),
+  );
 }
 
 class _PopularRow extends StatelessWidget {
@@ -257,33 +356,39 @@ class _PopularRow extends StatelessWidget {
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(
-          width: 30,
+        Container(
+          width: 24,
+          height: 24,
+          alignment: Alignment.center,
+          decoration: const BoxDecoration(
+            color: AppColors.background,
+            shape: BoxShape.circle,
+          ),
           child: Text(
-            '$rank.',
+            '$rank',
             style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-              color: AppColors.primary,
+              fontFamily: AppFonts.inter,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: AppColors.successDarkGreen,
             ),
           ),
         ),
+        const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 entry.title,
-                style: const TextStyle(
-                  fontSize: 14.5,
-                  fontWeight: FontWeight.w700,
-                ),
+                style: AdminStyles.body.copyWith(color: AppColors.textPrimary),
               ),
               const SizedBox(height: 2),
               Text(
                 '${formatCount(entry.completions)} conclusões',
                 style: const TextStyle(
-                  fontSize: 12,
+                  fontFamily: AppFonts.inter,
+                  fontSize: 11,
                   color: AppColors.textMuted,
                 ),
               ),

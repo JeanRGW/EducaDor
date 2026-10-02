@@ -8,6 +8,7 @@ import 'package:educador/data/session/session_controller.dart';
 import 'package:educador/features/content/catalog_screen.dart';
 import 'package:educador/features/content/cover_image.dart';
 import 'package:educador/features/content/publish_video_screen.dart';
+import 'package:educador/shared/widgets/common.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show MethodChannel;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -48,6 +49,8 @@ class _People extends PeopleRepository {
 }
 
 class _Catalog extends ContentRepository {
+  String title = 'Segurança no trabalho';
+  double? completionPct = 84;
   bool platformEnabled = true;
   bool companyEnabled = true;
   bool failWrite = false;
@@ -104,7 +107,7 @@ class _Catalog extends ContentRepository {
     return [
       ManagedContent(
         id: 'content',
-        title: 'Segurança no trabalho',
+        title: title,
         kind: 'course',
         platformEnabled: platformEnabled,
         companyEnabled: companyEnabled,
@@ -112,7 +115,7 @@ class _Catalog extends ContentRepository {
         companyIds: audience.companyIds,
         companyCount: audience.allCompanies ? 2 : audience.companyIds.length,
         lessonCount: 4,
-        completionPct: 84,
+        completionPct: completionPct,
       ),
     ];
   }
@@ -147,6 +150,35 @@ class _Companies extends CompanyRepository {
   ];
 }
 
+class _PagedCatalog extends _Catalog {
+  final List<int> offsets = [];
+
+  @override
+  Future<List<ManagedContent>> catalog({
+    String search = '',
+    String? kind,
+    int offset = 0,
+  }) async {
+    offsets.add(offset);
+    return [
+      for (var i = offset; i < offset + 50; i++)
+        ManagedContent(
+          id: 'content-$i',
+          title: 'Curso $i',
+          kind: 'course',
+          coverUrl: 'https://example.test/covers/$i.webp',
+          platformEnabled: true,
+          companyEnabled: true,
+          allCompanies: true,
+          companyIds: const [],
+          companyCount: 2,
+          lessonCount: 4,
+          completionPct: 84,
+        ),
+    ];
+  }
+}
+
 Future<void> _showCatalog(
   WidgetTester tester,
   _Catalog repo, {
@@ -168,6 +200,61 @@ Future<void> _showCatalog(
 }
 
 void main() {
+  for (final platform in [false, true]) {
+    testWidgets(
+      'catalog cards and covers stay lazy after pagination (platform: $platform)',
+      (tester) async {
+        await tester.binding.setSurfaceSize(const Size(390, 800));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+        final repo = _PagedCatalog();
+        await _showCatalog(tester, repo, platform: platform);
+        final cards = find.byType(ManagedContentCard);
+        final covers = find.byWidgetPredicate(
+          (widget) => widget is Image && widget.image is NetworkImage,
+        );
+
+        void expectLazyPage() {
+          expect(cards.evaluate().length, inInclusiveRange(1, 9));
+          expect(covers.evaluate().length, cards.evaluate().length);
+        }
+
+        expect(repo.offsets, [0]);
+        expectLazyPage();
+        expect(find.text('Curso 0'), findsOneWidget);
+        expect(find.text('Curso 49'), findsNothing);
+        await tester.scrollUntilVisible(
+          find.text('Carregar mais conteúdo'),
+          1000,
+          scrollable: find.byType(Scrollable).first,
+        );
+        await tester.pumpAndSettle();
+        expectLazyPage();
+        expect(find.text('Curso 0'), findsNothing);
+        await tester.tap(find.text('Carregar mais conteúdo'));
+        await tester.pumpAndSettle();
+        expect(repo.offsets, [0, 50]);
+        await tester.scrollUntilVisible(
+          find.text('Curso 50'),
+          300,
+          scrollable: find.byType(Scrollable).first,
+        );
+        await tester.pumpAndSettle();
+        expectLazyPage();
+        expect(find.text('Curso 99'), findsNothing);
+        expect(find.text('Curso 0'), findsNothing);
+        await tester.scrollUntilVisible(
+          find.text('Carregar mais conteúdo'),
+          1000,
+          scrollable: find.byType(Scrollable).first,
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('Curso 99'), findsOneWidget);
+        expectLazyPage();
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
   testWidgets('company switch persists without changing platform state', (
     tester,
   ) async {
@@ -251,6 +338,92 @@ void main() {
     await tester.pumpAndSettle();
     expect(repo.kind, 'quiz');
   });
+
+  testWidgets(
+    'platform catalog matches prototype styling and keeps access actions',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(390, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final repo = _Catalog();
+      await _showCatalog(tester, repo, platform: true);
+
+      expect(tester.getTopLeft(find.text('Conteúdo Educacional')).dx, 16);
+      expect(tester.getSize(find.byType(TextField)).height, 36);
+      expect(tester.getSize(find.byType(FilterChips)).height, 28);
+      expect(
+        tester.widget<FilterChips>(find.byType(FilterChips)).plainInactive,
+        isTrue,
+      );
+      final titleStyle = tester.widget<Text>(find.text(repo.title)).style!;
+      expect(titleStyle.fontFamily, AppFonts.outfit);
+      expect(titleStyle.fontSize, 14);
+      expect(titleStyle.fontWeight, FontWeight.w700);
+      expect(tester.widget<ProgressBar>(find.byType(ProgressBar)).height, 4);
+      final toggle = tester.widget<Switch>(find.byType(Switch));
+      expect(toggle.activeThumbColor, Colors.white);
+      expect(toggle.activeTrackColor, AppColors.successDarkGreen);
+      expect(
+        tester.getCenter(find.byType(Switch)).dx,
+        lessThan(tester.getTopLeft(find.text('Acesso liberado')).dx),
+      );
+      expect(find.text('Liberar para'), findsOneWidget);
+      expect(
+        tester
+            .widget<FloatingActionButton>(find.byType(FloatingActionButton))
+            .shape,
+        isA<CircleBorder>(),
+      );
+      await tester.tap(find.byType(Switch));
+      await tester.pumpAndSettle();
+      expect(repo.platformWrites, 1);
+      expect(find.text('Pausado pela plataforma'), findsOneWidget);
+      expect(
+        tester.widget<Text>(find.text(repo.title)).style!.color,
+        AppColors.textMuted,
+      );
+      expect(find.text('84%'), findsOneWidget);
+      expect(find.text('Liberar para'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'platform catalog fits long titles and no-data metrics with larger text',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(320, 1000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final repo = _Catalog()
+        ..title =
+            'Segurança no trabalho e cuidados com a saúde dos funcionários'
+        ..completionPct = null
+        ..audience = const ContentAudience(
+          allCompanies: false,
+          companyIds: ['a'],
+        );
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [contentRepositoryProvider.overrideWithValue(repo)],
+          child: MaterialApp(
+            theme: AppTheme.light,
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(textScaler: const TextScaler.linear(1.5)),
+              child: child!,
+            ),
+            home: const ContentCatalogScreen(platform: true),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Sem dados'), findsOneWidget);
+      expect(
+        find.textContaining('1 empresa liberada', findRichText: true),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('publishing defaults to all companies and stores a YouTube ID', (
     tester,

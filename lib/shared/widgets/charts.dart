@@ -271,18 +271,20 @@ class ReportBarRow extends StatelessWidget {
   final String label;
   final double value;
   final Color color;
+  final bool compact;
 
   const ReportBarRow(
     this.label,
     this.value, {
     super.key,
     this.color = AppColors.chartBlue,
+    this.compact = false,
   });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: EdgeInsets.symmetric(vertical: compact ? 6 : 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -291,28 +293,33 @@ class ReportBarRow extends StatelessWidget {
               Expanded(
                 child: Text(
                   label,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
+                  style: TextStyle(
+                    fontFamily: AppFonts.inter,
+                    fontSize: compact ? 12 : 14,
+                    fontWeight: compact ? FontWeight.w400 : FontWeight.w600,
+                    color: compact ? const Color(0xFF475569) : null,
                   ),
                 ),
               ),
               Text(
                 '${value.round()}%',
-                style: const TextStyle(
-                  fontSize: 14,
+                style: TextStyle(
+                  fontFamily: AppFonts.inter,
+                  fontSize: compact ? 12 : 14,
                   fontWeight: FontWeight.w700,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: compact ? 4 : 8),
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
               value: value / 100,
-              minHeight: 9,
-              backgroundColor: AppColors.border,
+              minHeight: compact ? 8 : 9,
+              backgroundColor: compact
+                  ? AppColors.background
+                  : AppColors.border,
               valueColor: AlwaysStoppedAnimation<Color>(color),
             ),
           ),
