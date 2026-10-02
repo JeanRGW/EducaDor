@@ -316,11 +316,12 @@ class _CompanyCard extends StatelessWidget {
             height: 1.4,
           ),
         ),
-        if (company.active) ...[
-          const SizedBox(height: 8),
-          OutlinedButton(
+        const SizedBox(height: 8),
+        OutlinedButtonTheme(
+          data: OutlinedButtonThemeData(
             style: OutlinedButton.styleFrom(
               foregroundColor: AppColors.successDarkGreen,
+              minimumSize: const Size(0, 44),
               side: const BorderSide(color: AppColors.border),
               textStyle: const TextStyle(
                 fontFamily: AppFonts.inter,
@@ -328,13 +329,31 @@ class _CompanyCard extends StatelessWidget {
                 fontWeight: FontWeight.w600,
               ),
             ),
-            onPressed: () async {
-              await context.push('/gestor/company/${company.id}/manager/add');
-              if (context.mounted) await onInviteCreated();
-            },
-            child: const Text('Convidar gestor da empresa'),
           ),
-        ],
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              if (company.active)
+                OutlinedButton(
+                  onPressed: () async {
+                    await context.push(
+                      '/gestor/company/${company.id}/manager/add',
+                    );
+                    if (context.mounted) await onInviteCreated();
+                  },
+                  child: const Text('Convidar gestor da empresa'),
+                ),
+              OutlinedButton(
+                onPressed: () async {
+                  await context.push('/gestor/company/${company.id}');
+                  if (context.mounted) await onInviteCreated();
+                },
+                child: const Text('Editar'),
+              ),
+            ],
+          ),
+        ),
       ],
     ),
   );

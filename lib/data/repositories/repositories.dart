@@ -145,6 +145,37 @@ class CompanyRepository {
     final row = await client.from('companies').select().eq('id', id).single();
     return _company(row);
   }
+
+  Future<void> update(String id, Map<String, String> fields) async {
+    final client =
+        _injectedClient ??
+        _client ??
+        (throw StateError('Configure o Supabase para carregar empresas.'));
+    try {
+      await client.rpc(
+        'update_company',
+        params: {'p_company': id, 'p_fields': fields},
+      );
+    } on PostgrestException catch (error) {
+      if (error.code == '23505') {
+        throw const ManagementException(
+          'Este CNPJ já está cadastrado em outra empresa.',
+        );
+      }
+      rethrow;
+    }
+  }
+
+  Future<void> setActive(String id, bool active) async {
+    final client =
+        _injectedClient ??
+        _client ??
+        (throw StateError('Configure o Supabase para carregar empresas.'));
+    await client.rpc(
+      'set_company_active',
+      params: {'p_company': id, 'p_active': active},
+    );
+  }
 }
 
 class EmployeeRepository {
@@ -183,6 +214,68 @@ class EmployeeRepository {
 }
 
 class PeopleRepository {
+  final SupabaseClient? _injectedClient;
+  PeopleRepository({SupabaseClient? client}) : _injectedClient = client;
+
+  SupabaseClient get _peopleClient =>
+      _injectedClient ??
+      _client ??
+      (throw StateError('Configure o Supabase para gerenciar gestores.'));
+
+  Future<List<User>> managers({
+    String? companyId,
+    String search = '',
+    int offset = 0,
+  }) async {
+    final rows =
+        await _peopleClient.rpc(
+              'gestor_managers',
+              params: {
+                'p_company': companyId,
+                'p_search': search.trim(),
+                'p_offset': offset,
+              },
+            )
+            as List<dynamic>;
+    return rows.map((item) {
+      final row = item as Map<String, dynamic>;
+      final name = row['full_name'] as String;
+      return User(
+        id: row['id'] as String,
+        fullName: name,
+        email: row['email'] as String,
+        initials: name
+            .trim()
+            .split(RegExp(r'\s+'))
+            .take(2)
+            .map((p) => p[0])
+            .join()
+            .toUpperCase(),
+      );
+    }).toList();
+  }
+
+  Future<void> revokeAccess(String userId, {String? companyId}) async {
+    try {
+      await _peopleClient.rpc(
+        'revoke_gestor_access',
+        params: {'p_user': userId, 'p_company': companyId},
+      );
+    } on PostgrestException catch (error) {
+      final message = switch (error.message) {
+        'Last platform gestor' =>
+          'A plataforma precisa manter pelo menos um gestor.',
+        'Last company gestor' =>
+          'A empresa precisa manter pelo menos um gestor.',
+        'Access unavailable' =>
+          'Este acesso já foi removido. Atualize a lista.',
+        _ => null,
+      };
+      if (message != null) throw ManagementException(message);
+      rethrow;
+    }
+  }
+
   Future<List<ProfessionalOption>> platformProfessionals({
     String search = '',
   }) async {
@@ -360,9 +453,105 @@ class ReportRepository {
 }
 
 class ContentRepository {
+  final SupabaseClient? _injectedClient;
+  ContentRepository({SupabaseClient? client}) : _injectedClient = client;
+
   SupabaseClient get _contentClient =>
+      _injectedClient ??
       _client ??
       (throw StateError('Configure o Supabase para gerenciar conteúdo.'));
+
+  Future<EditableCourse> detail(String id) async {
+    final row = await _contentClient
+        .from('courses')
+        .select(
+          'id,title,description,cover_key,status,all_companies,responsible_id',
+        )
+        .eq('id', id)
+        .single();
+    final responsibleId = row['responsible_id'] as String?;
+    ProfessionalOption? responsible;
+    if (responsibleId != null) {
+      final person = await _contentClient
+          .from('profiles')
+          .select('full_name')
+          .eq('id', responsibleId)
+          .single();
+      responsible = ProfessionalOption(
+        id: responsibleId,
+        name: person['full_name'] as String,
+      );
+    }
+    final coverKey = row['cover_key'] as String?;
+    return EditableCourse(
+      id: row['id'] as String,
+      title: row['title'] as String,
+      description: row['description'] as String? ?? '',
+      coverKey: coverKey,
+      coverUrl: _publicCoverUrl(coverKey),
+      responsible: responsible,
+      platformEnabled: row['status'] == 'released',
+      allCompanies: row['all_companies'] as bool,
+    );
+  }
+
+  Future<List<EditableLesson>> editableLessons(
+    String courseId, {
+    int offset = 0,
+  }) async {
+    final rows =
+        await _contentClient.rpc(
+              'gestor_course_lessons',
+              params: {'p_course': courseId, 'p_offset': offset},
+            )
+            as List<dynamic>;
+    return rows.map((item) {
+      final row = item as Map<String, dynamic>;
+      return EditableLesson(
+        id: row['id'] as String,
+        title: row['title'] as String,
+        kind: row['kind'] as String,
+        moduleTitle: row['module_title'] as String,
+        videoId: row['video_id'] as String?,
+      );
+    }).toList();
+  }
+
+  Future<void> updateMetadata(
+    String id, {
+    required String title,
+    required String description,
+    String? coverKey,
+    String? responsibleId,
+  }) async {
+    await _contentClient.rpc(
+      'update_course_metadata',
+      params: {
+        'p_course': id,
+        'p_title': title.trim(),
+        'p_description': description.trim(),
+        'p_cover_key': coverKey,
+        'p_responsible_id': responsibleId,
+      },
+    );
+  }
+
+  Future<void> updateLesson(
+    String id, {
+    required String moduleTitle,
+    required String title,
+    String? videoId,
+  }) async {
+    await _contentClient.rpc(
+      'update_course_lesson',
+      params: {
+        'p_lesson': id,
+        'p_module_title': moduleTitle.trim(),
+        'p_title': title.trim(),
+        'p_video_id': videoId,
+      },
+    );
+  }
 
   Future<List<ManagedContent>> catalog({
     String search = '',
@@ -413,6 +602,20 @@ class ContentRepository {
     await _contentClient.rpc(
       'set_course_company_enabled',
       params: {'p_course': courseId, 'p_enabled': enabled},
+    );
+  }
+
+  Future<ContentAudience> audience(String courseId) async {
+    final rows =
+        await _contentClient.rpc(
+              'gestor_course_audience',
+              params: {'p_course': courseId},
+            )
+            as List<dynamic>;
+    final row = rows.single as Map<String, dynamic>;
+    return ContentAudience(
+      allCompanies: row['all_companies'] as bool,
+      companyIds: (row['company_ids'] as List<dynamic>? ?? []).cast<String>(),
     );
   }
 
@@ -633,6 +836,46 @@ class AuthRepository {
   }
 }
 
+class ProfileRepository {
+  final SupabaseClient? _injectedClient;
+  ProfileRepository({SupabaseClient? client}) : _injectedClient = client;
+
+  SupabaseClient get _profileClient =>
+      _injectedClient ??
+      _client ??
+      (throw StateError('Configure o Supabase para editar seu perfil.'));
+
+  Future<OwnProfile> own() async {
+    final client = _profileClient;
+    final userId = client.auth.currentUser?.id;
+    if (userId == null) throw StateError('Entre para editar seu perfil.');
+    final row = await client
+        .from('profiles')
+        .select('full_name,email,phone,birth_date,address')
+        .eq('id', userId)
+        .single();
+    return OwnProfile(
+      fullName: row['full_name'] as String,
+      email: row['email'] as String,
+      phone: row['phone'] as String? ?? '',
+      birthDate: row['birth_date'] as String?,
+      address: row['address'] as String? ?? '',
+    );
+  }
+
+  Future<void> update(OwnProfile profile) async {
+    await _profileClient.rpc(
+      'update_own_profile',
+      params: {
+        'p_name': profile.fullName.trim(),
+        'p_phone': profile.phone.trim(),
+        'p_birth_date': profile.birthDate,
+        'p_address': profile.address.trim(),
+      },
+    );
+  }
+}
+
 class InvitationRepository {
   Future<List<PendingInvitation>> pending({
     Role? role,
@@ -722,6 +965,9 @@ class InvitationRepository {
 
 final companyRepositoryProvider = Provider<CompanyRepository>(
   (ref) => CompanyRepository(),
+);
+final profileRepositoryProvider = Provider<ProfileRepository>(
+  (ref) => ProfileRepository(),
 );
 final employeeRepositoryProvider = Provider<EmployeeRepository>(
   (ref) => EmployeeRepository(),

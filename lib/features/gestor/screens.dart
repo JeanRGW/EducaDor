@@ -13,6 +13,7 @@ import '../auth/onboarding_screens.dart';
 import '../auth/pending_invites.dart';
 import '../content/catalog_screen.dart';
 import '../content/publish_video_screen.dart';
+import 'widgets.dart';
 
 export 'companies_screen.dart';
 export 'dashboard_screen.dart';
@@ -151,7 +152,7 @@ class _AddCompanyScreenState extends ConsumerState<AddCompanyScreen> {
             hint: 'Nome completo',
             controller: _responsible,
           ),
-          _CompanyFieldRow(
+          CompanyFieldRow(
             first: FormFieldLabel(
               label: 'E-mail do gestor',
               compact: true,
@@ -171,7 +172,7 @@ class _AddCompanyScreenState extends ConsumerState<AddCompanyScreen> {
             hint: 'Rua, número, bairro',
             controller: _address,
           ),
-          _CompanyFieldRow(
+          CompanyFieldRow(
             firstFlex: 3,
             first: FormFieldLabel(
               label: 'Cidade',
@@ -202,35 +203,6 @@ class _AddCompanyScreenState extends ConsumerState<AddCompanyScreen> {
         ],
       ),
     ),
-  );
-}
-
-class _CompanyFieldRow extends StatelessWidget {
-  final Widget first;
-  final Widget second;
-  final int firstFlex;
-  const _CompanyFieldRow({
-    required this.first,
-    required this.second,
-    this.firstFlex = 1,
-  });
-
-  @override
-  Widget build(BuildContext context) => LayoutBuilder(
-    builder: (context, constraints) {
-      if (constraints.maxWidth < 320 ||
-          MediaQuery.textScalerOf(context).scale(12) > 16) {
-        return Column(children: [first, second]);
-      }
-      return Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(flex: firstFlex, child: first),
-          const SizedBox(width: 12),
-          Expanded(child: second),
-        ],
-      );
-    },
   );
 }
 
@@ -346,6 +318,11 @@ class _GestorProfileScreenState extends ConsumerState<GestorProfileScreen> {
                       },
                     ),
                     const SizedBox(height: 12),
+                    OutlinedButton(
+                      onPressed: () => context.push('/gestor/gestores'),
+                      child: const Text('Gerenciar gestores da plataforma'),
+                    ),
+                    const SizedBox(height: 12),
                     PendingInvitesSection(
                       key: ValueKey((_pendingRevision, session?.user.id)),
                       role: Role.gestor,
@@ -371,9 +348,10 @@ class _GestorProfileScreenState extends ConsumerState<GestorProfileScreen> {
                       ),
                       const SizedBox(height: 12),
                     ],
-                    const _GestorMenuRow(
+                    _GestorMenuRow(
                       AppIcons.accountEdit,
                       'Configurações de Conta',
+                      onTap: () => context.push('/gestor/perfil/edit'),
                     ),
                     const _GestorMenuRow(
                       AppIcons.bell,
@@ -433,37 +411,42 @@ class _GestorProfileScreenState extends ConsumerState<GestorProfileScreen> {
 class _GestorMenuRow extends StatelessWidget {
   final String icon;
   final String label;
-  const _GestorMenuRow(this.icon, this.label);
+  final VoidCallback? onTap;
+  const _GestorMenuRow(this.icon, this.label, {this.onTap});
 
   @override
-  Widget build(BuildContext context) => Container(
-    constraints: const BoxConstraints(minHeight: 48),
-    margin: const EdgeInsets.only(bottom: 8),
-    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-    decoration: BoxDecoration(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: AppColors.border),
-    ),
-    child: Row(
-      children: [
-        SvgIcon(icon, size: 18, color: AppColors.successDarkGreen),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            label,
-            style: AdminStyles.body.copyWith(
-              fontSize: 14,
-              color: AppColors.textPrimary,
+  Widget build(BuildContext context) => InkWell(
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(12),
+    child: Container(
+      constraints: const BoxConstraints(minHeight: 48),
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          SvgIcon(icon, size: 18, color: AppColors.successDarkGreen),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              label,
+              style: AdminStyles.body.copyWith(
+                fontSize: 14,
+                color: AppColors.textPrimary,
+              ),
             ),
           ),
-        ),
-        const SvgIcon(
-          AppIcons.chevronRight,
-          size: 16,
-          color: AppColors.textMuted,
-        ),
-      ],
+          const SvgIcon(
+            AppIcons.chevronRight,
+            size: 16,
+            color: AppColors.textMuted,
+          ),
+        ],
+      ),
     ),
   );
 }

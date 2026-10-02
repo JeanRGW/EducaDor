@@ -10,6 +10,11 @@ enum CourseKind { video, audio, quiz, reading, pdf, module, course }
 
 enum EmployeeStatus { active, onLeave }
 
+class ManagementException implements Exception {
+  final String message;
+  const ManagementException(this.message);
+}
+
 class User {
   final String id;
   final String fullName;
@@ -290,6 +295,60 @@ class LearningCourse {
     required this.title,
     this.description,
     this.coverUrl,
+  });
+}
+
+class OwnProfile {
+  final String fullName;
+  final String email;
+  final String phone;
+  final String address;
+  final String? birthDate;
+
+  const OwnProfile({
+    required this.fullName,
+    required this.email,
+    this.phone = '',
+    this.address = '',
+    this.birthDate,
+  });
+}
+
+class EditableCourse {
+  final String id;
+  final String title;
+  final String description;
+  final String? coverKey;
+  final String? coverUrl;
+  final ProfessionalOption? responsible;
+  final bool platformEnabled;
+  final bool allCompanies;
+
+  const EditableCourse({
+    required this.id,
+    required this.title,
+    required this.description,
+    this.coverKey,
+    this.coverUrl,
+    this.responsible,
+    required this.platformEnabled,
+    required this.allCompanies,
+  });
+}
+
+class EditableLesson {
+  final String id;
+  final String title;
+  final String moduleTitle;
+  final String kind;
+  final String? videoId;
+
+  const EditableLesson({
+    required this.id,
+    required this.title,
+    required this.moduleTitle,
+    required this.kind,
+    this.videoId,
   });
 }
 

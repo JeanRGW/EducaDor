@@ -30,6 +30,12 @@ Public staging inputs (`SUPABASE_URL`, `SUPABASE_ANON_KEY` publishable key, `CLO
    `20261001000000_gestor_data.sql`; verify `supabase/tests/gestor_data.sql` before
    an operator-approved staging migration. Metric semantics live in
    `01-backend.md#gestor-data-integration`. Client-side CSV export remains deferred.
-7. Pages + domain + FCM tokens + `push-on-assign` + 4 workflows + keepalive.
+7. Gestor lifecycle management uses `20261002000000_gestor_management.sql`:
+   company edits/pause, accepted gestor directories/revocation, own-profile edits
+   and in-place course/video edits. Verify `supabase/tests/gestor_management.sql`
+   before an operator-approved migration. Deploy the updated `accept-invite`
+   function **after** the migration, then build/deploy Flutter; invitation
+   acceptance now requires its server-only atomic RPC.
+8. Pages + domain + FCM tokens + `push-on-assign` + 4 workflows + keepalive.
 
 Each step keeps the app runnable on mocks until its repo is swapped.
