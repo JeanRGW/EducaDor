@@ -388,6 +388,37 @@ void main() {
   );
 
   testWidgets(
+    'scaled platform switch only responds within its painted hit target',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(390, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final repo = _Catalog();
+      await _showCatalog(tester, repo, platform: true);
+
+      final toggle = find.byType(Switch);
+      final center = tester.getCenter(toggle);
+      final top = tester.getTopLeft(toggle);
+      final bottom = tester.getBottomRight(toggle);
+      for (final point in [
+        Offset(bottom.dx + 8, center.dy),
+        Offset(center.dx, top.dy - 4),
+        Offset(center.dx, bottom.dy + 4),
+      ]) {
+        await tester.tapAt(point);
+        await tester.pumpAndSettle();
+        expect(repo.platformWrites, 0);
+        expect(tester.widget<Switch>(toggle).value, isTrue);
+      }
+
+      await tester.tapAt(center);
+      await tester.pumpAndSettle();
+      expect(repo.platformWrites, 1);
+      expect(tester.widget<Switch>(toggle).value, isFalse);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
     'platform catalog fits long titles and no-data metrics with larger text',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(320, 1000));

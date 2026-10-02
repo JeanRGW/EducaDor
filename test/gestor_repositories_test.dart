@@ -198,6 +198,18 @@ void main() {
     () async {
       await expectLater(GestorRepository().dashboard(), throwsStateError);
       await expectLater(CompanyRepository().page(), throwsStateError);
+      for (final id in ['c-santa-maria', 'unknown-company']) {
+        await expectLater(
+          CompanyRepository().byId(id),
+          throwsA(
+            isA<StateError>().having(
+              (error) => error.message,
+              'message',
+              'Configure o Supabase para carregar empresas.',
+            ),
+          ),
+        );
+      }
       await expectLater(
         ReportRepository().platformCompletion(),
         throwsStateError,

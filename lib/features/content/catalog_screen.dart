@@ -469,7 +469,6 @@ class ManagedContentCard extends StatelessWidget {
                           child: Transform.scale(
                             scale: platform ? 0.55 : 1,
                             alignment: Alignment.centerLeft,
-                            transformHitTests: false,
                             child: Switch(
                               value: platform
                                   ? item.platformEnabled

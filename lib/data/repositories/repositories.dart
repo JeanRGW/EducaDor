@@ -138,10 +138,10 @@ class CompanyRepository {
   }
 
   Future<Company> byId(String id) async {
-    final client = _injectedClient ?? _client;
-    if (client == null) {
-      return MockData.companies.firstWhere((company) => company.id == id);
-    }
+    final client =
+        _injectedClient ??
+        _client ??
+        (throw StateError('Configure o Supabase para carregar empresas.'));
     final row = await client.from('companies').select().eq('id', id).single();
     return _company(row);
   }
