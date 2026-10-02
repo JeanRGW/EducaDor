@@ -85,14 +85,19 @@ class SvgIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SvgPicture.asset(
-      asset,
-      width: size,
-      height: size,
-      fit: fit,
-      colorFilter: color == null
-          ? null
-          : ColorFilter.mode(color!, BlendMode.srcIn),
+    // Badges/buttons may impose tight constraints larger than the glyph size.
+    return Center(
+      widthFactor: 1,
+      heightFactor: 1,
+      child: SvgPicture.asset(
+        asset,
+        width: size,
+        height: size,
+        fit: fit,
+        colorFilter: color == null
+            ? null
+            : ColorFilter.mode(color!, BlendMode.srcIn),
+      ),
     );
   }
 }

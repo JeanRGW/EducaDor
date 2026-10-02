@@ -69,11 +69,22 @@ class _CompaniesScreenState extends ConsumerState<CompaniesScreen> {
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        titleSpacing: 16,
+        titleSpacing: 32,
+        backgroundColor: AppColors.surface,
+        titleTextStyle: const TextStyle(
+          fontFamily: AppFonts.outfit,
+          fontSize: 20,
+          fontWeight: FontWeight.w700,
+          color: AppColors.textPrimary,
+          height: 1.2,
+        ),
         title: const Text('Empresas Registradas'),
       ),
       floatingActionButton: FloatingActionButton(
-        backgroundColor: AppColors.primary,
+        backgroundColor: AppColors.successDarkGreen,
+        shape: const CircleBorder(
+          side: BorderSide(color: Colors.white, width: 2),
+        ),
         tooltip: 'Adicionar empresa',
         onPressed: () async {
           await context.push('/gestor/company/add');
@@ -89,6 +100,12 @@ class _CompaniesScreenState extends ConsumerState<CompaniesScreen> {
           children: [
             SearchField(
               'Pesquise o nome da empresa',
+              compact: true,
+              prefixIcon: const SvgIcon(
+                AppIcons.search,
+                size: 26,
+                color: Color(0xFF475569),
+              ),
               onChanged: (value) {
                 _debounce?.cancel();
                 _debounce = Timer(const Duration(milliseconds: 300), () {
@@ -103,6 +120,7 @@ class _CompaniesScreenState extends ConsumerState<CompaniesScreen> {
             ),
             const SizedBox(height: 14),
             FilterChips(
+              outlined: true,
               options: [
                 'Todas as empresas',
                 counts == null
@@ -181,26 +199,47 @@ class _CompanyCard extends StatelessWidget {
               child: Text(
                 company.name,
                 style: const TextStyle(
+                  fontFamily: AppFonts.outfit,
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
+                  height: 1.25,
                 ),
               ),
             ),
             const SizedBox(width: 8),
-            StatusChip(
-              company.active ? 'Ativa' : 'Inativa',
-              color: company.active
-                  ? AppColors.successDarkGreen
-                  : AppColors.danger,
-              bg: company.active ? AppColors.successBg : AppColors.dangerBg,
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: company.active
+                    ? AppColors.successBg
+                    : AppColors.dangerBg,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                company.active ? 'Ativa' : 'Inativa',
+                style: TextStyle(
+                  fontFamily: AppFonts.inter,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: company.active
+                      ? AppColors.successDarkGreen
+                      : AppColors.danger,
+                  height: 1.4,
+                ),
+              ),
             ),
           ],
         ),
         Text(
           'CNPJ: ${company.cnpj}',
-          style: const TextStyle(fontSize: 12.5, color: AppColors.textMuted),
+          style: const TextStyle(
+            fontFamily: AppFonts.inter,
+            fontSize: 11,
+            color: AppColors.textMuted,
+            height: 1.4,
+          ),
         ),
-        const Divider(height: 22),
+        const Divider(height: 20),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -210,13 +249,21 @@ class _CompanyCard extends StatelessWidget {
                 children: [
                   const Text(
                     'Pessoa responsável',
-                    style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                    style: TextStyle(
+                      fontFamily: AppFonts.inter,
+                      fontSize: 11,
+                      color: AppColors.textMuted,
+                      height: 1.4,
+                    ),
                   ),
                   Text(
                     company.responsibleName,
                     style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
+                      fontFamily: AppFonts.inter,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w400,
+                      color: Color(0xFF475569),
+                      height: 1.4,
                     ),
                   ),
                 ],
@@ -228,22 +275,29 @@ class _CompanyCard extends StatelessWidget {
               children: [
                 const Text(
                   'Funcionários',
-                  style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                  style: TextStyle(
+                    fontFamily: AppFonts.inter,
+                    fontSize: 11,
+                    color: AppColors.textMuted,
+                    height: 1.4,
+                  ),
                 ),
                 Row(
                   children: [
                     const SvgIcon(
                       AppIcons.key,
-                      size: 16,
+                      size: 14,
                       color: AppColors.successDarkGreen,
                     ),
                     const SizedBox(width: 4),
                     Text(
                       formatCount(company.employeeCount),
                       style: const TextStyle(
+                        fontFamily: AppFonts.inter,
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.successDarkGreen,
+                        color: AppColors.textPrimary,
+                        height: 1.3,
                       ),
                     ),
                   ],
@@ -252,14 +306,28 @@ class _CompanyCard extends StatelessWidget {
             ),
           ],
         ),
-        const Divider(height: 22),
+        const SizedBox(height: 14),
         Text(
           'Registro: ${company.registeredAt.isEmpty ? '—' : formatDate(DateTime.parse(company.registeredAt))}',
-          style: const TextStyle(fontSize: 12.5, color: AppColors.textMuted),
+          style: const TextStyle(
+            fontFamily: AppFonts.inter,
+            fontSize: 11,
+            color: AppColors.textMuted,
+            height: 1.4,
+          ),
         ),
         if (company.active) ...[
           const SizedBox(height: 8),
           OutlinedButton(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.successDarkGreen,
+              side: const BorderSide(color: AppColors.border),
+              textStyle: const TextStyle(
+                fontFamily: AppFonts.inter,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
             onPressed: () async {
               await context.push('/gestor/company/${company.id}/manager/add');
               if (context.mounted) await onInviteCreated();

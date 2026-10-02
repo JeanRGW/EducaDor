@@ -44,11 +44,13 @@ List<TabItem> tabsForRole(Role role) {
 class RoleShell extends StatelessWidget {
   final StatefulNavigationShell navigationShell;
   final List<TabItem> tabs;
+  final Role role;
 
   const RoleShell({
     super.key,
     required this.navigationShell,
     required this.tabs,
+    required this.role,
   });
 
   @override
@@ -71,6 +73,7 @@ class RoleShell extends StatelessWidget {
                     child: _TabButton(
                       item: tabs[i],
                       selected: navigationShell.currentIndex == i,
+                      compact: role == Role.gestor,
                       onTap: () => navigationShell.goBranch(
                         i,
                         initialLocation: i == navigationShell.currentIndex,
@@ -90,11 +93,13 @@ class _TabButton extends StatelessWidget {
   final TabItem item;
   final bool selected;
   final VoidCallback onTap;
+  final bool compact;
 
   const _TabButton({
     required this.item,
     required this.selected,
     required this.onTap,
+    required this.compact,
   });
 
   @override
@@ -107,13 +112,13 @@ class _TabButton extends StatelessWidget {
           SvgIcon(
             item.icon,
             color: selected ? AppColors.successDarkGreen : AppColors.textMuted,
-            size: 24,
+            size: compact ? 20 : 24,
           ),
           const SizedBox(height: 4),
           Text(
             item.label,
             style: TextStyle(
-              fontSize: 10.5,
+              fontSize: compact ? 10 : 10.5,
               fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
               color: selected
                   ? AppColors.successDarkGreen

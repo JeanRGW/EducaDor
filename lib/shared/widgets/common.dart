@@ -196,6 +196,7 @@ class FilterChips extends StatelessWidget {
   final int selected;
   final ValueChanged<int> onSelected;
   final Color activeColor;
+  final bool outlined;
 
   const FilterChips({
     super.key,
@@ -203,12 +204,13 @@ class FilterChips extends StatelessWidget {
     required this.selected,
     required this.onSelected,
     this.activeColor = AppColors.successDarkGreen,
+    this.outlined = false,
   });
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 36,
+      height: outlined ? 28 : 36,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: options.length,
@@ -218,18 +220,33 @@ class FilterChips extends StatelessWidget {
           return GestureDetector(
             onTap: () => onSelected(i),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
+              padding: EdgeInsets.symmetric(horizontal: outlined ? 12 : 14),
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: active ? activeColor : AppColors.chipBg,
+                color: outlined
+                    ? active
+                          ? AppColors.successBg
+                          : AppColors.background
+                    : active
+                    ? activeColor
+                    : AppColors.chipBg,
                 borderRadius: BorderRadius.circular(20),
+                border: outlined
+                    ? Border.all(color: active ? activeColor : AppColors.border)
+                    : null,
               ),
               child: Text(
                 options[i],
                 style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: active ? Colors.white : AppColors.textPrimary,
+                  fontSize: outlined ? 12 : 13,
+                  fontWeight: outlined ? FontWeight.w500 : FontWeight.w600,
+                  color: outlined
+                      ? active
+                            ? activeColor
+                            : const Color(0xFF475569)
+                      : active
+                      ? Colors.white
+                      : AppColors.textPrimary,
                 ),
               ),
             ),
@@ -244,8 +261,17 @@ class SearchField extends StatelessWidget {
   final String hint;
   final VoidCallback? onTap;
   final ValueChanged<String>? onChanged;
+  final Widget? prefixIcon;
+  final bool compact;
 
-  const SearchField(this.hint, {super.key, this.onTap, this.onChanged});
+  const SearchField(
+    this.hint, {
+    super.key,
+    this.onTap,
+    this.onChanged,
+    this.prefixIcon,
+    this.compact = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -255,22 +281,38 @@ class SearchField extends StatelessWidget {
       onChanged: onChanged,
       decoration: InputDecoration(
         hintText: hint,
+        hintStyle: compact
+            ? const TextStyle(fontSize: 13, color: Color(0xFF475569))
+            : null,
         prefixIcon:
+            prefixIcon ??
             const SvgIcon(AppIcons.search, color: AppColors.textMuted),
+        prefixIconConstraints: compact
+            ? const BoxConstraints(minWidth: 40, minHeight: 36)
+            : null,
         filled: true,
-        fillColor: AppColors.surface,
+        fillColor: compact ? AppColors.background : AppColors.surface,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(compact ? 8 : 14),
           borderSide: const BorderSide(color: AppColors.border),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(compact ? 8 : 14),
           borderSide: const BorderSide(color: AppColors.border),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+        focusedBorder: compact
+            ? OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(
+                  color: AppColors.primary,
+                  width: 1.6,
+                ),
+              )
+            : null,
+        contentPadding: EdgeInsets.symmetric(horizontal: compact ? 12 : 16),
         isDense: true,
       ),
-      style: const TextStyle(fontSize: 15),
+      style: TextStyle(fontSize: compact ? 13 : 15),
     );
   }
 }

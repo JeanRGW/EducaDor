@@ -22,11 +22,31 @@ class GestorDashboardScreen extends ConsumerWidget {
     final data = result.asData?.value;
     return Scaffold(
       appBar: AppBar(
+        toolbarHeight: 78,
+        backgroundColor: AppColors.surface,
+        shape: const Border(bottom: BorderSide(color: AppColors.border)),
         automaticallyImplyLeading: false,
         titleSpacing: 16,
         title: Row(
           children: [
-            AvatarBadge(user?.initials ?? ''),
+            Container(
+              width: 40,
+              height: 40,
+              alignment: Alignment.center,
+              decoration: const BoxDecoration(
+                color: AppColors.successBg,
+                shape: BoxShape.circle,
+              ),
+              child: Text(
+                user?.initials ?? '',
+                style: const TextStyle(
+                  fontFamily: AppFonts.outfit,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.successDarkGreen,
+                ),
+              ),
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -35,24 +55,37 @@ class GestorDashboardScreen extends ConsumerWidget {
                   Text(
                     'Olá, ${user?.fullName.split(' ').first ?? 'Gestor'}',
                     style: const TextStyle(
+                      fontFamily: AppFonts.outfit,
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
+                      height: 1.25,
                     ),
                   ),
                   const Text(
                     'Gerente de Plataforma',
                     style: TextStyle(
-                      fontSize: 12.5,
-                      color: AppColors.textMuted,
+                      fontFamily: AppFonts.inter,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF475569),
+                      height: 1.35,
                     ),
                   ),
                 ],
               ),
             ),
-            const IconButton(
+            IconButton(
               tooltip: 'Notificações',
-              icon: SvgIcon(AppIcons.bell),
-              onPressed: null,
+              icon: const CircleAvatar(
+                radius: 18,
+                backgroundColor: AppColors.background,
+                child: SvgIcon(
+                  AppIcons.bell,
+                  size: 18,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              onPressed: () {},
             ),
           ],
         ),
@@ -90,9 +123,20 @@ class GestorDashboardScreen extends ConsumerWidget {
             ],
             if (data != null) ...[
               _metrics(data),
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
               _growth(data.growth),
-              const SectionHeader('Atividade recente'),
+              const Padding(
+                padding: EdgeInsets.only(top: 24, bottom: 12),
+                child: Text(
+                  'Atividade recente',
+                  style: TextStyle(
+                    fontFamily: AppFonts.outfit,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    height: 1.3,
+                  ),
+                ),
+              ),
               if (data.activities.isEmpty)
                 const AppCard(child: Text('Nenhuma atividade recente.')),
               for (final activity in data.activities)
@@ -133,21 +177,21 @@ class GestorDashboardScreen extends ConsumerWidget {
     return Column(
       children: [
         for (var start = 0; start < metrics.length; start += 2) ...[
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              for (var i = start; i < start + 2; i++) ...[
-                if (i > start) const SizedBox(width: 12),
-                Expanded(
-                  child: StatCard(
-                    label: metrics[i].label,
-                    value: metrics[i].value,
-                    icon: metrics[i].icon,
-                    delta: metrics[i].delta,
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (var i = start; i < start + 2; i++) ...[
+                  if (i > start) const SizedBox(width: 12),
+                  Expanded(
+                    child: _DashboardStatCard(
+                      key: ValueKey('gestor-stat-$i'),
+                      metric: metrics[i],
+                    ),
                   ),
-                ),
+                ],
               ],
-            ],
+            ),
           ),
           if (start == 0) const SizedBox(height: 12),
         ],
@@ -171,11 +215,20 @@ class GestorDashboardScreen extends ConsumerWidget {
             children: [
               Text(
                 'Crescimento da Empresa / Usuários',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                style: TextStyle(
+                  fontFamily: AppFonts.outfit,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               Text(
                 'Últimos 6 meses',
-                style: TextStyle(fontSize: 12, color: AppColors.primary),
+                style: TextStyle(
+                  fontFamily: AppFonts.inter,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.primary,
+                ),
               ),
             ],
           ),
@@ -211,11 +264,21 @@ class GestorDashboardScreen extends ConsumerWidget {
             children: [
               Text(
                 'Empresas',
-                style: TextStyle(color: AppColors.chartBlue, fontSize: 12),
+                style: TextStyle(
+                  fontFamily: AppFonts.inter,
+                  color: AppColors.chartBlue,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
               Text(
                 'Usuários',
-                style: TextStyle(color: AppColors.accentTeal, fontSize: 12),
+                style: TextStyle(
+                  fontFamily: AppFonts.inter,
+                  color: AppColors.accentTeal,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ],
           ),
@@ -225,20 +288,80 @@ class GestorDashboardScreen extends ConsumerWidget {
   }
 }
 
+class _DashboardStatCard extends StatelessWidget {
+  final StatMetric metric;
+  const _DashboardStatCard({super.key, required this.metric});
+
+  @override
+  Widget build(BuildContext context) => ConstrainedBox(
+    constraints: const BoxConstraints(minHeight: 110),
+    child: AppCard(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  metric.label,
+                  style: const TextStyle(
+                    fontFamily: AppFonts.inter,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF475569),
+                    height: 1.3,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              SvgIcon(metric.icon, size: 16, color: AppColors.successDarkGreen),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            metric.value,
+            style: const TextStyle(
+              fontFamily: AppFonts.outfit,
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
+              height: 1.2,
+            ),
+          ),
+          const SizedBox(height: 8),
+          if (metric.delta != null)
+            Text(
+              metric.delta!,
+              style: const TextStyle(
+                fontFamily: AppFonts.inter,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: AppColors.success,
+                height: 1.2,
+              ),
+            )
+          else
+            SizedBox(height: MediaQuery.textScalerOf(context).scale(11) * 1.2),
+        ],
+      ),
+    ),
+  );
+}
+
 class _ActivityRow extends StatelessWidget {
   final PlatformActivity activity;
   const _ActivityRow({required this.activity});
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 10),
+    padding: const EdgeInsets.only(bottom: 8),
     child: AppCard(
       padding: const EdgeInsets.all(12),
       child: Row(
         children: [
           Container(
-            width: 42,
-            height: 42,
+            width: 32,
+            height: 32,
             decoration: const BoxDecoration(
               color: AppColors.successBg,
               shape: BoxShape.circle,
@@ -246,7 +369,7 @@ class _ActivityRow extends StatelessWidget {
             child: SvgIcon(
               activity.kind == 'company' ? AppIcons.building : AppIcons.book,
               color: AppColors.successDarkGreen,
-              size: 20,
+              size: 16,
             ),
           ),
           const SizedBox(width: 12),
@@ -259,15 +382,20 @@ class _ActivityRow extends StatelessWidget {
                       ? '${activity.name} cadastrada'
                       : '${activity.name} atualizou o progresso em ${activity.title}',
                   style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
+                    fontFamily: AppFonts.inter,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    height: 1.3,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   _timeAgo(activity.occurredAt),
                   style: const TextStyle(
-                    fontSize: 12,
+                    fontFamily: AppFonts.inter,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w400,
+                    height: 1.2,
                     color: AppColors.textMuted,
                   ),
                 ),

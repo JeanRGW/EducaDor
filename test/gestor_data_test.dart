@@ -11,6 +11,7 @@ import 'package:educador/features/content/catalog_screen.dart';
 import 'package:educador/features/content/publish_video_screen.dart';
 import 'package:educador/shared/widgets/charts.dart';
 import 'package:educador/shared/widgets/common.dart';
+import 'package:educador/shared/widgets/app_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -272,8 +273,11 @@ void main() {
       scrollable: find.byType(Scrollable).first,
     );
     expect(find.text('Empresa 50'), findsOneWidget);
-    await tester.drag(find.byType(ListView).first, const Offset(0, 15000));
-    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byType(SearchField),
+      -1000,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.enterText(find.byType(TextField), ' %_ ');
     await tester.pump(const Duration(milliseconds: 350));
     await tester.pumpAndSettle();
@@ -298,6 +302,51 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Nenhuma empresa cadastrada.'), findsOneWidget);
   });
+
+  testWidgets(
+    'companies match prototype styling and keep invitation controls',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(390, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await _show(tester, const CompaniesScreen(), companies: _Companies());
+
+      final title = find.text('Empresas Registradas');
+      expect(tester.getTopLeft(title).dx, 32);
+      final titleStyle = DefaultTextStyle.of(tester.element(title)).style;
+      expect(titleStyle.fontFamily, AppFonts.outfit);
+      expect(titleStyle.fontWeight, FontWeight.w700);
+      expect(tester.getSize(find.byType(TextField)).height, 36);
+      expect(tester.getSize(find.byType(FilterChips)).height, 28);
+      final search = tester.widget<SvgIcon>(
+        find.byWidgetPredicate(
+          (widget) => widget is SvgIcon && widget.asset == AppIcons.search,
+        ),
+      );
+      expect(search.size, 26);
+      expect(search.color, const Color(0xFF475569));
+
+      final nameStyle = tester.widget<Text>(find.text('Empresa 0')).style!;
+      expect(nameStyle.fontFamily, AppFonts.outfit);
+      expect(nameStyle.fontWeight, FontWeight.w700);
+      final card = find.ancestor(
+        of: find.text('Empresa 0'),
+        matching: find.byType(AppCard),
+      );
+      expect(
+        find.descendant(of: card, matching: find.byType(Divider)),
+        findsOneWidget,
+      );
+      expect(find.text('Convites pendentes'), findsOneWidget);
+      expect(find.text('Nenhum convite pendente.'), findsOneWidget);
+      expect(find.text('Convidar gestor da empresa'), findsWidgets);
+      final addButton = tester.widget<FloatingActionButton>(
+        find.byType(FloatingActionButton),
+      );
+      expect(addButton.backgroundColor, AppColors.successDarkGreen);
+      expect(addButton.shape, isA<CircleBorder>());
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets(
     'reports load current completion independently of the date selector',
@@ -410,11 +459,7 @@ void main() {
         dashboard: _Dashboard(),
       );
       expect(tester.takeException(), isNull);
-      await _show(
-        tester,
-        const CompaniesScreen(),
-        companies: _Companies()..empty = true,
-      );
+      await _show(tester, const CompaniesScreen(), companies: _Companies());
       expect(tester.takeException(), isNull);
       await _show(tester, const GestorReportsScreen(), reports: _Reports());
       await tester.scrollUntilVisible(find.byType(BarChart), 200);
