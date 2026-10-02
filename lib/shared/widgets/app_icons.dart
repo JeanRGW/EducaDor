@@ -4,7 +4,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 /// Central registry of the app's SVG icon assets.
 ///
 /// The icons were rebuilt as standalone assets to match the Figma mockups.
-/// They are monochrome (stroked, outline style) so a single [SvgIcon] renders
+/// Most are monochrome (stroked, outline style) so a single [SvgIcon] renders
 /// them with any color via a `srcIn` color filter — the same way Material icons
 /// are tinted. This also keeps the design's teal/gray active-inactive states.
 abstract class AppIcons {
@@ -69,12 +69,13 @@ abstract class AppIcons {
   static const String key = 'assets/icons/key.svg';
   static const String logo = 'assets/icons/logo.svg';
   static const String logoFull = 'assets/icons/logo_full.svg';
+  static const String logoColor = 'assets/icons/logo_color.svg';
 }
 
 /// A color-tintable SVG icon.
 ///
-/// Icon assets are monochrome, so [color] is applied via a `srcIn` color fill.
-/// When [color] is null the asset is rendered as authored (black strokes).
+/// When supplied, [color] is applied via a `srcIn` color fill.
+/// Leave it null to preserve authored colors, including the full-color logo.
 class SvgIcon extends StatelessWidget {
   final String asset;
   final Color? color;
