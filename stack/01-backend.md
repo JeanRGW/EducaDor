@@ -126,6 +126,70 @@ still separate roadmap work; the live outline does not simulate completion.
 
 Guarded views/RPC read via PostgREST, CSV export in Flutter. No BigQuery, no counter collections: `completion_by_company`, `completion_by_dept`, `engagement_monthly`, `popular_content`, `employee_completion(p_company uuid)`, `ranking(p_company uuid)` (company-scoped derived balances grouped per user, `LIMIT 20`). Managers see only their company's completion through guarded reports, not lesson contents.
 
+### Gestor data integration
+
+`20261001000000_gestor_data.sql` adds the live platform queries. These RPCs
+require the **active** `gestor` context, not just a platform grant or a legacy
+JWT claim. `empresa`, `funcionario`, missing contexts and revoked grants cannot
+use them. Flutter accesses them only through repository providers; no new API,
+polling, analytics service, event table or denormalized counters are introduced.
+
+* `gestor_dashboard`: total companies (including inactive companies), new
+  companies since the start of the current São Paulo month, distinct registered
+  identities (`profiles`, including provisioned invitations), and distinct users
+  with a progress update in the trailing 30 days. Multi-company and dual-role
+  identities count once. Completion is weighted across all eligible
+  employee/company/lesson opportunities, including those without progress; it
+  is **not** the mean of rounded company percentages. A missing denominator is
+  `null`, not zero. Current memberships and audiences define eligibility;
+  platform/company pauses and inactive companies do not erase completion.
+* Growth contains six cumulative month-end counts of currently retained
+  companies and identities. Companies use `companies.created_at`; identity
+  dates are aggregated from `auth.users.created_at` inside the guarded RPC.
+  Auth rows/credentials are never returned or granted to the client. The current
+  month is month-to-date. These are not historical snapshots of memberships,
+  deleted identities, or activation status. The chart uses a shared count scale
+  for the company/user series.
+* Recent activity combines actual company registration timestamps and the
+  latest progress update per employee/company/lesson, newest first, capped at
+  ten entries. Progress updates are not presented as module-completion events.
+* `gestor_companies`: literal case-insensitive name search, server-side active
+  filtering, deterministic name/ID ordering and 50-row pages. Filter counts
+  include all search matches, independent of the selected active filter.
+  Employee totals count accepted `funcionario` memberships, including people
+  who also manage the company; pending invitations do not count.
+* `gestor_completion`: 50-row pages of **current completion**, independent of
+  the selected activity period. It reuses `completion_by_company` and includes
+  companies with no eligible lessons/employees as `null` (no data).
+* `gestor_activity_report`: the selected dates apply only to popular content
+  and monthly engagement. Both endpoints of the date range are inclusive in
+  `America/Sao_Paulo`; SQL uses `[start midnight, midnight after end)` and caps
+  the range at 366 calendar days. Engagement counts distinct identities
+  **globally per month**, never sums company-level distinct counts, and
+  zero-fills missing months. Popular content groups by course ID (not title),
+  with deterministic ordering and a top-ten limit. Its completion count is the
+  number of currently completed employee/company/lesson records whose latest
+  update falls within the range, **not** completed courses or certificates.
+* `pending_invites_page` applies role/company filters before the 50-row cap and
+  includes authorized company names, so invite labels do not depend on the
+  visible company page. Existing scoped invitation/link security is unchanged.
+
+**Current completion versus activity within a period:** `lesson_progress` is
+current state, not a history table. Revisiting a lesson can move its `updated_at`
+to a later period. Accordingly, activity charts and popular-content counts are
+latest-update-based approximations, not immutable historical event counts.
+Past completion rates, precise completion timestamps and interest/trend deltas
+cannot be reconstructed reliably and are not fabricated. This distinction is
+documented here rather than adding explanatory copy to the screens. The date
+selector does not re-query or filter the current company-completion section.
+
+Dashboard, Companies and Reports include loading, empty, retry and refresh
+states. Gestor content routes reuse the real catalog and YouTube publisher
+without mock fallbacks. CSV export, profile settings/MFA, notifications and
+non-video authoring remain deferred. Test the queries with
+`supabase/tests/gestor_data.sql` on an isolated database; never apply fixtures or
+new migrations to shared/staging databases without operator approval.
+
 ## Edge Functions (Deno, 500k/mo free)
 
 `invite-member` / `accept-invite` (manual link, verified recipient, service-role isolated in Functions) · `storage-upload-url` / `storage-download-url` (S3 SigV4 presign against the Storage endpoint) · `issue-certificate` (app-invoked after final lesson, idempotency key includes company + progress row; code `{prefix}-{6-char}`, `UNIQUE` + retry) · `push-on-assign` (FCM send, invoked by the app – no DB triggers anywhere). `custom_access_token_hook` remains installed as a passthrough so previously configured projects continue to issue JWTs.

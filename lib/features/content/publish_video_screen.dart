@@ -10,6 +10,7 @@ import '../../data/models/models.dart';
 import '../../data/repositories/repositories.dart';
 import '../../data/session/session_controller.dart';
 import '../../shared/widgets/app_icons.dart';
+import '../../shared/widgets/admin_styles.dart';
 import '../../shared/widgets/common.dart';
 import 'audience_picker.dart';
 import 'cover_image.dart';
@@ -57,8 +58,8 @@ class _PublishVideoScreenState extends ConsumerState<PublishVideoScreen> {
   bool _saving = false;
 
   static const _types = [
-    ('Vídeo', AppIcons.play, true),
-    ('Áudio', AppIcons.headphones, false),
+    ('Vídeo', AppIcons.playCircle, true),
+    ('Áudio', AppIcons.microphone, false),
     ('PDF', AppIcons.pdf, false),
     ('Quiz', AppIcons.quiz, false),
   ];
@@ -168,240 +169,266 @@ class _PublishVideoScreenState extends ConsumerState<PublishVideoScreen> {
     // Rebuild once the session resolves so the responsible defaults to the
     // current gestor without an explicit selection.
     ref.watch(sessionProvider);
-    return PopScope(
-      canPop: !_saving,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Adicionar Trilha'),
-          leading: IconButton(
-            tooltip: 'Voltar',
-            onPressed: _saving ? null : () => context.pop(),
-            icon: const SvgIcon(
-              AppIcons.arrowBack,
-              color: AppColors.successDarkGreen,
+    return Theme(
+      data: AdminStyles.formTheme(Theme.of(context)),
+      child: PopScope(
+        canPop: !_saving,
+        child: Scaffold(
+          appBar: AppBar(
+            title: const Text('Adicionar Trilha'),
+            leading: IconButton(
+              tooltip: 'Voltar',
+              onPressed: _saving ? null : () => context.pop(),
+              icon: const SvgIcon(
+                AppIcons.arrowBack,
+                size: 20,
+                color: AppColors.successDarkGreen,
+              ),
             ),
           ),
-        ),
-        body: Form(
-          key: _form,
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const _FieldLabel('Tipo de conteúdo'),
-                Row(
-                  children: [
-                    for (var i = 0; i < _types.length; i++) ...[
-                      Expanded(
-                        child: _TypeTile(
-                          label: _types[i].$1,
-                          icon: _types[i].$2,
-                          active: _types[i].$3,
-                          onTap: _types[i].$3 || _saving
-                              ? null
-                              : () => ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                      'Disponível em breve. Por enquanto, publique vídeos do YouTube.',
+          body: Form(
+            key: _form,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 36, 20, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const _FieldLabel('Tipo de conteúdo'),
+                  Row(
+                    children: [
+                      for (var i = 0; i < _types.length; i++) ...[
+                        Expanded(
+                          child: _TypeTile(
+                            label: _types[i].$1,
+                            icon: _types[i].$2,
+                            active: _types[i].$3,
+                            onTap: _types[i].$3 || _saving
+                                ? null
+                                : () => ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Disponível em breve. Por enquanto, publique vídeos do YouTube.',
+                                      ),
                                     ),
                                   ),
-                                ),
+                          ),
                         ),
-                      ),
-                      if (i != _types.length - 1) const SizedBox(width: 8),
+                        if (i != _types.length - 1) const SizedBox(width: 8),
+                      ],
                     ],
-                  ],
-                ),
-                const SizedBox(height: 16),
-                const _FieldLabel('Título'),
-                TextFormField(
-                  controller: _title,
-                  enabled: !_saving,
-                  maxLength: 200,
-                  decoration: const InputDecoration(
-                    hintText: 'Dor crônica',
-                    counterText: '',
                   ),
-                  validator: (value) => value == null || value.trim().isEmpty
-                      ? 'Informe o título.'
-                      : null,
-                ),
-                const SizedBox(height: 12),
-                const _FieldLabel('Modulos'),
-                TextFormField(
-                  controller: _module,
-                  enabled: !_saving,
-                  maxLength: 200,
-                  decoration: const InputDecoration(
-                    hintText: 'Modulo 1',
-                    counterText: '',
-                  ),
-                  validator: (value) => value == null || value.trim().isEmpty
-                      ? 'Informe o módulo.'
-                      : null,
-                ),
-                const SizedBox(height: 12),
-                const _FieldLabel('Descrição'),
-                TextFormField(
-                  controller: _description,
-                  enabled: !_saving,
-                  maxLines: 3,
-                  maxLength: 10000,
-                  decoration: const InputDecoration(
-                    hintText: 'breve descrição da trilha',
-                    counterText: '',
-                  ),
-                ),
-                const SizedBox(height: 12),
-                const _FieldLabel('Imagem de capa'),
-                GestureDetector(
-                  onTap: _pickCover,
-                  child: Container(
-                    height: 110,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.border),
-                      color: AppColors.chipBg,
+                  const SizedBox(height: 24),
+                  const _FieldLabel('Título'),
+                  TextFormField(
+                    controller: _title,
+                    enabled: !_saving,
+                    maxLength: 200,
+                    decoration: const InputDecoration(
+                      hintText: 'Dor crônica',
+                      counterText: '',
                     ),
-                    clipBehavior: Clip.antiAlias,
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        if (_cover != null)
-                          Image.memory(_cover!, fit: BoxFit.cover)
-                        else
-                          const Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              SvgIcon(
-                                AppIcons.camera,
-                                size: 28,
-                                color: AppColors.textMuted,
-                              ),
-                              SizedBox(height: 6),
-                              Text(
-                                'Toque para escolher uma imagem',
-                                style: TextStyle(
-                                  fontSize: 13,
+                    validator: (value) => value == null || value.trim().isEmpty
+                        ? 'Informe o título.'
+                        : null,
+                  ),
+                  const SizedBox(height: 12),
+                  const _FieldLabel('Módulos'),
+                  TextFormField(
+                    controller: _module,
+                    enabled: !_saving,
+                    maxLength: 200,
+                    decoration: const InputDecoration(
+                      hintText: 'Módulo 1',
+                      counterText: '',
+                    ),
+                    validator: (value) => value == null || value.trim().isEmpty
+                        ? 'Informe o módulo.'
+                        : null,
+                  ),
+                  const SizedBox(height: 12),
+                  const _FieldLabel('Descrição'),
+                  TextFormField(
+                    controller: _description,
+                    enabled: !_saving,
+                    minLines: 1,
+                    maxLines: 3,
+                    maxLength: 10000,
+                    decoration: const InputDecoration(
+                      hintText: 'breve descrição da trilha',
+                      counterText: '',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  const _FieldLabel('Imagem de capa'),
+                  GestureDetector(
+                    onTap: _pickCover,
+                    child: Container(
+                      height:
+                          80 * MediaQuery.textScalerOf(context).scale(11) / 11,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.border),
+                        color: AppColors.chipBg,
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          if (_cover != null)
+                            Image.memory(_cover!, fit: BoxFit.cover)
+                          else
+                            const Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                SvgIcon(
+                                  AppIcons.camera,
+                                  size: 24,
                                   color: AppColors.textMuted,
                                 ),
+                                SizedBox(height: 6),
+                                Text(
+                                  'Toque para escolher uma imagem',
+                                  style: TextStyle(
+                                    fontFamily: AppFonts.inter,
+                                    fontSize: 11,
+                                    color: AppColors.textMuted,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          if (_pickingCover)
+                            const ColoredBox(
+                              color: Color(0x80FFFFFF),
+                              child: Center(
+                                child: SizedBox(
+                                  width: 28,
+                                  height: 28,
+                                  child: CircularProgressIndicator(),
+                                ),
                               ),
-                            ],
-                          ),
-                        if (_pickingCover)
-                          const ColoredBox(
-                            color: Color(0x80FFFFFF),
-                            child: Center(
-                              child: SizedBox(
-                                width: 28,
-                                height: 28,
-                                child: CircularProgressIndicator(),
+                            ),
+                          Positioned(
+                            right: 10,
+                            bottom: 10,
+                            child: Container(
+                              padding: const EdgeInsets.all(7),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.92),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const SvgIcon(
+                                AppIcons.camera,
+                                color: AppColors.textPrimary,
+                                size: 18,
                               ),
                             ),
                           ),
-                        Positioned(
-                          right: 10,
-                          bottom: 10,
-                          child: Container(
-                            padding: const EdgeInsets.all(7),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.92),
-                              borderRadius: BorderRadius.circular(8),
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (_cover != null)
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: _saving
+                            ? null
+                            : () => setState(() => _cover = null),
+                        child: const Text('Remover imagem'),
+                      ),
+                    ),
+                  const SizedBox(height: 12),
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final fields = [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const _FieldLabel('Vídeo do YouTube'),
+                            TextFormField(
+                              controller: _video,
+                              enabled: !_saving,
+                              decoration: const InputDecoration(
+                                hintText: 'https://youtu.be/...',
+                              ),
+                              validator: (value) =>
+                                  youtubeVideoId(value ?? '') == null
+                                  ? 'Informe uma URL ou ID válido.'
+                                  : null,
                             ),
-                            child: const SvgIcon(
-                              AppIcons.camera,
-                              color: AppColors.textPrimary,
-                              size: 18,
-                            ),
-                          ),
+                          ],
                         ),
-                      ],
-                    ),
-                  ),
-                ),
-                if (_cover != null)
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: _saving
-                          ? null
-                          : () => setState(() => _cover = null),
-                      child: const Text('Remover imagem'),
-                    ),
-                  ),
-                const SizedBox(height: 12),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const _FieldLabel('Vídeo do YouTube'),
-                          TextFormField(
-                            controller: _video,
-                            enabled: !_saving,
-                            decoration: const InputDecoration(
-                              hintText: 'https://youtu.be/...',
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const _FieldLabel('Profissional responsável'),
+                            _SelectorButton(
+                              value:
+                                  _effectiveResponsible?.name ?? 'Selecionar',
+                              onTap: _saving
+                                  ? null
+                                  : () async {
+                                      final selection = await pickProfessional(
+                                        context,
+                                        _responsible,
+                                      );
+                                      if (selection != null && mounted) {
+                                        setState(
+                                          () => _responsible = selection,
+                                        );
+                                      }
+                                    },
                             ),
-                            validator: (value) =>
-                                youtubeVideoId(value ?? '') == null
-                                ? 'Informe uma URL ou ID válido.'
-                                : null,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
+                          ],
+                        ),
+                      ];
+                      if (constraints.maxWidth < 320 ||
+                          MediaQuery.textScalerOf(context).scale(12) > 16) {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            fields[0],
+                            const SizedBox(height: 12),
+                            fields[1],
+                          ],
+                        );
+                      }
+                      return Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const _FieldLabel('Profissional Responsavel'),
-                          _SelectorButton(
-                            value: _effectiveResponsible?.name ?? 'Selecionar',
-                            onTap: _saving
-                                ? null
-                                : () async {
-                                    final selection = await pickProfessional(
-                                      context,
-                                      _responsible,
-                                    );
-                                    if (selection != null && mounted) {
-                                      setState(() => _responsible = selection);
-                                    }
-                                  },
-                          ),
+                          Expanded(child: fields[0]),
+                          const SizedBox(width: 12),
+                          Expanded(child: fields[1]),
                         ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                const _FieldLabel('Liberar para:'),
-                _SelectorButton(
-                  value: _audience.label,
-                  onTap: _saving
-                      ? null
-                      : () async {
-                          final selection = await pickContentAudience(
-                            context,
-                            _audience,
-                          );
-                          if (selection != null && mounted) {
-                            setState(() => _audience = selection);
-                          }
-                        },
-                ),
-                const SizedBox(height: 20),
-                PrimaryButton(
-                  _saving ? 'Publicando...' : 'Publicar',
-                  color: AppColors.successDarkGreen,
-                  onPressed: _saving ? null : _publish,
-                ),
-              ],
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  const _FieldLabel('Liberar para:'),
+                  _SelectorButton(
+                    value: _audience.label,
+                    onTap: _saving
+                        ? null
+                        : () async {
+                            final selection = await pickContentAudience(
+                              context,
+                              _audience,
+                            );
+                            if (selection != null && mounted) {
+                              setState(() => _audience = selection);
+                            }
+                          },
+                  ),
+                  const SizedBox(height: 20),
+                  PrimaryButton(
+                    _saving ? 'Publicando...' : 'Publicar',
+                    compact: true,
+                    color: AppColors.successDarkGreen,
+                    onPressed: _saving ? null : _publish,
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -417,14 +444,7 @@ class _FieldLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(bottom: 8),
-    child: Text(
-      text,
-      style: const TextStyle(
-        fontSize: 13,
-        fontWeight: FontWeight.w600,
-        color: AppColors.textPrimary,
-      ),
-    ),
+    child: Text(text, style: AdminStyles.fieldLabel),
   );
 }
 
@@ -447,28 +467,33 @@ class _TypeTile extends StatelessWidget {
     child: Opacity(
       opacity: active ? 1 : 0.65,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        constraints: const BoxConstraints(minHeight: 44),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
         decoration: BoxDecoration(
-          color: active ? AppColors.navyDeep : AppColors.surface,
-          borderRadius: BorderRadius.circular(10),
+          color: active ? AppColors.textPrimary : AppColors.surface,
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: active ? AppColors.navyDeep : AppColors.border,
+            color: active ? AppColors.textPrimary : AppColors.border,
           ),
         ),
-        child: Column(
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             SvgIcon(
               icon,
-              size: 22,
+              size: 18,
               color: active ? Colors.white : AppColors.textMuted,
             ),
-            const SizedBox(height: 6),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: active ? Colors.white : AppColors.textMuted,
+            const SizedBox(width: 4),
+            Flexible(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontFamily: AppFonts.inter,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w400,
+                  color: active ? Colors.white : AppColors.textMuted,
+                ),
               ),
             ),
           ],
@@ -487,12 +512,13 @@ class _SelectorButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) => InkWell(
     onTap: onTap,
-    borderRadius: BorderRadius.circular(12),
+    borderRadius: BorderRadius.circular(8),
     child: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      constraints: const BoxConstraints(minHeight: 40),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.border),
       ),
       child: Row(
@@ -502,9 +528,8 @@ class _SelectorButton extends StatelessWidget {
               value,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
+              style: AdminStyles.fieldText.copyWith(
+                fontWeight: FontWeight.w500,
                 color: AppColors.successDarkGreen,
               ),
             ),
@@ -512,7 +537,7 @@ class _SelectorButton extends StatelessWidget {
           const SizedBox(width: 8),
           const SvgIcon(
             AppIcons.chevronDown,
-            size: 20,
+            size: 16,
             color: AppColors.successDarkGreen,
           ),
         ],

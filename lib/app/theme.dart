@@ -41,12 +41,22 @@ class AppColors {
   static const gradientEnd = Color(0xFF13A0B7);
 }
 
+/// Font families vendored from Google Fonts (OFL) to match the prototypes:
+/// Outfit for display/headings/numbers, Inter for body/UI text.
+class AppFonts {
+  AppFonts._();
+
+  static const outfit = 'Outfit';
+  static const inter = 'Inter';
+}
+
 class AppTheme {
   AppTheme._();
 
   static ThemeData get light {
     final base = ThemeData(
       useMaterial3: true,
+      fontFamily: AppFonts.inter,
       colorScheme: ColorScheme.fromSeed(
         seedColor: AppColors.primary,
         brightness: Brightness.light,
@@ -62,21 +72,25 @@ class AppTheme {
           )
           .copyWith(
             headlineSmall: const TextStyle(
+              fontFamily: AppFonts.outfit,
               fontSize: 24,
               fontWeight: FontWeight.w700,
               color: AppColors.textPrimary,
             ),
             titleLarge: const TextStyle(
+              fontFamily: AppFonts.outfit,
               fontSize: 20,
               fontWeight: FontWeight.w700,
               color: AppColors.textPrimary,
             ),
             titleMedium: const TextStyle(
+              fontFamily: AppFonts.outfit,
               fontSize: 17,
               fontWeight: FontWeight.w600,
               color: AppColors.textPrimary,
             ),
             titleSmall: const TextStyle(
+              fontFamily: AppFonts.outfit,
               fontSize: 15,
               fontWeight: FontWeight.w600,
               color: AppColors.textPrimary,
@@ -99,8 +113,10 @@ class AppTheme {
           ),
       inputDecorationTheme: InputDecorationTheme(
         hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 15),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: AppColors.border),
@@ -122,6 +138,7 @@ class AppTheme {
         elevation: 0,
         centerTitle: false,
         titleTextStyle: TextStyle(
+          fontFamily: AppFonts.outfit,
           fontSize: 18,
           fontWeight: FontWeight.w700,
           color: AppColors.textPrimary,
@@ -133,8 +150,10 @@ class AppTheme {
         behavior: SnackBarBehavior.floating,
         backgroundColor: AppColors.navy,
       ),
-      dividerTheme:
-          const DividerThemeData(color: AppColors.border, thickness: 1),
+      dividerTheme: const DividerThemeData(
+        color: AppColors.border,
+        thickness: 1,
+      ),
     );
   }
 }

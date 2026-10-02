@@ -26,7 +26,10 @@ Public staging inputs (`SUPABASE_URL`, `SUPABASE_ANON_KEY` publishable key, `CLO
 3. Storage buckets + `storage-*-url` functions; test 25MB PDF/MP3 upload.
 4. Live content catalog using the consolidated migration: platform pause/audience, company-wide employee pause, guarded metadata and atomic YouTube publishing with cover upload and responsible professional. Verify `supabase/tests/content_access.sql` as well as multi-context RLS. Company Content replaces the Gestores main tab; manager management lives under Profile. `CourseRepository` powers the live employee catalog/outline through RLS; playback, PDF/audio uploads and quiz authoring still follow player/storage/editor work. `AddCompanyScreen`/`AddEmployeeScreen` create invites via Edge Functions.
 5. `ProgressRepository` upsert + certificate fn → `RewardsScreen`/`EmployeeProgressScreen`.
-6. Report views + `charts.dart`, CSV export client-side.
+6. Live Gestor dashboard/company/report queries are implemented in
+   `20261001000000_gestor_data.sql`; verify `supabase/tests/gestor_data.sql` before
+   an operator-approved staging migration. Metric semantics live in
+   `01-backend.md#gestor-data-integration`. Client-side CSV export remains deferred.
 7. Pages + domain + FCM tokens + `push-on-assign` + 4 workflows + keepalive.
 
 Each step keeps the app runnable on mocks until its repo is swapped.

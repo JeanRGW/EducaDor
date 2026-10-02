@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/theme.dart';
 import '../../data/models/models.dart';
+import '../../data/repositories/gestor_providers.dart';
 import '../../data/repositories/repositories.dart';
 import '../../shared/widgets/app_icons.dart';
 import '../../shared/widgets/common.dart';
@@ -74,6 +75,10 @@ class _ContentCatalogScreenState extends ConsumerState<ContentCatalogScreen> {
     setState(() => _busy.add(item.id));
     try {
       await write();
+      if (widget.platform) {
+        ref.invalidate(gestorDashboardProvider);
+        ref.invalidate(gestorCompletionProvider);
+      }
       if (mounted) await _load();
     } catch (_) {
       if (mounted) {
@@ -110,15 +115,32 @@ class _ContentCatalogScreenState extends ConsumerState<ContentCatalogScreen> {
     appBar: AppBar(
       automaticallyImplyLeading: false,
       titleSpacing: 16,
+      backgroundColor: widget.platform ? AppColors.surface : null,
+      titleTextStyle: widget.platform
+          ? const TextStyle(
+              fontFamily: AppFonts.outfit,
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+              height: 1.2,
+            )
+          : null,
       title: const Text('Conteúdo Educacional'),
     ),
     floatingActionButton: widget.platform
         ? FloatingActionButton(
             tooltip: 'Adicionar trilha',
             backgroundColor: AppColors.successDarkGreen,
+            shape: const CircleBorder(
+              side: BorderSide(color: Colors.white, width: 2),
+            ),
             onPressed: () async {
               await context.push('/gestor/trail/add');
-              if (mounted) _load();
+              if (mounted) {
+                ref.invalidate(gestorDashboardProvider);
+                ref.invalidate(gestorCompletionProvider);
+                _load();
+              }
             },
             child: const SvgIcon(AppIcons.compose, color: Colors.white),
           )
@@ -127,74 +149,111 @@ class _ContentCatalogScreenState extends ConsumerState<ContentCatalogScreen> {
       onRefresh: () => _load(),
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
+        padding: const EdgeInsets.only(bottom: 96),
         children: [
-          SearchField(
-            'Pesquisar cursos, módulos...',
-            onChanged: (value) {
-              _search = value;
-              _request++;
-              _debounce?.cancel();
-              _debounce = Timer(
-                const Duration(milliseconds: 300),
-                () => _load(),
-              );
-            },
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            decoration: BoxDecoration(
+              color: widget.platform ? AppColors.surface : AppColors.background,
+              border: widget.platform
+                  ? const Border(bottom: BorderSide(color: AppColors.border))
+                  : null,
+            ),
+            child: Column(
+              children: [
+                SearchField(
+                  'Pesquisar cursos, módulos...',
+                  compact: widget.platform,
+                  prefixIcon: widget.platform
+                      ? const SvgIcon(
+                          AppIcons.search,
+                          size: 26,
+                          color: Color(0xFF475569),
+                        )
+                      : null,
+                  onChanged: (value) {
+                    _search = value;
+                    _request++;
+                    _debounce?.cancel();
+                    _debounce = Timer(
+                      const Duration(milliseconds: 300),
+                      () => _load(),
+                    );
+                  },
+                ),
+                const SizedBox(height: 14),
+                FilterChips(
+                  plainInactive: widget.platform,
+                  options: const ['Todos', 'Cursos', 'Módulos', 'Quizzes'],
+                  selected: _chip,
+                  onSelected: (index) {
+                    _debounce?.cancel();
+                    setState(() => _chip = index);
+                    _load();
+                  },
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 14),
-          FilterChips(
-            options: const ['Todos', 'Cursos', 'Módulos', 'Quizzes'],
-            selected: _chip,
-            onSelected: (index) {
-              _debounce?.cancel();
-              setState(() => _chip = index);
-              _load();
-            },
-          ),
-          const SizedBox(height: 16),
+          if (widget.platform) const SizedBox(height: 16),
           if (_error)
-            AppCard(
-              child: Column(
-                children: [
-                  const Text('Não foi possível carregar o conteúdo.'),
-                  TextButton(
-                    onPressed: () => _load(),
-                    child: const Text('Tentar novamente'),
-                  ),
-                ],
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: AppCard(
+                child: Column(
+                  children: [
+                    const Text('Não foi possível carregar o conteúdo.'),
+                    TextButton(
+                      onPressed: () => _load(),
+                      child: const Text('Tentar novamente'),
+                    ),
+                  ],
+                ),
               ),
             ),
-          if (_items == null && !_error) const _CatalogSkeleton(),
+          if (_items == null && !_error)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: _CatalogSkeleton(platform: widget.platform),
+            ),
           if (_items?.isEmpty == true && !_error)
-            AppCard(
-              child: Text(
-                _search.isNotEmpty || _chip != 0
-                    ? 'Nenhum conteúdo encontrado.'
-                    : widget.platform
-                    ? 'Nenhuma trilha publicada. Adicione a primeira trilha.'
-                    : 'Nenhum conteúdo liberado para esta empresa.',
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: AppCard(
+                child: Text(
+                  _search.isNotEmpty || _chip != 0
+                      ? 'Nenhum conteúdo encontrado.'
+                      : widget.platform
+                      ? 'Nenhuma trilha publicada. Adicione a primeira trilha.'
+                      : 'Nenhum conteúdo liberado para esta empresa.',
+                ),
               ),
             ),
-          for (final item in _items ?? <ManagedContent>[]) ...[
-            ManagedContentCard(
-              item: item,
-              platform: widget.platform,
-              busy: _busy.contains(item.id) || _loading,
-              onToggle: (enabled) => _change(item, () {
-                final repo = ref.read(contentRepositoryProvider);
-                return widget.platform
-                    ? repo.setPlatformEnabled(item.id, enabled)
-                    : repo.setCompanyEnabled(item.id, enabled);
-              }),
-              onAudience: widget.platform ? () => _audience(item) : null,
+          for (final item in _items ?? <ManagedContent>[])
+            Padding(
+              key: ValueKey(item.id),
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: ManagedContentCard(
+                item: item,
+                platform: widget.platform,
+                busy: _busy.contains(item.id) || _loading,
+                onToggle: (enabled) => _change(item, () {
+                  final repo = ref.read(contentRepositoryProvider);
+                  return widget.platform
+                      ? repo.setPlatformEnabled(item.id, enabled)
+                      : repo.setCompanyEnabled(item.id, enabled);
+                }),
+                onAudience: widget.platform ? () => _audience(item) : null,
+              ),
             ),
-            const SizedBox(height: 12),
-          ],
           if (_more)
-            TextButton(
-              onPressed: _loading ? null : () => _load(append: true),
-              child: Text(
-                _loading ? 'Carregando...' : 'Carregar mais conteúdo',
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: TextButton(
+                onPressed: _loading ? null : () => _load(append: true),
+                child: Text(
+                  _loading ? 'Carregando...' : 'Carregar mais conteúdo',
+                ),
               ),
             ),
         ],
@@ -271,8 +330,9 @@ class ManagedContentCard extends StatelessWidget {
                       ),
                       child: Text(
                         item.kindLabel,
-                        style: const TextStyle(
-                          fontSize: 11,
+                        style: TextStyle(
+                          fontFamily: AppFonts.inter,
+                          fontSize: platform ? 10 : 11,
                           fontWeight: FontWeight.w700,
                           color: AppColors.navy,
                         ),
@@ -289,16 +349,53 @@ class ManagedContentCard extends StatelessWidget {
                 children: [
                   Text(
                     item.title,
-                    style: Theme.of(context).textTheme.titleMedium,
+                    style: platform
+                        ? TextStyle(
+                            fontFamily: AppFonts.outfit,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: available
+                                ? AppColors.textPrimary
+                                : AppColors.textMuted,
+                            height: 1.3,
+                          )
+                        : Theme.of(context).textTheme.titleMedium,
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    '${item.lessonCount} ${item.lessonCount == 1 ? 'aula' : 'aulas'}'
-                    '${platform ? ' · ${item.allCompanies ? 'Todas as empresas' : '${item.companyCount} empresas liberadas'}' : ''}',
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodySmall?.copyWith(color: AppColors.navy),
-                  ),
+                  if (platform)
+                    Text.rich(
+                      TextSpan(
+                        children: [
+                          TextSpan(
+                            text:
+                                '${item.lessonCount} ${item.lessonCount == 1 ? 'aula' : 'aulas'}  ·  ',
+                          ),
+                          TextSpan(
+                            text: item.allCompanies
+                                ? 'Todas as empresas'
+                                : '${item.companyCount} ${item.companyCount == 1 ? 'empresa liberada' : 'empresas liberadas'}',
+                            style: TextStyle(
+                              color: available
+                                  ? AppColors.successDarkGreen
+                                  : AppColors.textMuted,
+                            ),
+                          ),
+                        ],
+                      ),
+                      style: const TextStyle(
+                        fontFamily: AppFonts.inter,
+                        fontSize: 11,
+                        color: AppColors.textMuted,
+                        height: 1.4,
+                      ),
+                    )
+                  else
+                    Text(
+                      '${item.lessonCount} ${item.lessonCount == 1 ? 'aula' : 'aulas'}',
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(color: AppColors.navy),
+                    ),
                   const SizedBox(height: 14),
                   Row(
                     children: [
@@ -307,8 +404,18 @@ class ManagedContentCard extends StatelessWidget {
                           platform
                               ? 'Conclusão nas empresas'
                               : 'Conclusão dos funcionários',
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(color: AppColors.navy),
+                          style: platform
+                              ? TextStyle(
+                                  fontFamily: AppFonts.inter,
+                                  fontSize: 11,
+                                  color: available
+                                      ? const Color(0xFF475569)
+                                      : AppColors.textMuted,
+                                  height: 1.4,
+                                )
+                              : Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: AppColors.navy,
+                                ),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -316,9 +423,13 @@ class ManagedContentCard extends StatelessWidget {
                         item.completionPct == null
                             ? 'Sem dados'
                             : '${item.completionPct!.round()}%',
-                        style: const TextStyle(
-                          fontSize: 13,
+                        style: TextStyle(
+                          fontFamily: AppFonts.inter,
+                          fontSize: platform ? 11 : 13,
                           fontWeight: FontWeight.w700,
+                          color: platform && !available
+                              ? AppColors.textMuted
+                              : AppColors.textPrimary,
                         ),
                       ),
                     ],
@@ -326,19 +437,25 @@ class ManagedContentCard extends StatelessWidget {
                   const SizedBox(height: 8),
                   ProgressBar(
                     (item.completionPct ?? 0) / 100,
-                    height: 6,
+                    height: platform ? 4 : 6,
                     color: AppColors.successDarkGreen,
                   ),
                   const SizedBox(height: 8),
                   Row(
+                    textDirection: platform
+                        ? TextDirection.rtl
+                        : TextDirection.ltr,
                     children: [
                       Expanded(
                         child: Text(
                           busy ? 'Atualizando acesso...' : caption,
                           style: TextStyle(
-                            fontSize: 12,
+                            fontFamily: AppFonts.inter,
+                            fontSize: platform ? 11 : 12,
                             color: available
                                 ? AppColors.successDarkGreen
+                                : platform
+                                ? AppColors.textMuted
                                 : AppColors.navy,
                           ),
                         ),
@@ -346,15 +463,39 @@ class ManagedContentCard extends StatelessWidget {
                       Semantics(
                         label:
                             '${platform ? 'Acesso global' : 'Acesso dos funcionários'}: ${item.title}',
-                        child: Switch(
-                          value: platform
-                              ? item.platformEnabled
-                              : item.companyEnabled,
-                          activeThumbColor: AppColors.successDarkGreen,
-                          onChanged:
-                              busy || (!platform && !item.platformEnabled)
-                              ? null
-                              : onToggle,
+                        child: SizedBox(
+                          width: platform ? 52 : null,
+                          height: platform ? 48 : null,
+                          child: Transform.scale(
+                            scale: platform ? 0.55 : 1,
+                            alignment: Alignment.centerLeft,
+                            child: Switch(
+                              value: platform
+                                  ? item.platformEnabled
+                                  : item.companyEnabled,
+                              activeThumbColor: platform
+                                  ? Colors.white
+                                  : AppColors.successDarkGreen,
+                              activeTrackColor: platform
+                                  ? AppColors.successDarkGreen
+                                  : null,
+                              inactiveThumbColor: platform
+                                  ? Colors.white
+                                  : null,
+                              inactiveTrackColor: platform
+                                  ? AppColors.border
+                                  : null,
+                              trackOutlineColor: platform
+                                  ? const WidgetStatePropertyAll(
+                                      Colors.transparent,
+                                    )
+                                  : null,
+                              onChanged:
+                                  busy || (!platform && !item.platformEnabled)
+                                  ? null
+                                  : onToggle,
+                            ),
+                          ),
                         ),
                       ),
                     ],
@@ -363,11 +504,24 @@ class ManagedContentCard extends StatelessWidget {
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.successDarkGreen,
+                          backgroundColor: AppColors.successBgSoft,
+                          side: const BorderSide(color: AppColors.border),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          textStyle: const TextStyle(
+                            fontFamily: AppFonts.inter,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                         onPressed: busy ? null : onAudience,
                         icon: const SvgIcon(
                           AppIcons.companies,
-                          color: AppColors.primary,
-                          size: 18,
+                          color: AppColors.successDarkGreen,
+                          size: 16,
                         ),
                         label: const Text('Liberar para'),
                       ),
@@ -398,7 +552,8 @@ class _CoverFallback extends StatelessWidget {
 }
 
 class _CatalogSkeleton extends StatelessWidget {
-  const _CatalogSkeleton();
+  final bool platform;
+  const _CatalogSkeleton({required this.platform});
   @override
   Widget build(BuildContext context) => AppCard(
     padding: EdgeInsets.zero,
@@ -414,13 +569,29 @@ class _CatalogSkeleton extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
-              for (final height in [20.0, 16.0, 14.0, 6.0, 48.0]) ...[
+              for (final (height, gap)
+                  in platform
+                      ? [
+                          (18.0, 4.0),
+                          (16.0, 14.0),
+                          (16.0, 8.0),
+                          (4.0, 8.0),
+                          (48.0, 0.0),
+                          (40.0, 0.0),
+                        ]
+                      : [
+                          (20.0, 8.0),
+                          (16.0, 8.0),
+                          (14.0, 8.0),
+                          (6.0, 8.0),
+                          (48.0, 8.0),
+                        ]) ...[
                 SizedBox(
                   height: height,
                   width: double.infinity,
                   child: const ColoredBox(color: AppColors.chipBg),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: gap),
               ],
             ],
           ),

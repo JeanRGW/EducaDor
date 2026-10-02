@@ -6,21 +6,28 @@ import '../../app/theme.dart';
 class LineChart extends StatelessWidget {
   final List<MapEntry<String, double>> data;
   final double height;
+  final List<MapEntry<String, double>>? secondaryData;
 
-  const LineChart(this.data, {super.key, this.height = 140});
+  const LineChart(
+    this.data, {
+    super.key,
+    this.height = 140,
+    this.secondaryData,
+  });
 
   @override
   Widget build(BuildContext context) {
     return CustomPaint(
       size: Size(double.infinity, height),
-      painter: _LinePainter(data),
+      painter: _LinePainter(data, secondaryData),
     );
   }
 }
 
 class _LinePainter extends CustomPainter {
   final List<MapEntry<String, double>> data;
-  _LinePainter(this.data);
+  final List<MapEntry<String, double>>? secondaryData;
+  _LinePainter(this.data, this.secondaryData);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -80,6 +87,32 @@ class _LinePainter extends CustomPainter {
       canvas.drawCircle(point(i), 3, Paint()..color = AppColors.chartBlue);
     }
 
+    final secondary = secondaryData;
+    if (secondary != null && secondary.length == data.length) {
+      final path = Path();
+      for (var i = 0; i < secondary.length; i++) {
+        final x = leftPad + chartW * (i / (secondary.length - 1));
+        final y = topPad + chartH * (1 - secondary[i].value);
+        if (i == 0) {
+          path.moveTo(x, y);
+        } else {
+          path.lineTo(x, y);
+        }
+        canvas.drawCircle(
+          Offset(x, y),
+          3,
+          Paint()..color = AppColors.accentTeal,
+        );
+      }
+      canvas.drawPath(
+        path,
+        Paint()
+          ..color = AppColors.accentTeal
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.5,
+      );
+    }
+
     // Labels
     final tp = TextPainter(
       textDirection: TextDirection.ltr,
@@ -91,15 +124,13 @@ class _LinePainter extends CustomPainter {
         style: const TextStyle(color: AppColors.textMuted, fontSize: 10),
       );
       tp.layout();
-      tp.paint(
-        canvas,
-        Offset(point(i).dx - tp.width / 2, topPad + chartH + 6),
-      );
+      tp.paint(canvas, Offset(point(i).dx - tp.width / 2, topPad + chartH + 6));
     }
   }
 
   @override
-  bool shouldRepaint(covariant _LinePainter old) => old.data != data;
+  bool shouldRepaint(covariant _LinePainter old) =>
+      old.data != data || old.secondaryData != secondaryData;
 }
 
 /// Vertical bar chart.
@@ -135,9 +166,16 @@ class BarChart extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  Text(data[i].key,
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      data[i].key,
                       style: const TextStyle(
-                          color: AppColors.textMuted, fontSize: 9)),
+                        color: AppColors.textMuted,
+                        fontSize: 9,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -177,9 +215,10 @@ class DonutChart extends StatelessWidget {
           child: Text(
             '${(value * 100).round()}%',
             style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-                color: color),
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: color,
+            ),
           ),
         ),
       ),
@@ -232,33 +271,55 @@ class ReportBarRow extends StatelessWidget {
   final String label;
   final double value;
   final Color color;
+  final bool compact;
 
-  const ReportBarRow(this.label, this.value, {super.key, this.color = AppColors.chartBlue});
+  const ReportBarRow(
+    this.label,
+    this.value, {
+    super.key,
+    this.color = AppColors.chartBlue,
+    this.compact = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: EdgeInsets.symmetric(vertical: compact ? 6 : 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Expanded(child: Text(label,
-                  style: const TextStyle(
-                      fontSize: 14, fontWeight: FontWeight.w600))),
-              Text('${value.round()}%',
-                  style: const TextStyle(
-                      fontSize: 14, fontWeight: FontWeight.w700)),
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontFamily: AppFonts.inter,
+                    fontSize: compact ? 12 : 14,
+                    fontWeight: compact ? FontWeight.w400 : FontWeight.w600,
+                    color: compact ? const Color(0xFF475569) : null,
+                  ),
+                ),
+              ),
+              Text(
+                '${value.round()}%',
+                style: TextStyle(
+                  fontFamily: AppFonts.inter,
+                  fontSize: compact ? 12 : 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             ],
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: compact ? 4 : 8),
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
               value: value / 100,
-              minHeight: 9,
-              backgroundColor: AppColors.border,
+              minHeight: compact ? 8 : 9,
+              backgroundColor: compact
+                  ? AppColors.background
+                  : AppColors.border,
               valueColor: AlwaysStoppedAnimation<Color>(color),
             ),
           ),

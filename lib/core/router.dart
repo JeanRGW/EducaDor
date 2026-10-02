@@ -183,7 +183,7 @@ StatefulShellBranch _branch(String path, WidgetBuilder builder) =>
 StatefulShellRoute _shell(Role role, List<StatefulShellBranch> branches) {
   return StatefulShellRoute.indexedStack(
     builder: (context, state, shell) =>
-        RoleShell(navigationShell: shell, tabs: tabsForRole(role)),
+        RoleShell(navigationShell: shell, tabs: tabsForRole(role), role: role),
     branches: branches,
   );
 }

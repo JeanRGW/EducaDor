@@ -67,12 +67,14 @@ class AppSession {
 
 class PendingInvitation {
   final String? name;
+  final String? companyName;
   final String email;
   final Role role;
   final String? companyId;
 
   const PendingInvitation({
     this.name,
+    this.companyName,
     required this.email,
     required this.role,
     this.companyId,
@@ -384,4 +386,107 @@ class WeeklyStudyDay {
   final double value;
 
   const WeeklyStudyDay(this.label, this.value);
+}
+
+class CompanyPage {
+  final List<Company> items;
+  final int activeCount;
+  final int inactiveCount;
+
+  const CompanyPage({
+    required this.items,
+    required this.activeCount,
+    required this.inactiveCount,
+  });
+}
+
+class GrowthMonth {
+  final DateTime month;
+  final int companies;
+  final int users;
+
+  const GrowthMonth({
+    required this.month,
+    required this.companies,
+    required this.users,
+  });
+}
+
+class PlatformActivity {
+  final String id;
+  final String kind;
+  final String name;
+  final String? title;
+  final DateTime occurredAt;
+
+  const PlatformActivity({
+    required this.id,
+    required this.kind,
+    required this.name,
+    this.title,
+    required this.occurredAt,
+  });
+}
+
+class GestorDashboard {
+  final int companyCount;
+  final int newCompanyCount;
+  final int userCount;
+  final int activeUserCount;
+  final double? completionPct;
+  final List<GrowthMonth> growth;
+  final List<PlatformActivity> activities;
+
+  const GestorDashboard({
+    required this.companyCount,
+    required this.newCompanyCount,
+    required this.userCount,
+    required this.activeUserCount,
+    this.completionPct,
+    required this.growth,
+    required this.activities,
+  });
+}
+
+class CompanyCompletion {
+  final String companyId;
+  final String company;
+  final double? percent;
+
+  const CompanyCompletion({
+    required this.companyId,
+    required this.company,
+    this.percent,
+  });
+}
+
+class EngagementMonth {
+  final DateTime month;
+  final int activeUsers;
+
+  const EngagementMonth({required this.month, required this.activeUsers});
+}
+
+class PopularContent {
+  final String courseId;
+  final String title;
+  final String kind;
+  final int completions;
+
+  const PopularContent({
+    required this.courseId,
+    required this.title,
+    required this.kind,
+    required this.completions,
+  });
+}
+
+class PlatformActivityReport {
+  final List<EngagementMonth> engagement;
+  final List<PopularContent> popularContent;
+
+  const PlatformActivityReport({
+    required this.engagement,
+    required this.popularContent,
+  });
 }

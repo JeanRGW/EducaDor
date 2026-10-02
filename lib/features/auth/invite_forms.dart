@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app/theme.dart';
 import '../../data/models/models.dart';
 import '../../data/repositories/repositories.dart';
 import '../../data/session/session_controller.dart';
 import '../../shared/widgets/common.dart';
+import '../../shared/widgets/admin_styles.dart';
+import '../../shared/widgets/app_icons.dart';
 import 'onboarding_screens.dart';
 
 class AddPlatformManagerScreen extends StatelessWidget {
@@ -71,7 +74,8 @@ class _InvitePersonScreenState extends ConsumerState<InvitePersonScreen> {
       );
       return;
     }
-    final companyId = widget.companyId ?? ref.read(sessionProvider).value?.active?.companyId;
+    final companyId =
+        widget.companyId ?? ref.read(sessionProvider).value?.active?.companyId;
     if (widget.role != Role.gestor && companyId == null) return;
     setState(() => _busy = true);
     try {
@@ -106,48 +110,77 @@ class _InvitePersonScreenState extends ConsumerState<InvitePersonScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: Text(switch (widget.role) {
-        Role.gestor => 'Convidar gestor da plataforma',
-        Role.empresa => 'Convidar gestor da empresa',
-        Role.funcionario => 'Convidar funcionário',
-      }),
-    ),
-    body: ListView(
-      padding: const EdgeInsets.all(20),
-      children: [
-        const Text(
-          'A pessoa receberá acesso ao aceitar o link compartilhado com ela.',
+  Widget build(BuildContext context) {
+    final platform = widget.role == Role.gestor || widget.companyId != null;
+    return Theme(
+      data: platform
+          ? AdminStyles.formTheme(Theme.of(context))
+          : Theme.of(context),
+      child: Scaffold(
+        appBar: AppBar(
+          toolbarHeight: platform
+              ? MediaQuery.textScalerOf(context).scale(18) > 22
+                    ? 72
+                    : 52
+              : kToolbarHeight,
+          leading: platform
+              ? IconButton(
+                  tooltip: 'Voltar',
+                  onPressed: () => context.pop(),
+                  icon: const SvgIcon(
+                    AppIcons.arrowBack,
+                    size: 20,
+                    color: AppColors.successDarkGreen,
+                  ),
+                )
+              : null,
+          title: Text(switch (widget.role) {
+            Role.gestor => 'Convidar gestor da plataforma',
+            Role.empresa => 'Convidar gestor da empresa',
+            Role.funcionario => 'Convidar funcionário',
+          }, maxLines: platform ? 2 : 1),
         ),
-        const SizedBox(height: 20),
-        FormFieldLabel(
-          label: 'Nome completo',
-          controller: _name,
-          hint: 'Nome da pessoa',
+        body: ListView(
+          padding: const EdgeInsets.all(20),
+          children: [
+            Text(
+              'A pessoa receberá acesso ao aceitar o link compartilhado com ela.',
+              style: platform ? AdminStyles.body : null,
+            ),
+            const SizedBox(height: 20),
+            FormFieldLabel(
+              label: 'Nome completo',
+              compact: platform,
+              controller: _name,
+              hint: 'Nome da pessoa',
+            ),
+            FormFieldLabel(
+              label: 'E-mail',
+              compact: platform,
+              controller: _email,
+              hint: 'pessoa@empresa.com',
+            ),
+            if (widget.role == Role.funcionario) ...[
+              FormFieldLabel(
+                label: 'Departamento',
+                controller: _department,
+                hint: 'RH',
+              ),
+              FormFieldLabel(
+                label: 'Cargo / especialidade',
+                controller: _jobTitle,
+                hint: 'Analista',
+              ),
+            ],
+            PrimaryButton(
+              _busy ? 'Criando convite...' : 'Criar convite',
+              compact: platform,
+              color: platform ? AppColors.successDarkGreen : null,
+              onPressed: _busy ? null : _submit,
+            ),
+          ],
         ),
-        FormFieldLabel(
-          label: 'E-mail',
-          controller: _email,
-          hint: 'pessoa@empresa.com',
-        ),
-        if (widget.role == Role.funcionario) ...[
-          FormFieldLabel(
-            label: 'Departamento',
-            controller: _department,
-            hint: 'RH',
-          ),
-          FormFieldLabel(
-            label: 'Cargo / especialidade',
-            controller: _jobTitle,
-            hint: 'Analista',
-          ),
-        ],
-        PrimaryButton(
-          _busy ? 'Criando convite...' : 'Criar convite',
-          onPressed: _busy ? null : _submit,
-        ),
-      ],
-    ),
-  );
+      ),
+    );
+  }
 }

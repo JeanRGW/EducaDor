@@ -7,6 +7,8 @@ import '../../app/theme.dart';
 import '../../data/models/models.dart';
 import '../../data/repositories/repositories.dart';
 import '../../shared/widgets/common.dart';
+import '../../shared/widgets/admin_styles.dart';
+import '../../shared/widgets/app_icons.dart';
 
 Future<ProfessionalOption?> pickProfessional(
   BuildContext context,
@@ -15,6 +17,8 @@ Future<ProfessionalOption?> pickProfessional(
   context: context,
   isScrollControlled: true,
   useSafeArea: true,
+  backgroundColor: AppColors.surface,
+  showDragHandle: true,
   builder: (_) => _ProfessionalPicker(initial: initial),
 );
 
@@ -91,10 +95,14 @@ class _ProfessionalPickerState extends ConsumerState<_ProfessionalPicker> {
                 Expanded(
                   child: Text(
                     'Profissional Responsável',
-                    style: Theme.of(context).textTheme.titleLarge,
+                    style: AdminStyles.formTitle,
                   ),
                 ),
                 TextButton(
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.successDarkGreen,
+                    textStyle: AdminStyles.body,
+                  ),
                   onPressed: () => Navigator.pop(context),
                   child: const Text('Cancelar'),
                 ),
@@ -105,6 +113,12 @@ class _ProfessionalPickerState extends ConsumerState<_ProfessionalPicker> {
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: SearchField(
               'Pesquisar profissional',
+              compact: true,
+              prefixIcon: const SvgIcon(
+                AppIcons.search,
+                size: 26,
+                color: Color(0xFF475569),
+              ),
               onChanged: _searchChanged,
             ),
           ),
@@ -139,7 +153,9 @@ class _ProfessionalPickerState extends ConsumerState<_ProfessionalPicker> {
                     ),
                   for (final person in _people ?? <ProfessionalOption>[])
                     RadioListTile<String>(
-                      title: Text(person.name),
+                      activeColor: AppColors.successDarkGreen,
+                      dense: true,
+                      title: Text(person.name, style: AdminStyles.body),
                       value: person.id,
                     ),
                   if (!_loading && !_error && _people?.isEmpty == true)
@@ -156,6 +172,8 @@ class _ProfessionalPickerState extends ConsumerState<_ProfessionalPicker> {
             minimum: const EdgeInsets.all(20),
             child: PrimaryButton(
               'Confirmar seleção',
+              compact: true,
+              color: AppColors.successDarkGreen,
               onPressed: _selected == null
                   ? null
                   : () => Navigator.pop(context, _selected),
