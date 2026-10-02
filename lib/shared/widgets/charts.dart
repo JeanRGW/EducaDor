@@ -272,6 +272,7 @@ class ReportBarRow extends StatelessWidget {
   final double value;
   final Color color;
   final bool compact;
+  final Color? valueColor;
 
   const ReportBarRow(
     this.label,
@@ -279,6 +280,7 @@ class ReportBarRow extends StatelessWidget {
     super.key,
     this.color = AppColors.chartBlue,
     this.compact = false,
+    this.valueColor,
   });
 
   @override
@@ -307,6 +309,7 @@ class ReportBarRow extends StatelessWidget {
                   fontFamily: AppFonts.inter,
                   fontSize: compact ? 12 : 14,
                   fontWeight: FontWeight.w700,
+                  color: valueColor,
                 ),
               ),
             ],

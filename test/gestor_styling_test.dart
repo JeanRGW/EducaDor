@@ -289,7 +289,7 @@ void main() {
   );
 
   testWidgets(
-    'company and employee invitations keep their existing presentation',
+    'company and employee invitations share compact teal form styling',
     (tester) async {
       for (final role in [Role.empresa, Role.funcionario]) {
         await _show(tester, InvitePersonScreen(role: role));
@@ -297,17 +297,17 @@ void main() {
           tester
               .widget<FormFieldLabel>(find.byType(FormFieldLabel).first)
               .compact,
-          isFalse,
+          isTrue,
         );
         expect(
           tester.widget<PrimaryButton>(find.byType(PrimaryButton)).compact,
-          isFalse,
+          isTrue,
         );
         expect(
           Theme.of(
-            tester.element(_field('Nome completo')),
+            tester.element(_field('NOME COMPLETO')),
           ).inputDecorationTheme.hintStyle!.fontSize,
-          15,
+          13,
         );
       }
     },

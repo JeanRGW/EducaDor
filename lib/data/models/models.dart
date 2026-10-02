@@ -132,6 +132,7 @@ class Employee {
   final String address;
   final EmployeeStatus status;
   final double completionPct;
+  final bool hasCompletion;
   final String lastActivity;
 
   const Employee({
@@ -146,6 +147,7 @@ class Employee {
     required this.address,
     required this.status,
     required this.completionPct,
+    this.hasCompletion = true,
     required this.lastActivity,
   });
 }

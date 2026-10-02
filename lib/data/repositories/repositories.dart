@@ -179,9 +179,14 @@ class CompanyRepository {
 }
 
 class EmployeeRepository {
+  final SupabaseClient? _injectedClient;
+  EmployeeRepository({SupabaseClient? client}) : _injectedClient = client;
+
   Future<List<Employee>> all(String companyId) async {
-    final client = _client;
-    if (client == null) return MockData.employees;
+    final client =
+        _injectedClient ??
+        _client ??
+        (throw StateError('Configure o Supabase para carregar funcionários.'));
     final rows =
         await client.rpc(
               'employee_completion',
@@ -207,6 +212,7 @@ class EmployeeRepository {
         address: '',
         status: EmployeeStatus.active,
         completionPct: (row['pct'] as num?)?.toDouble() ?? 0,
+        hasCompletion: row['pct'] != null,
         lastActivity: '',
       );
     }).toList();
@@ -441,14 +447,33 @@ class ReportRepository {
   }
 
   Future<double?> completion(String companyId) async {
-    final client = _client;
-    if (client == null) return null;
+    final client = _reportClient;
     final row = await client
         .from('completion_by_company')
         .select('pct')
         .eq('company_id', companyId)
         .maybeSingle();
     return (row?['pct'] as num?)?.toDouble();
+  }
+
+  Future<List<MapEntry<String, double?>>> departmentCompletion(
+    String companyId, {
+    int offset = 0,
+  }) async {
+    final rows = await _reportClient
+        .from('completion_by_dept')
+        .select('department,pct')
+        .eq('company_id', companyId)
+        .order('department', ascending: true)
+        .range(offset, offset + 49);
+    return rows
+        .map(
+          (row) => MapEntry(
+            row['department'] as String? ?? 'Sem departamento',
+            (row['pct'] as num?)?.toDouble(),
+          ),
+        )
+        .toList();
   }
 }
 
