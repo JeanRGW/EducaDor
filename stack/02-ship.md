@@ -36,6 +36,12 @@ Public staging inputs (`SUPABASE_URL`, `SUPABASE_ANON_KEY` publishable key, `CLO
    before an operator-approved migration. Deploy the updated `accept-invite`
    function **after** the migration, then build/deploy Flutter; invitation
    acceptance now requires its server-only atomic RPC.
-8. Pages + domain + FCM tokens + `push-on-assign` + 4 workflows + keepalive.
+8. Company-manager data integration uses `20261002000001_company_data.sql`:
+   exact dashboard/profile counts, monthly participation, company-wide highlights
+   and searched/paginated employee metadata with company-scoped last activity.
+   Verify `supabase/tests/company_data.sql` before operator-approved migration,
+   then deploy Flutter. Business definitions and deferred workflows remain
+   separate; see `01-backend.md#company-manager-data-integration`.
+9. Pages + domain + FCM tokens + `push-on-assign` + 4 workflows + keepalive.
 
 Each step keeps the app runnable on mocks until its repo is swapped.

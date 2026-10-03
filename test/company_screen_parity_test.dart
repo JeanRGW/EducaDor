@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:ui' as ui;
 
 import 'package:educador/app/theme.dart';
 import 'package:educador/data/models/models.dart';
 import 'package:educador/data/repositories/repositories.dart';
+import 'package:educador/data/repositories/company_providers.dart';
 import 'package:educador/data/session/session_controller.dart';
 import 'package:educador/features/auth/invite_forms.dart';
 import 'package:educador/features/company/completion_screen.dart';
@@ -58,6 +60,7 @@ Employee _employee(
   int index, {
   double percent = 85,
   bool hasCompletion = true,
+  DateTime? activityAt,
 }) => Employee(
   id: 'employee-$index',
   fullName: index == 0 ? 'Roberto Silva' : 'Pessoa $index',
@@ -72,6 +75,7 @@ Employee _employee(
   completionPct: percent,
   hasCompletion: hasCompletion,
   lastActivity: '',
+  lastActivityAt: activityAt,
 );
 
 class _Employees extends EmployeeRepository {
@@ -83,12 +87,71 @@ class _Employees extends EmployeeRepository {
   final calls = <String>[];
   bool fail = false;
   Completer<List<Employee>>? pending;
+  final queries = <({String companyId, String search, int offset})>[];
+  int? failOffset;
+  @override
+  Future<EmployeePage> page(
+    String companyId, {
+    String search = '',
+    int offset = 0,
+  }) async {
+    queries.add((companyId: companyId, search: search, offset: offset));
+    if (offset == failOffset) throw StateError('Offline');
+    final allRows = await all(companyId);
+    final matching = allRows
+        .where(
+          (row) =>
+              row.fullName.toLowerCase().contains(search.toLowerCase()) ||
+              row.department.toLowerCase().contains(search.toLowerCase()),
+        )
+        .toList();
+    return EmployeePage(
+      items: matching.skip(offset).take(50).toList(),
+      totalCount: allRows.length,
+      filteredCount: matching.length,
+    );
+  }
+
   @override
   Future<List<Employee>> all(String companyId) async {
     calls.add(companyId);
     if (fail) throw StateError('Offline');
     if (pending != null) return pending!.future;
     return companyId == 'company-a' ? rows : [_employee(10)];
+  }
+}
+
+class _CompanyData extends CompanyDataRepository {
+  final _Employees employees;
+  final _Reports reports;
+  final List<int> participation;
+  _CompanyData(
+    this.employees,
+    this.reports, {
+    this.participation = const [0, 0, 0, 0, 0, 3],
+  });
+
+  @override
+  Future<CompanyDashboard> dashboard(String companyId) async {
+    final rows = await employees.all(companyId);
+    final percent = await reports.completion(companyId);
+    final highlights = [
+      ...rows.where((row) => row.hasCompletion && row.completionPct > 0),
+    ]..sort((a, b) => b.completionPct.compareTo(a.completionPct));
+    return CompanyDashboard(
+      employeeCount: rows.length,
+      activeCourseCount: 4,
+      certificateCount: 9,
+      completionPct: percent,
+      engagement: [
+        for (var month = 5; month <= 10; month++)
+          EngagementMonth(
+            month: DateTime(2026, month),
+            activeUsers: participation[month - 5],
+          ),
+      ],
+      highlights: highlights.take(2).toList(),
+    );
   }
 }
 
@@ -178,6 +241,9 @@ class _People extends PeopleRepository {
 
 class _Content extends ContentRepository {
   @override
+  Future<void> setCompanyEnabled(String courseId, bool enabled) async {}
+
+  @override
   Future<List<ManagedContent>> catalog({
     String search = '',
     String? kind,
@@ -208,16 +274,22 @@ Future<ProviderContainer> _show(
   _Reports? reports,
   _Companies? companies,
   _Invites? invites,
+  CompanyDataRepository? companyData,
 }) async {
   await tester.pumpWidget(const SizedBox());
   await tester.pumpAndSettle();
   await tester.binding.setSurfaceSize(Size(width, 900));
   addTearDown(() => tester.binding.setSurfaceSize(null));
+  final employeeRepo = employees ?? _Employees();
+  final reportRepo = reports ?? _Reports();
   final container = ProviderContainer(
     overrides: [
       sessionProvider.overrideWith(_Session.new),
-      employeeRepositoryProvider.overrideWithValue(employees ?? _Employees()),
-      reportRepositoryProvider.overrideWithValue(reports ?? _Reports()),
+      employeeRepositoryProvider.overrideWithValue(employeeRepo),
+      reportRepositoryProvider.overrideWithValue(reportRepo),
+      companyDataRepositoryProvider.overrideWithValue(
+        companyData ?? _CompanyData(employeeRepo, reportRepo),
+      ),
       companyRepositoryProvider.overrideWithValue(companies ?? _Companies()),
       invitationRepositoryProvider.overrideWithValue(invites ?? _Invites()),
       peopleRepositoryProvider.overrideWithValue(_People()),
@@ -268,12 +340,16 @@ Future<ProviderContainer> _show(
   return container;
 }
 
-Future<void> _scrollTo(WidgetTester tester, Finder target) async {
+Future<void> _scrollTo(
+  WidgetTester tester,
+  Finder target, {
+  double delta = 180,
+}) async {
   await tester.scrollUntilVisible(
     target,
-    180,
+    delta,
     scrollable: find.byType(Scrollable).first,
-    maxScrolls: 40,
+    maxScrolls: 100,
   );
   await tester.pumpAndSettle();
 }
@@ -361,7 +437,9 @@ void main() {
         expect(find.text('Convite criado'), findsOneWidget);
         await tester.tap(find.text('Fechar sem copiar'));
         await tester.pumpAndSettle();
-        await tester.tap(find.widgetWithText(FilledButton, 'Fechar sem copiar'));
+        await tester.tap(
+          find.widgetWithText(FilledButton, 'Fechar sem copiar'),
+        );
         await tester.pumpAndSettle();
 
         expect(invites.request?.company, 'company-a');
@@ -379,8 +457,14 @@ void main() {
       expect(find.text(_context.companyName), findsOneWidget);
       expect(find.text('82,4%'), findsOneWidget);
       expect(find.text('3'), findsOneWidget);
-      expect(find.text('Em breve'), findsNWidgets(2));
-      expect(find.byType(LineChart), findsNothing);
+      expect(find.text('Em breve'), findsNothing);
+      expect(find.text('4'), findsOneWidget);
+      expect(find.text('9'), findsOneWidget);
+      expect(find.byType(LineChart), findsOneWidget);
+      expect(
+        tester.widget<LineChart>(find.byType(LineChart)).data.last.value,
+        1,
+      );
       expect(
         tester.widget<Text>(find.text('Total de funcionários')).style,
         AdminStyles.fieldLabel,
@@ -433,17 +517,101 @@ void main() {
         tester.widget<ProgressBar>(progress).color,
         AppColors.successDarkGreen,
       );
-      expect(find.text('Última atividade: não disponível'), findsWidgets);
+      expect(find.text('Nenhuma atividade registrada'), findsWidgets);
       await tester.enterText(find.byType(TextField), 'RH');
+      await tester.pump(const Duration(milliseconds: 350));
       await tester.pumpAndSettle();
       expect(find.text('Roberto Silva'), findsOneWidget);
       expect(find.text('Pessoa 1'), findsNothing);
       await tester.enterText(find.byType(TextField), 'Pessoa 2');
+      await tester.pump(const Duration(milliseconds: 350));
       await tester.pumpAndSettle();
       expect(find.text('Sem dados'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );
+
+  for (final counts in [
+    [0, 2, 4, 8, 1, 3],
+    [0, 0, 0, 0, 0, 0],
+  ]) {
+    testWidgets('participation chart paints inside bounds for counts $counts', (
+      tester,
+    ) async {
+      await _show(
+        tester,
+        const CompanyDashboardScreen(),
+        companyData: _CompanyData(
+          _Employees(),
+          _Reports(),
+          participation: counts,
+        ),
+      );
+      final chart = find.byType(LineChart);
+      final paint = find.descendant(
+        of: chart,
+        matching: find.byType(CustomPaint),
+      );
+      final size = tester.getSize(paint);
+      final painter = tester.widget<CustomPaint>(paint).painter!;
+      const margin = 40;
+      final width = size.width.ceil() + 2 * margin;
+      final height = size.height.ceil() + 2 * margin;
+
+      // Padding exposes paint that escapes above the chart, rather than clipping it.
+      final recorder = ui.PictureRecorder();
+      final canvas = Canvas(recorder)
+        ..translate(margin.toDouble(), margin.toDouble());
+      painter.paint(canvas, size);
+      final picture = recorder.endRecording();
+      final pixels = await tester.runAsync(() async {
+        final image = await picture.toImage(width, height);
+        try {
+          return await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+        } finally {
+          image.dispose();
+          picture.dispose();
+        }
+      });
+      expect(pixels, isNotNull);
+      for (var y = 0; y < margin; y++) {
+        for (var x = margin; x < width - margin; x++) {
+          expect(
+            pixels!.getUint8((y * width + x) * 4 + 3),
+            0,
+            reason: 'Chart painted above its bounds at ($x, $y)',
+          );
+        }
+      }
+
+      final maximum = counts.fold<int>(1, (a, b) => a > b ? a : b);
+      final blue = AppColors.chartBlue.toARGB32();
+      for (var i = 0; i < counts.length; i++) {
+        final x = (margin + 4 + (size.width - 8) * i / (counts.length - 1))
+            .round();
+        final y = (margin + 12 + (size.height - 34) * (1 - counts[i] / maximum))
+            .round();
+        final offset = (y * width + x) * 4;
+        expect(
+          [
+            for (var channel = 0; channel < 4; channel++)
+              pixels!.getUint8(offset + channel),
+          ],
+          [(blue >> 16) & 255, (blue >> 8) & 255, blue & 255, 255],
+          reason: 'Month $i must render a dot at its normalized count',
+        );
+      }
+      final semantics = tester.widget<Semantics>(
+        find.ancestor(of: chart, matching: find.byType(Semantics)).first,
+      );
+      const months = ['Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out'];
+      expect(
+        semantics.properties.label,
+        'Participação mensal: ${[for (var i = 0; i < counts.length; i++) '${months[i]}: ${counts[i]} funcionários'].join(', ')}',
+      );
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   testWidgets(
     'profile uses company identity and preserves manager entry point',
@@ -531,18 +699,32 @@ void main() {
   );
 
   testWidgets(
-    'a 50-row employee result is not presented as an exact company count',
+    'dashboard uses full employee count and directory loads the remaining page',
     (tester) async {
       final employees = _Employees()
-        ..rows = [for (var i = 0; i < 50; i++) _employee(i)];
+        ..rows = [
+          for (var i = 0; i < 52; i++)
+            _employee(i, percent: i == 51 ? 100 : 10),
+        ];
       await _show(tester, const CompanyDashboardScreen(), employees: employees);
-      expect(find.text('50+'), findsOneWidget);
-      expect(find.text('Lista limitada a 50'), findsOneWidget);
+      expect(find.text('52'), findsOneWidget);
+      await _scrollTo(tester, find.text('Destaques'));
+      expect(find.text('Pessoa 51 (TI)'), findsOneWidget);
       await _show(tester, const EmployeesScreen(), employees: employees);
+      expect(find.text('Exibindo 50 de 52 funcionários.'), findsOneWidget);
+      await _scrollTo(tester, find.text('Carregar mais funcionários'));
+      await tester.tap(find.text('Carregar mais funcionários'));
+      await tester.pumpAndSettle();
+      expect(employees.queries.last.offset, 50);
+      await _scrollTo(tester, find.text('Pessoa 51'));
       expect(
-        find.textContaining('A pesquisa se aplica a esta lista.'),
+        find.descendant(
+          of: find.byType(CompanyEmployeeCard),
+          matching: find.text('Pessoa 51'),
+        ),
         findsOneWidget,
       );
+      expect(find.text('Carregar mais funcionários'), findsNothing);
     },
   );
 
@@ -598,6 +780,152 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('82,4%'), findsOneWidget);
     expect(employees.calls.length, 2);
+  });
+
+  testWidgets(
+    'employee search finds results beyond page one and keeps exact total',
+    (tester) async {
+      final employees = _Employees()
+        ..rows = [for (var i = 0; i < 52; i++) _employee(i)];
+      await _show(tester, const EmployeesScreen(), employees: employees);
+      await tester.enterText(find.byType(TextField), 'Pessoa 51');
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pumpAndSettle();
+      expect(
+        find.descendant(
+          of: find.byType(CompanyEmployeeCard),
+          matching: find.text('Pessoa 51'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Ativos (52)'), findsOneWidget);
+      expect(
+        find.text('Exibindo 1 de 1 funcionários encontrados.'),
+        findsOneWidget,
+      );
+      expect(employees.queries.last, (
+        companyId: 'company-a',
+        search: 'Pessoa 51',
+        offset: 0,
+      ));
+      expect(find.text('Carregar mais funcionários'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'employee cards show real activity dates and honest empty states',
+    (tester) async {
+      final employees = _Employees()
+        ..rows = [
+          _employee(0, activityAt: DateTime(2026, 10, 1, 12, 30)),
+          _employee(1),
+        ];
+      await _show(tester, const EmployeesScreen(), employees: employees);
+      expect(
+        find.text('Última atividade: 01/10/2026 às 12:30'),
+        findsOneWidget,
+      );
+      expect(find.text('Nenhuma atividade registrada'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'employee page failure preserves loaded rows and retries the failed page',
+    (tester) async {
+      final employees = _Employees()
+        ..rows = [for (var i = 0; i < 52; i++) _employee(i)]
+        ..failOffset = 50;
+      await _show(tester, const EmployeesScreen(), employees: employees);
+      await _scrollTo(tester, find.text('Carregar mais funcionários'));
+      await tester.tap(find.text('Carregar mais funcionários'));
+      await tester.pumpAndSettle();
+      await _scrollTo(tester, find.text('Tentar novamente'), delta: -180);
+      expect(find.text('Exibindo 50 de 52 funcionários.'), findsOneWidget);
+      final callCount = employees.queries.length;
+      await tester.pump(const Duration(seconds: 10));
+      expect(employees.queries.length, callCount);
+      employees.failOffset = null;
+      await tester.tap(find.text('Tentar novamente'));
+      await tester.pumpAndSettle();
+      expect(employees.queries.last.offset, 50);
+      await _scrollTo(tester, find.text('Pessoa 51'));
+      expect(find.text('Pessoa 51'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'switching company resets employee pages and cancels pending search',
+    (tester) async {
+      final employees = _Employees()
+        ..rows = [for (var i = 0; i < 52; i++) _employee(i)];
+      final container = await _show(
+        tester,
+        const EmployeesScreen(),
+        employees: employees,
+      );
+      await _scrollTo(tester, find.text('Carregar mais funcionários'));
+      await tester.tap(find.text('Carregar mais funcionários'));
+      await tester.pumpAndSettle();
+      await _scrollTo(tester, find.byType(TextField), delta: -180);
+      await tester.enterText(find.byType(TextField), 'Pessoa 51');
+      (container.read(sessionProvider.notifier) as _Session).switchTo(_second);
+      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 350));
+      expect(employees.queries.last, (
+        companyId: 'company-b',
+        search: '',
+        offset: 0,
+      ));
+      expect(find.text('Roberto Silva'), findsNothing);
+      expect(
+        tester.widget<EditableText>(find.byType(EditableText)).controller.text,
+        '',
+      );
+    },
+  );
+
+  testWidgets('delayed employee response from old company is not displayed', (
+    tester,
+  ) async {
+    final employees = _Employees();
+    final container = await _show(
+      tester,
+      const EmployeesScreen(),
+      employees: employees,
+    );
+    final pending = Completer<List<Employee>>();
+    employees.pending = pending;
+    await tester.enterText(find.byType(TextField), 'Roberto');
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pumpAndSettle();
+    employees.pending = null;
+    (container.read(sessionProvider.notifier) as _Session).switchTo(_second);
+    await tester.pumpAndSettle();
+    pending.complete([_employee(0)]);
+    await tester.pumpAndSettle();
+    expect(find.text('Roberto Silva'), findsNothing);
+    expect(find.text('Pessoa 10'), findsOneWidget);
+  });
+
+  testWidgets('company content toggle invalidates dashboard aggregates', (
+    tester,
+  ) async {
+    final employees = _Employees();
+    final container = await _show(
+      tester,
+      const CompanyContentScreen(),
+      employees: employees,
+    );
+    final subscription = container.listen(companyDashboardProvider, (_, _) {});
+    addTearDown(subscription.close);
+    await container.read(companyDashboardProvider.future);
+    expect(employees.calls.length, 1);
+    await _scrollTo(tester, find.byType(Switch));
+    await tester.tap(find.byType(Switch));
+    await tester.pumpAndSettle();
+    await container.read(companyDashboardProvider.future);
+    expect(employees.calls.length, 2);
+    expect(tester.takeException(), isNull);
   });
 
   for (final width in [320.0, 418.0, 1000.0]) {

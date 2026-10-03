@@ -16,7 +16,7 @@ class CompanyProfileScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final session = ref.watch(sessionProvider).value;
     final identity = ref.watch(companyIdentityProvider);
-    final employees = ref.watch(companyEmployeesProvider);
+    final dashboard = ref.watch(companyDashboardProvider);
     final company = identity.asData?.value;
     final name = company?.name ?? session?.active?.companyName ?? 'Empresa';
     return Theme(
@@ -66,9 +66,9 @@ class CompanyProfileScreen extends ConsumerWidget {
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      employees.asData == null
+                      dashboard.asData == null
                           ? 'Gestor da empresa'
-                          : '${employees.value!.length}${employees.value!.length == 50 ? '+' : ''} Funcionários',
+                          : '${dashboard.value!.employeeCount} Funcionários',
                       style: AdminStyles.fieldLabel.copyWith(
                         color: AppColors.successDarkGreen,
                       ),
@@ -86,6 +86,14 @@ class CompanyProfileScreen extends ConsumerWidget {
                     CompanyErrorCard(
                       message: 'Não foi possível carregar os dados cadastrais.',
                       retry: () => ref.invalidate(companyIdentityProvider),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                  if (dashboard.hasError) ...[
+                    CompanyErrorCard(
+                      message:
+                          'Não foi possível carregar o total de funcionários.',
+                      retry: () => ref.invalidate(companyDashboardProvider),
                     ),
                     const SizedBox(height: 8),
                   ],

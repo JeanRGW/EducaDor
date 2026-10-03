@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -8,6 +10,7 @@ import '../../data/session/session_controller.dart';
 import '../../shared/widgets/admin_styles.dart';
 import '../../shared/widgets/app_icons.dart';
 import '../../shared/widgets/common.dart';
+import '../../shared/widgets/charts.dart';
 import '../gestor/widgets.dart' show DataSkeleton;
 import 'widgets.dart';
 
@@ -18,13 +21,15 @@ class CompanyDashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final companyName =
         ref.watch(sessionProvider).value?.active?.companyName ?? 'Empresa';
-    final employees = ref.watch(companyEmployeesProvider);
-    final completion = ref.watch(companyCompletionProvider);
-    final highlights = [...?employees.asData?.value]
-      ..removeWhere(
-        (employee) => !employee.hasCompletion || employee.completionPct == 0,
-      )
-      ..sort((a, b) => b.completionPct.compareTo(a.completionPct));
+    final result = ref.watch(companyDashboardProvider);
+    final data = result.asData?.value;
+    final highlights = data?.highlights ?? [];
+    final participationMax =
+        data?.engagement.fold<int>(
+          1,
+          (maximum, month) => math.max(maximum, month.activeUsers),
+        ) ??
+        1;
     return Theme(
       data: CompanyStyles.theme(Theme.of(context)),
       child: Scaffold(
@@ -75,29 +80,22 @@ class CompanyDashboardScreen extends ConsumerWidget {
         ),
         body: RefreshIndicator(
           onRefresh: () async {
-            ref.invalidate(companyEmployeesProvider);
-            ref.invalidate(companyCompletionProvider);
-            await Future.wait([
-              ref
-                  .read(companyEmployeesProvider.future)
-                  .then<void>((_) {}, onError: (Object _) {}),
-              ref
-                  .read(companyCompletionProvider.future)
-                  .then<void>((_) {}, onError: (Object _) {}),
-            ]);
+            ref.invalidate(companyDashboardProvider);
+            try {
+              await ref.read(companyDashboardProvider.future);
+            } catch (_) {
+              /* Rendered below. */
+            }
           },
           child: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(16),
             children: [
-              if (employees.hasError || completion.hasError) ...[
+              if (result.hasError) ...[
                 CompanyErrorCard(
                   message:
                       'Não foi possível carregar todos os dados do painel.',
-                  retry: () {
-                    ref.invalidate(companyEmployeesProvider);
-                    ref.invalidate(companyCompletionProvider);
-                  },
+                  retry: () => ref.invalidate(companyDashboardProvider),
                 ),
                 const SizedBox(height: 12),
               ],
@@ -110,25 +108,28 @@ class CompanyDashboardScreen extends ConsumerWidget {
                             Expanded(
                               child: _Metric(
                                 label: 'Total de funcionários',
-                                value: employees.asData == null
+                                value: data == null
                                     ? '—'
-                                    : '${employees.value!.length}${employees.value!.length == 50 ? '+' : ''}',
-                                caption: employees.asData == null
+                                    : '${data.employeeCount}',
+                                caption: data == null
                                     ? 'Sem dados'
-                                    : employees.value!.length == 50
-                                    ? 'Lista limitada a 50'
                                     : 'Cadastrados',
                                 icon: AppIcons.employees,
-                                loading: employees.isLoading,
+                                loading: result.isLoading,
                               ),
                             ),
                             const SizedBox(width: 12),
-                            const Expanded(
+                            Expanded(
                               child: _Metric(
                                 label: 'Cursos ativos',
-                                value: '—',
-                                caption: 'Em breve',
+                                value: data == null
+                                    ? '—'
+                                    : '${data.activeCourseCount}',
+                                caption: data == null
+                                    ? 'Sem dados'
+                                    : 'Disponíveis para a empresa',
                                 icon: AppIcons.book,
+                                loading: result.isLoading,
                               ),
                             ),
                           ]
@@ -136,23 +137,28 @@ class CompanyDashboardScreen extends ConsumerWidget {
                             Expanded(
                               child: _Metric(
                                 label: 'Média de conclusão',
-                                value: completion.asData?.value == null
+                                value: data?.completionPct == null
                                     ? '—'
-                                    : '${completion.value!.toStringAsFixed(1).replaceAll('.', ',')}%',
-                                caption: completion.asData?.value == null
+                                    : '${data!.completionPct!.toStringAsFixed(1).replaceAll('.', ',')}%',
+                                caption: data?.completionPct == null
                                     ? 'Sem dados de conclusão'
                                     : 'Conclusão atual',
                                 icon: AppIcons.checkCircle,
-                                loading: completion.isLoading,
+                                loading: result.isLoading,
                               ),
                             ),
                             const SizedBox(width: 12),
-                            const Expanded(
+                            Expanded(
                               child: _Metric(
                                 label: 'Certificados',
-                                value: '—',
-                                caption: 'Em breve',
+                                value: data == null
+                                    ? '—'
+                                    : '${data.certificateCount}',
+                                caption: data == null
+                                    ? 'Sem dados'
+                                    : 'Emitidos nesta empresa',
                                 icon: AppIcons.key,
+                                loading: result.isLoading,
                               ),
                             ),
                           ],
@@ -161,11 +167,11 @@ class CompanyDashboardScreen extends ConsumerWidget {
                 const SizedBox(height: 12),
               ],
               const SizedBox(height: 8),
-              const AppCard(
+              AppCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Wrap(
+                    const Wrap(
                       spacing: 16,
                       runSpacing: 4,
                       children: [
@@ -183,15 +189,35 @@ class CompanyDashboardScreen extends ConsumerWidget {
                         ),
                       ],
                     ),
-                    SizedBox(
-                      height: 112,
-                      child: Center(
-                        child: Text(
-                          'Histórico de participação disponível em breve.',
-                          textAlign: TextAlign.center,
-                          style: CompanyStyles.caption,
+                    const SizedBox(height: 12),
+                    if (result.isLoading)
+                      const SizedBox(
+                        height: 140,
+                        child: ColoredBox(color: AppColors.chipBg),
+                      )
+                    else if (data == null)
+                      const Text(
+                        'Participação indisponível.',
+                        style: AdminStyles.body,
+                      )
+                    else
+                      Semantics(
+                        label:
+                            'Participação mensal: ${data.engagement.map((month) => '${_monthLabel(month.month)}: ${month.activeUsers} funcionários').join(', ')}',
+                        child: ExcludeSemantics(
+                          child: LineChart([
+                            for (final month in data.engagement)
+                              MapEntry(
+                                _monthLabel(month.month),
+                                month.activeUsers / participationMax,
+                              ),
+                          ], height: 140),
                         ),
                       ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Funcionários com atualização de progresso por mês. Baseado na última atualização; mês atual parcial.',
+                      style: CompanyStyles.caption,
                     ),
                   ],
                 ),
@@ -200,14 +226,14 @@ class CompanyDashboardScreen extends ConsumerWidget {
                 padding: EdgeInsets.only(top: 20, bottom: 12),
                 child: Text('Destaques', style: AdminStyles.cardTitle),
               ),
-              if (employees.isLoading)
+              if (result.isLoading)
                 const DataSkeleton()
-              else if (employees.hasError)
+              else if (result.hasError)
                 const Text('Destaques indisponíveis.', style: AdminStyles.body)
               else if (highlights.isEmpty)
                 const AppCard(
                   child: Text(
-                    'Nenhuma conclusão registrada nesta lista.',
+                    'Nenhuma conclusão registrada na empresa.',
                     style: AdminStyles.body,
                   ),
                 )
@@ -245,7 +271,7 @@ class CompanyDashboardScreen extends ConsumerWidget {
                     ),
                   ),
                 const Text(
-                  'Maiores conclusões entre os funcionários desta lista.',
+                  'Maiores conclusões entre todos os funcionários da empresa.',
                   style: CompanyStyles.caption,
                 ),
               ],
@@ -260,6 +286,24 @@ class CompanyDashboardScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+String _monthLabel(DateTime date) {
+  const months = [
+    'Jan',
+    'Fev',
+    'Mar',
+    'Abr',
+    'Mai',
+    'Jun',
+    'Jul',
+    'Ago',
+    'Set',
+    'Out',
+    'Nov',
+    'Dez',
+  ];
+  return months[date.month - 1];
 }
 
 class _Metric extends StatelessWidget {

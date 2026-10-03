@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -23,22 +25,57 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
   int _chip = 0;
   int _pendingRevision = 0;
   String _search = '';
+  int _offset = 0;
+  (String?, String?)? _identity;
+  Timer? _debounce;
+
+  EmployeeQuery _query(int offset) =>
+      (companyId: _identity!.$2 ?? '', search: _search, offset: offset);
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _refresh() async {
+    ref.invalidate(companyEmployeesProvider);
+    ref.invalidate(companyDashboardProvider);
+    setState(() {
+      _offset = 0;
+      _pendingRevision++;
+    });
+    try {
+      await ref.read(companyEmployeesProvider(_query(0)).future);
+    } catch (_) {
+      /* Rendered below. */
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final companyId = ref.watch(sessionProvider).value?.active?.companyId;
-    final result = ref.watch(companyEmployeesProvider);
-    final rows = result.asData?.value ?? [];
-    final employees = rows
-        .where(
-          (employee) =>
-              (_chip == 0 ||
-                  (_chip == 1 && employee.status == EmployeeStatus.active)) &&
-              '${employee.fullName} ${employee.department}'
-                  .toLowerCase()
-                  .contains(_search.toLowerCase()),
-        )
-        .toList();
+    final identity = ref.watch(
+      sessionProvider.select(
+        (state) => (state.value?.user.id, state.value?.active?.companyId),
+      ),
+    );
+    if (_identity != identity) {
+      _identity = identity;
+      _debounce?.cancel();
+      _offset = 0;
+      _search = '';
+      _chip = 0;
+      _pendingRevision++;
+    }
+    final companyId = identity.$2;
+    final pages = [
+      for (var offset = 0; offset <= _offset; offset += 50)
+        ref.watch(companyEmployeesProvider(_query(offset))),
+    ];
+    final counts = pages.first.asData?.value;
+    final employees = [for (final page in pages) ...?page.asData?.value.items];
+    final loading = pages.any((page) => page.isLoading);
+    final hasError = pages.any((page) => page.hasError);
     return Theme(
       data: CompanyStyles.theme(Theme.of(context)),
       child: Scaffold(
@@ -57,22 +94,13 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
               : () async {
                   await context.push('/empresa/employee/add');
                   if (mounted) {
-                    ref.invalidate(companyEmployeesProvider);
-                    setState(() => _pendingRevision++);
+                    await _refresh();
                   }
                 },
           child: const SvgIcon(AppIcons.plus, color: Colors.white),
         ),
         body: RefreshIndicator(
-          onRefresh: () async {
-            ref.invalidate(companyEmployeesProvider);
-            setState(() => _pendingRevision++);
-            try {
-              await ref.read(companyEmployeesProvider.future);
-            } catch (_) {
-              /* Shown below. */
-            }
-          },
+          onRefresh: _refresh,
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
@@ -88,14 +116,27 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
                     children: [
                       SearchField(
                         'Pesquise por nome, departamento...',
+                        key: ValueKey(identity),
                         compact: true,
                         prefixIcon: const SvgIcon(
                           AppIcons.search,
                           size: 18,
                           color: Color(0xFF475569),
                         ),
-                        onChanged: (value) =>
-                            setState(() => _search = value.trim()),
+                        onChanged: (value) {
+                          _debounce?.cancel();
+                          _debounce = Timer(
+                            const Duration(milliseconds: 300),
+                            () {
+                              if (mounted && _identity == identity) {
+                                setState(() {
+                                  _search = value.trim();
+                                  _offset = 0;
+                                });
+                              }
+                            },
+                          );
+                        },
                       ),
                       const SizedBox(height: 12),
                       Wrap(
@@ -106,7 +147,7 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
                             (0, 'Todos os funcionários'),
                             (
                               1,
-                              'Ativos${result.asData == null ? '' : ' (${rows.where((e) => e.status == EmployeeStatus.active).length}${rows.length == 50 ? '+' : ''})'}',
+                              'Ativos${counts == null ? '' : ' (${counts.totalCount})'}',
                             ),
                           ])
                             ChoiceChip(
@@ -163,30 +204,33 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (result.hasError)
-                        CompanyErrorCard(
-                          message: 'Não foi possível carregar funcionários.',
-                          retry: () => ref.invalidate(companyEmployeesProvider),
-                        ),
-                      if (result.isLoading) ...[
+                      for (var page = 0; page < pages.length; page++)
+                        if (pages[page].hasError)
+                          CompanyErrorCard(
+                            message: 'Não foi possível carregar funcionários.',
+                            retry: () => ref.invalidate(
+                              companyEmployeesProvider(_query(page * 50)),
+                            ),
+                          ),
+                      if (pages.first.isLoading) ...[
                         const DataSkeleton(),
                         const SizedBox(height: 12),
                         const DataSkeleton(),
                       ],
-                      if (result.asData != null && rows.length == 50)
-                        const Padding(
+                      if (counts != null)
+                        Padding(
                           padding: EdgeInsets.only(bottom: 12),
                           child: Text(
-                            'Exibindo os primeiros 50 funcionários. A pesquisa se aplica a esta lista.',
+                            'Exibindo ${employees.length} de ${counts.filteredCount} funcionários${_search.isEmpty ? '.' : ' encontrados.'}',
                             style: CompanyStyles.caption,
                           ),
                         ),
-                      if (result.asData != null && employees.isEmpty)
+                      if (!loading && !hasError && employees.isEmpty)
                         AppCard(
                           child: Text(
                             _search.isEmpty
                                 ? 'Nenhum funcionário cadastrado.'
-                                : 'Nenhum funcionário encontrado nesta lista.',
+                                : 'Nenhum funcionário encontrado.',
                             style: AdminStyles.body,
                           ),
                         ),
@@ -201,6 +245,25 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
                   itemBuilder: (_, index) => Padding(
                     padding: const EdgeInsets.only(bottom: 12),
                     child: CompanyEmployeeCard(employee: employees[index]),
+                  ),
+                ),
+              ),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    children: [
+                      if (_offset > 0 && pages.last.isLoading)
+                        const DataSkeleton(),
+                      if (!loading &&
+                          !hasError &&
+                          counts != null &&
+                          employees.length < counts.filteredCount)
+                        TextButton(
+                          onPressed: () => setState(() => _offset += 50),
+                          child: const Text('Carregar mais funcionários'),
+                        ),
+                    ],
                   ),
                 ),
               ),
@@ -292,12 +355,18 @@ class CompanyEmployeeCard extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         Text(
-          employee.lastActivity.isEmpty
-              ? 'Última atividade: não disponível'
-              : 'Última atividade: ${employee.lastActivity}',
+          employee.lastActivityAt == null
+              ? 'Nenhuma atividade registrada'
+              : 'Última atividade: ${_activityLabel(employee.lastActivityAt!)}',
           style: CompanyStyles.caption,
         ),
       ],
     ),
   );
+}
+
+String _activityLabel(DateTime date) {
+  final local = date.toLocal();
+  String two(int value) => value.toString().padLeft(2, '0');
+  return '${two(local.day)}/${two(local.month)}/${local.year} às ${two(local.hour)}:${two(local.minute)}';
 }

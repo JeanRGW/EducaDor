@@ -134,6 +134,7 @@ class Employee {
   final double completionPct;
   final bool hasCompletion;
   final String lastActivity;
+  final DateTime? lastActivityAt;
 
   const Employee({
     required this.id,
@@ -149,6 +150,7 @@ class Employee {
     required this.completionPct,
     this.hasCompletion = true,
     required this.lastActivity,
+    this.lastActivityAt,
   });
 }
 
@@ -458,6 +460,36 @@ class CompanyPage {
     required this.items,
     required this.activeCount,
     required this.inactiveCount,
+  });
+}
+
+class CompanyDashboard {
+  final int employeeCount;
+  final int activeCourseCount;
+  final int certificateCount;
+  final double? completionPct;
+  final List<EngagementMonth> engagement;
+  final List<Employee> highlights;
+
+  const CompanyDashboard({
+    required this.employeeCount,
+    required this.activeCourseCount,
+    required this.certificateCount,
+    this.completionPct,
+    required this.engagement,
+    required this.highlights,
+  });
+}
+
+class EmployeePage {
+  final List<Employee> items;
+  final int totalCount;
+  final int filteredCount;
+
+  const EmployeePage({
+    required this.items,
+    required this.totalCount,
+    required this.filteredCount,
   });
 }
 

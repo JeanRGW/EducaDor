@@ -29,17 +29,25 @@ final companyIdentityProvider = FutureProvider.autoDispose<Company>((ref) {
   return ref.watch(companyRepositoryProvider).byId(id);
 }, retry: _noRetry);
 
-final companyEmployeesProvider = FutureProvider.autoDispose<List<Employee>>((
+final companyDashboardProvider = FutureProvider.autoDispose<CompanyDashboard>((
   ref,
 ) {
   final id = _companyId(ref);
-  return ref.watch(employeeRepositoryProvider).all(id);
+  return ref.watch(companyDataRepositoryProvider).dashboard(id);
 }, retry: _noRetry);
 
-final companyCompletionProvider = FutureProvider.autoDispose<double?>((ref) {
-  final id = _companyId(ref);
-  return ref.watch(reportRepositoryProvider).completion(id);
-}, retry: _noRetry);
+typedef EmployeeQuery = ({String companyId, String search, int offset});
+
+final companyEmployeesProvider = FutureProvider.autoDispose
+    .family<EmployeePage, EmployeeQuery>((ref, query) {
+      final id = _companyId(ref);
+      if (id != query.companyId) {
+        return const EmployeePage(items: [], totalCount: 0, filteredCount: 0);
+      }
+      return ref
+          .watch(employeeRepositoryProvider)
+          .page(id, search: query.search, offset: query.offset);
+    }, retry: _noRetry);
 
 typedef CompanyDepartmentQuery = ({String companyId, int offset});
 

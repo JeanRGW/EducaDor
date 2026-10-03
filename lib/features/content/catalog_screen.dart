@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../app/theme.dart';
 import '../../data/models/models.dart';
 import '../../data/repositories/gestor_providers.dart';
+import '../../data/repositories/company_providers.dart';
 import '../../data/repositories/repositories.dart';
 import '../../shared/widgets/app_icons.dart';
 import '../../shared/widgets/common.dart';
@@ -78,6 +79,8 @@ class _ContentCatalogScreenState extends ConsumerState<ContentCatalogScreen> {
       if (widget.platform) {
         ref.invalidate(gestorDashboardProvider);
         ref.invalidate(gestorCompletionProvider);
+      } else {
+        ref.invalidate(companyDashboardProvider);
       }
       if (mounted) await _load();
     } catch (_) {

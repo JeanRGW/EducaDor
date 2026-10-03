@@ -48,6 +48,100 @@ class _Session extends SessionController {
 
 void main() {
   test(
+    'dashboard decodes exact aggregates, zero months and company-wide highlights',
+    () async {
+      final repo = CompanyDataRepository(
+        client: _client((request) async {
+          expect(request.url.path, '/rest/v1/rpc/company_dashboard');
+          expect(jsonDecode(request.body), {'p_company': 'company-a'});
+          return http.Response(
+            jsonEncode({
+              'employee_count': 125,
+              'active_course_count': 0,
+              'certificate_count': 7,
+              'completion_pct': null,
+              'engagement': [
+                {'month': '2026-09-01', 'active_users': 0},
+              ],
+              'highlights': [
+                {
+                  'user_id': 'person',
+                  'full_name': 'Ana Silva',
+                  'email': 'ana@example.test',
+                  'dept': 'RH',
+                  'job_title': null,
+                  'pct': 100,
+                },
+              ],
+            }),
+            200,
+          );
+        }),
+      );
+      final result = await repo.dashboard('company-a');
+      expect(result.employeeCount, 125);
+      expect(result.activeCourseCount, 0);
+      expect(result.certificateCount, 7);
+      expect(result.completionPct, isNull);
+      expect(result.engagement.single.activeUsers, 0);
+      expect(result.highlights.single.fullName, 'Ana Silva');
+    },
+  );
+
+  test(
+    'employee page sends server search and offset and decodes scoped activity',
+    () async {
+      final repo = EmployeeRepository(
+        client: _client((request) async {
+          expect(request.url.path, '/rest/v1/rpc/company_employees');
+          expect(jsonDecode(request.body), {
+            'p_company': 'company-a',
+            'p_search': '%_',
+            'p_offset': 50,
+          });
+          return http.Response(
+            jsonEncode({
+              'total_count': 125,
+              'filtered_count': 51,
+              'items': [
+                {
+                  'user_id': 'person',
+                  'full_name': 'Ana Silva',
+                  'email': 'ana@example.test',
+                  'dept': 'RH',
+                  'job_title': null,
+                  'pct': 0,
+                  'last_activity_at': '2026-10-01T12:30:00+00:00',
+                },
+                {
+                  'user_id': 'other',
+                  'full_name': 'Bruno',
+                  'email': 'bruno@example.test',
+                  'dept': null,
+                  'job_title': null,
+                  'pct': null,
+                  'last_activity_at': null,
+                },
+              ],
+            }),
+            200,
+          );
+        }),
+      );
+      final result = await repo.page('company-a', search: ' %_ ', offset: 50);
+      expect(result.totalCount, 125);
+      expect(result.filteredCount, 51);
+      expect(
+        result.items.first.lastActivityAt,
+        DateTime.utc(2026, 10, 1, 12, 30),
+      );
+      expect(result.items.first.hasCompletion, isTrue);
+      expect(result.items.last.lastActivityAt, isNull);
+      expect(result.items.last.hasCompletion, isFalse);
+    },
+  );
+
+  test(
     'company completion uses the existing guarded view and preserves null',
     () async {
       final repo = ReportRepository(
@@ -135,11 +229,17 @@ void main() {
     addTearDown(container.dispose);
     await container.read(sessionProvider.future);
     await expectLater(
-      container.read(companyEmployeesProvider.future),
+      container.read(
+        companyEmployeesProvider((
+          companyId: 'company-a',
+          search: '',
+          offset: 0,
+        )).future,
+      ),
       throwsStateError,
     );
     await expectLater(
-      container.read(companyCompletionProvider.future),
+      container.read(companyDashboardProvider.future),
       throwsStateError,
     );
     await expectLater(
@@ -159,6 +259,14 @@ void main() {
     () async {
       await expectLater(
         EmployeeRepository().all('company-a'),
+        throwsStateError,
+      );
+      await expectLater(
+        EmployeeRepository().page('company-a'),
+        throwsStateError,
+      );
+      await expectLater(
+        CompanyDataRepository().dashboard('company-a'),
         throwsStateError,
       );
       await expectLater(
