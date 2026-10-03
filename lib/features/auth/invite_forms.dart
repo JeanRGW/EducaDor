@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../app/theme.dart';
 import '../../data/models/models.dart';
@@ -9,6 +8,8 @@ import '../../data/session/session_controller.dart';
 import '../../shared/widgets/common.dart';
 import '../../shared/widgets/admin_styles.dart';
 import '../../shared/widgets/app_icons.dart';
+import '../company/widgets.dart';
+import '../gestor/management_widgets.dart' show leaveManagementPage;
 import 'onboarding_screens.dart';
 
 class AddPlatformManagerScreen extends StatelessWidget {
@@ -57,6 +58,15 @@ class _InvitePersonScreenState extends ConsumerState<InvitePersonScreen> {
   final _jobTitle = TextEditingController();
   bool _busy = false;
 
+  void _leave() => leaveManagementPage(context, switch (widget.role) {
+    Role.gestor => '/gestor/gestores',
+    Role.empresa =>
+      widget.companyId == null
+          ? '/empresa/gestores'
+          : '/gestor/company/${widget.companyId}/gestores',
+    Role.funcionario => '/empresa/funcionarios',
+  });
+
   @override
   void dispose() {
     _name.dispose();
@@ -93,7 +103,7 @@ class _InvitePersonScreenState extends ConsumerState<InvitePersonScreen> {
           );
       if (!mounted) return;
       await showInviteLink(context, link);
-      if (mounted) context.pop();
+      if (mounted) _leave();
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -115,67 +125,69 @@ class _InvitePersonScreenState extends ConsumerState<InvitePersonScreen> {
     return Theme(
       data: platform
           ? AdminStyles.formTheme(Theme.of(context))
-          : Theme.of(context),
+          : CompanyStyles.theme(Theme.of(context)).copyWith(
+              appBarTheme: AdminStyles.formTheme(Theme.of(context)).appBarTheme,
+            ),
       child: Scaffold(
         appBar: AppBar(
-          toolbarHeight: platform
-              ? MediaQuery.textScalerOf(context).scale(18) > 22
-                    ? 72
-                    : 52
-              : kToolbarHeight,
-          leading: platform
-              ? IconButton(
-                  tooltip: 'Voltar',
-                  onPressed: () => context.pop(),
-                  icon: const SvgIcon(
-                    AppIcons.arrowBack,
-                    size: 20,
-                    color: AppColors.successDarkGreen,
-                  ),
-                )
-              : null,
+          toolbarHeight: MediaQuery.textScalerOf(context).scale(18) > 22
+              ? 72
+              : 52,
+          leading: IconButton(
+            tooltip: 'Voltar',
+            onPressed: _leave,
+            icon: const SvgIcon(
+              AppIcons.arrowBack,
+              size: 20,
+              color: AppColors.successDarkGreen,
+            ),
+          ),
           title: Text(switch (widget.role) {
             Role.gestor => 'Convidar gestor da plataforma',
             Role.empresa => 'Convidar gestor da empresa',
             Role.funcionario => 'Convidar funcionário',
-          }, maxLines: platform ? 2 : 1),
+          }, maxLines: 2),
         ),
         body: ListView(
           padding: const EdgeInsets.all(20),
           children: [
             Text(
               'A pessoa receberá acesso ao aceitar o link compartilhado com ela.',
-              style: platform ? AdminStyles.body : null,
+              style: AdminStyles.body,
             ),
             const SizedBox(height: 20),
             FormFieldLabel(
-              label: 'Nome completo',
-              compact: platform,
+              label: platform ? 'Nome completo' : 'NOME COMPLETO',
+              compact: true,
               controller: _name,
               hint: 'Nome da pessoa',
             ),
             FormFieldLabel(
-              label: 'E-mail',
-              compact: platform,
+              label: platform ? 'E-mail' : 'EMAIL',
+              compact: true,
               controller: _email,
               hint: 'pessoa@empresa.com',
             ),
             if (widget.role == Role.funcionario) ...[
               FormFieldLabel(
-                label: 'Departamento',
+                label: platform ? 'Departamento' : 'DEPARTAMENTO',
+                compact: true,
                 controller: _department,
                 hint: 'RH',
               ),
               FormFieldLabel(
-                label: 'Cargo / especialidade',
+                label: platform
+                    ? 'Cargo / especialidade'
+                    : 'CARGO / ESPECIALIDADE',
+                compact: true,
                 controller: _jobTitle,
                 hint: 'Analista',
               ),
             ],
             PrimaryButton(
               _busy ? 'Criando convite...' : 'Criar convite',
-              compact: platform,
-              color: platform ? AppColors.successDarkGreen : null,
+              compact: true,
+              color: AppColors.successDarkGreen,
               onPressed: _busy ? null : _submit,
             ),
           ],

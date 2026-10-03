@@ -126,6 +126,47 @@ still separate roadmap work; the live outline does not simulate completion.
 
 Guarded views/RPC read via PostgREST, CSV export in Flutter. No BigQuery, no counter collections: `completion_by_company`, `completion_by_dept`, `engagement_monthly`, `popular_content`, `employee_completion(p_company uuid)`, `ranking(p_company uuid)` (company-scoped derived balances grouped per user, `LIMIT 20`). Managers see only their company's completion through guarded reports, not lesson contents.
 
+### Company-manager data integration
+
+`20261002000001_company_data.sql` adds `company_dashboard(p_company)` and
+`company_employees(p_company, p_search, p_offset)`. Both require the signed Auth
+session's active `empresa` role and require `p_company = own_company_id()`.
+A global gestor grant does not bypass this context check; missing, revoked,
+inactive-company or employee contexts are rejected. Only aggregate metadata is
+returned, never lessons, video IDs or file keys. No new tables, event logs,
+counters, polling or external services are introduced.
+
+* Dashboard employee totals count accepted `funcionario` memberships exactly,
+  including dual-role users once and excluding pending invitations. Counts in
+  Profile use the same aggregate, not the first directory page.
+* Active-course totals require platform release, audience eligibility and the
+  company switch (missing assignments default to enabled). Completion and the
+  top-two highlights retain the existing audience-only historical denominator,
+  so pauses do not erase progress. Completion is weighted across all eligible
+  employee/lesson opportunities; missing denominators stay null. Highlights
+  consider all employees and use deterministic percentage/name/ID ordering.
+* Certificate totals count retained issued records in that company, including
+  former employees; pauses do not erase certificates. Issuing certificates is
+  separate roadmap work, so a company without issued rows correctly shows zero.
+* Participation zero-fills the trailing six São Paulo calendar months and counts
+  distinct current employee identities with a latest progress update in each
+  month, through now. It is not an immutable engagement history: later lesson
+  updates move activity between months and removed employees are not counted.
+* The employee directory uses literal case-insensitive name/department search
+  **before** 50-row pagination, exact total/matching counts and stable lowercased
+  name/user-ID ordering. Per-employee completion follows the same historical
+  audience gate. Last activity is the maximum company-scoped progress timestamp
+  through now, including previously available content, never another company's
+  updates. Flutter formats it in the device's local timezone.
+* Reports retain the guarded `completion_by_dept` view and current-completion
+  wording. Leave status, regulatory thresholds, certificate-validity/renewal
+  rules and unimplemented Profile workflows remain deferred; no arbitrary
+  business rules are inferred. Exports, notifications and MFA remain deferred.
+
+Verify `supabase/tests/company_data.sql` in an isolated database before an
+operator-approved staging migration. Apply the migration **before** the Flutter
+deployment; no Edge Function changes are required.
+
 ### Gestor data integration
 
 `20261001000000_gestor_data.sql` adds the live platform queries. These RPCs

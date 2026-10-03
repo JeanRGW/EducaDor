@@ -178,38 +178,113 @@ class CompanyRepository {
   }
 }
 
+Employee _employee(Map<String, dynamic> row) {
+  final name = row['full_name'] as String;
+  return Employee(
+    id: row['user_id'] as String,
+    fullName: name,
+    initials: name
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((part) => part.isNotEmpty)
+        .take(2)
+        .map((part) => part[0].toUpperCase())
+        .join(),
+    email: row['email'] as String,
+    department: row['dept'] as String? ?? '',
+    jobTitle: row['job_title'] as String? ?? '',
+    phone: '',
+    birthDate: '',
+    address: '',
+    status: EmployeeStatus.unknown,
+    completionPct: (row['pct'] as num?)?.toDouble() ?? 0,
+    hasCompletion: row['pct'] != null,
+    lastActivity: '',
+    lastActivityAt: row['last_activity_at'] == null
+        ? null
+        : DateTime.parse(row['last_activity_at'] as String),
+  );
+}
+
+class CompanyDataRepository {
+  final SupabaseClient? _injectedClient;
+  CompanyDataRepository({SupabaseClient? client}) : _injectedClient = client;
+
+  SupabaseClient get _companyClient =>
+      _injectedClient ??
+      _client ??
+      (throw StateError('Configure o Supabase para carregar o painel.'));
+
+  Future<CompanyDashboard> dashboard(String companyId) async {
+    final data =
+        await _companyClient.rpc(
+              'company_dashboard',
+              params: {'p_company': companyId},
+            )
+            as Map<String, dynamic>;
+    return CompanyDashboard(
+      employeeCount: (data['employee_count'] as num).toInt(),
+      activeCourseCount: (data['active_course_count'] as num).toInt(),
+      certificateCount: (data['certificate_count'] as num).toInt(),
+      completionPct: (data['completion_pct'] as num?)?.toDouble(),
+      engagement: (data['engagement'] as List<dynamic>).map((item) {
+        final row = item as Map<String, dynamic>;
+        return EngagementMonth(
+          month: DateTime.parse(row['month'] as String),
+          activeUsers: (row['active_users'] as num).toInt(),
+        );
+      }).toList(),
+      highlights: (data['highlights'] as List<dynamic>)
+          .map((item) => _employee(item as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+}
+
 class EmployeeRepository {
+  final SupabaseClient? _injectedClient;
+  EmployeeRepository({SupabaseClient? client}) : _injectedClient = client;
+
+  Future<EmployeePage> page(
+    String companyId, {
+    String search = '',
+    int offset = 0,
+  }) async {
+    final client =
+        _injectedClient ??
+        _client ??
+        (throw StateError('Configure o Supabase para carregar funcionários.'));
+    final data =
+        await client.rpc(
+              'company_employees',
+              params: {
+                'p_company': companyId,
+                'p_search': search.trim(),
+                'p_offset': offset,
+              },
+            )
+            as Map<String, dynamic>;
+    return EmployeePage(
+      items: (data['items'] as List<dynamic>)
+          .map((item) => _employee(item as Map<String, dynamic>))
+          .toList(),
+      totalCount: (data['total_count'] as num).toInt(),
+      filteredCount: (data['filtered_count'] as num).toInt(),
+    );
+  }
+
   Future<List<Employee>> all(String companyId) async {
-    final client = _client;
-    if (client == null) return MockData.employees;
+    final client =
+        _injectedClient ??
+        _client ??
+        (throw StateError('Configure o Supabase para carregar funcionários.'));
     final rows =
         await client.rpc(
               'employee_completion',
               params: {'p_company': companyId},
             )
             as List<dynamic>;
-    return rows.map((item) {
-      final row = item as Map<String, dynamic>;
-      final name = row['full_name'] as String;
-      return Employee(
-        id: row['user_id'] as String,
-        fullName: name,
-        initials: name
-            .split(RegExp(r'\s+'))
-            .take(2)
-            .map((part) => part[0].toUpperCase())
-            .join(),
-        email: row['email'] as String,
-        department: row['dept'] as String? ?? '',
-        jobTitle: row['job_title'] as String? ?? '',
-        phone: '',
-        birthDate: '',
-        address: '',
-        status: EmployeeStatus.active,
-        completionPct: (row['pct'] as num?)?.toDouble() ?? 0,
-        lastActivity: '',
-      );
-    }).toList();
+    return rows.map((item) => _employee(item as Map<String, dynamic>)).toList();
   }
 }
 
@@ -441,14 +516,33 @@ class ReportRepository {
   }
 
   Future<double?> completion(String companyId) async {
-    final client = _client;
-    if (client == null) return null;
+    final client = _reportClient;
     final row = await client
         .from('completion_by_company')
         .select('pct')
         .eq('company_id', companyId)
         .maybeSingle();
     return (row?['pct'] as num?)?.toDouble();
+  }
+
+  Future<List<MapEntry<String, double?>>> departmentCompletion(
+    String companyId, {
+    int offset = 0,
+  }) async {
+    final rows = await _reportClient
+        .from('completion_by_dept')
+        .select('department,pct')
+        .eq('company_id', companyId)
+        .order('department', ascending: true)
+        .range(offset, offset + 49);
+    return rows
+        .map(
+          (row) => MapEntry(
+            row['department'] as String? ?? 'Sem departamento',
+            (row['pct'] as num?)?.toDouble(),
+          ),
+        )
+        .toList();
   }
 }
 
@@ -965,6 +1059,9 @@ class InvitationRepository {
 
 final companyRepositoryProvider = Provider<CompanyRepository>(
   (ref) => CompanyRepository(),
+);
+final companyDataRepositoryProvider = Provider<CompanyDataRepository>(
+  (ref) => CompanyDataRepository(),
 );
 final profileRepositoryProvider = Provider<ProfileRepository>(
   (ref) => ProfileRepository(),

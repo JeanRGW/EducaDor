@@ -23,6 +23,10 @@ own-profile edits and progress-preserving course/video edits. Deployment order
 and boundaries are documented under
 [Gestor lifecycle management](stack/01-backend.md#gestor-lifecycle-management).
 
+Company-manager layouts follow the `ca-*.png` prototypes. Screen mapping,
+existing-data limits and intentional differences are documented in
+[Company screen parity](stack/05-company-screen-parity.md).
+
 ## Local setup
 
 Read [the onboarding runbook](stack/03-onboarding.md) for Supabase staging,

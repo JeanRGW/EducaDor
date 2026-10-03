@@ -7,9 +7,11 @@ import 'package:go_router/go_router.dart';
 import '../../app/theme.dart';
 import '../../data/models/models.dart';
 import '../../data/repositories/gestor_providers.dart';
+import '../../data/repositories/company_providers.dart';
 import '../../data/repositories/repositories.dart';
 import '../../shared/widgets/app_icons.dart';
 import '../../shared/widgets/common.dart';
+import '../../shared/widgets/admin_styles.dart';
 
 class ContentCatalogScreen extends ConsumerStatefulWidget {
   final bool platform;
@@ -77,6 +79,8 @@ class _ContentCatalogScreenState extends ConsumerState<ContentCatalogScreen> {
       if (widget.platform) {
         ref.invalidate(gestorDashboardProvider);
         ref.invalidate(gestorCompletionProvider);
+      } else {
+        ref.invalidate(companyDashboardProvider);
       }
       if (mounted) await _load();
     } catch (_) {
@@ -138,23 +142,19 @@ class _ContentCatalogScreenState extends ConsumerState<ContentCatalogScreen> {
           Container(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
             decoration: BoxDecoration(
-              color: widget.platform ? AppColors.surface : AppColors.background,
-              border: widget.platform
-                  ? const Border(bottom: BorderSide(color: AppColors.border))
-                  : null,
+              color: AppColors.surface,
+              border: const Border(bottom: BorderSide(color: AppColors.border)),
             ),
             child: Column(
               children: [
                 SearchField(
                   'Pesquisar cursos, módulos...',
-                  compact: widget.platform,
-                  prefixIcon: widget.platform
-                      ? const SvgIcon(
-                          AppIcons.search,
-                          size: 26,
-                          color: Color(0xFF475569),
-                        )
-                      : null,
+                  compact: true,
+                  prefixIcon: SvgIcon(
+                    AppIcons.search,
+                    size: widget.platform ? 26 : 18,
+                    color: const Color(0xFF475569),
+                  ),
                   onChanged: (value) {
                     _search = value;
                     _request++;
@@ -168,6 +168,7 @@ class _ContentCatalogScreenState extends ConsumerState<ContentCatalogScreen> {
                 const SizedBox(height: 14),
                 FilterChips(
                   plainInactive: widget.platform,
+                  outlined: !widget.platform,
                   options: const ['Todos', 'Cursos', 'Módulos', 'Quizzes'],
                   selected: _chip,
                   onSelected: (index) {
@@ -179,7 +180,7 @@ class _ContentCatalogScreenState extends ConsumerState<ContentCatalogScreen> {
               ],
             ),
           ),
-          if (widget.platform) const SizedBox(height: 16),
+          const SizedBox(height: 16),
           if (_error)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -348,7 +349,7 @@ class ManagedContentCard extends StatelessWidget {
                                 : AppColors.textMuted,
                             height: 1.3,
                           )
-                        : Theme.of(context).textTheme.titleMedium,
+                        : AdminStyles.cardTitle.copyWith(fontSize: 16),
                   ),
                   const SizedBox(height: 4),
                   if (platform)
@@ -381,9 +382,7 @@ class ManagedContentCard extends StatelessWidget {
                   else
                     Text(
                       '${item.lessonCount} ${item.lessonCount == 1 ? 'aula' : 'aulas'}',
-                      style: Theme.of(
-                        context,
-                      ).textTheme.bodySmall?.copyWith(color: AppColors.navy),
+                      style: AdminStyles.body.copyWith(fontSize: 11),
                     ),
                   const SizedBox(height: 14),
                   Row(
@@ -402,9 +401,7 @@ class ManagedContentCard extends StatelessWidget {
                                       : AppColors.textMuted,
                                   height: 1.4,
                                 )
-                              : Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: AppColors.navy,
-                                ),
+                              : AdminStyles.body.copyWith(fontSize: 11),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -414,11 +411,13 @@ class ManagedContentCard extends StatelessWidget {
                             : '${item.completionPct!.round()}%',
                         style: TextStyle(
                           fontFamily: AppFonts.inter,
-                          fontSize: platform ? 11 : 13,
+                          fontSize: platform ? 11 : 12,
                           fontWeight: FontWeight.w700,
                           color: platform && !available
                               ? AppColors.textMuted
-                              : AppColors.textPrimary,
+                              : platform
+                              ? AppColors.textPrimary
+                              : AppColors.successDarkGreen,
                         ),
                       ),
                     ],
