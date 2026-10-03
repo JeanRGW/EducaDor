@@ -61,6 +61,7 @@ Employee _employee(
   double percent = 85,
   bool hasCompletion = true,
   DateTime? activityAt,
+  EmployeeStatus status = EmployeeStatus.unknown,
 }) => Employee(
   id: 'employee-$index',
   fullName: index == 0 ? 'Roberto Silva' : 'Pessoa $index',
@@ -71,7 +72,7 @@ Employee _employee(
   phone: '',
   birthDate: '',
   address: '',
-  status: EmployeeStatus.active,
+  status: status,
   completionPct: percent,
   hasCompletion: hasCompletion,
   lastActivity: '',
@@ -495,7 +496,9 @@ void main() {
     (tester) async {
       await _show(tester, const EmployeesScreen());
       expect(tester.getSize(find.byType(TextField)).height, closeTo(36, 2));
-      expect(find.text('Ativos (3)'), findsOneWidget);
+      expect(find.text('Todos os funcionários (3)'), findsOneWidget);
+      expect(find.textContaining('Ativos'), findsNothing);
+      expect(find.text('ATIVO'), findsNothing);
       expect(find.text('De licença'), findsOneWidget);
       expect(
         find.byTooltip('Situação de licença ainda não disponível.'),
@@ -798,7 +801,7 @@ void main() {
         ),
         findsOneWidget,
       );
-      expect(find.text('Ativos (52)'), findsOneWidget);
+      expect(find.text('Todos os funcionários (52)'), findsOneWidget);
       expect(
         find.text('Exibindo 1 de 1 funcionários encontrados.'),
         findsOneWidget,
@@ -829,6 +832,29 @@ void main() {
     },
   );
 
+  for (final status in EmployeeStatus.values) {
+    testWidgets('employee card only shows known status badges: $status', (
+      tester,
+    ) async {
+      await _show(
+        tester,
+        CompanyEmployeeCard(employee: _employee(0, status: status)),
+      );
+      expect(
+        find.text('ATIVO'),
+        status == EmployeeStatus.active ? findsOneWidget : findsNothing,
+      );
+      expect(
+        find.text('De licença'),
+        status == EmployeeStatus.onLeave ? findsOneWidget : findsNothing,
+      );
+      expect(
+        find.byType(CompanyBadge),
+        status == EmployeeStatus.unknown ? findsNothing : findsOneWidget,
+      );
+    });
+  }
+
   testWidgets(
     'employee page failure preserves loaded rows and retries the failed page',
     (tester) async {
@@ -850,6 +876,53 @@ void main() {
       expect(employees.queries.last.offset, 50);
       await _scrollTo(tester, find.text('Pessoa 51'));
       expect(find.text('Pessoa 51'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'retained page retry stays bound to its query after search changes',
+    (tester) async {
+      final employees = _Employees()
+        ..rows = [for (var i = 0; i < 52; i++) _employee(i)]
+        ..failOffset = 50;
+      final container = await _show(
+        tester,
+        const EmployeesScreen(),
+        employees: employees,
+      );
+      await _scrollTo(tester, find.text('Carregar mais funcionários'));
+      await tester.tap(find.text('Carregar mais funcionários'));
+      await tester.pumpAndSettle();
+      await _scrollTo(tester, find.text('Tentar novamente'), delta: -180);
+      final retry = tester
+          .widget<CompanyErrorCard>(find.byType(CompanyErrorCard))
+          .retry;
+      final failedQuery = (companyId: 'company-a', search: '', offset: 50);
+      final subscription = container.listen(
+        companyEmployeesProvider(failedQuery),
+        (_, _) {},
+      );
+      addTearDown(subscription.close);
+
+      await _scrollTo(tester, find.byType(TextField), delta: -180);
+      await tester.enterText(find.byType(TextField), 'Pessoa 51');
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pumpAndSettle();
+      expect(employees.queries.last, (
+        companyId: 'company-a',
+        search: 'Pessoa 51',
+        offset: 0,
+      ));
+      expect(find.text('Tentar novamente'), findsNothing);
+
+      employees.failOffset = null;
+      retry();
+      await tester.pumpAndSettle();
+      expect(employees.queries.last, failedQuery);
+      expect(
+        find.text('Exibindo 1 de 1 funcionários encontrados.'),
+        findsOneWidget,
+      );
     },
   );
 

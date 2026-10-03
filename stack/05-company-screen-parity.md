@@ -25,7 +25,9 @@ their own screens.
   and loads additional pages on request. Dashboard/profile counts are not derived
   from a visible page. Highlights cover the whole company, not a limited list or
   fictional recent activity.
-* Leave status has no business rule/schema and remains unavailable. Last activity
+* Leave status has no business rule/schema and remains unavailable. Repository
+  responses map to unknown status: cards omit status badges and the directory
+  shows a total enrollment count, not an active-employee filter/count. Last activity
   comes from the employee's latest progress update in the active company; absent
   activity says "Nenhuma atividade registrada". A null completion is "Sem dados",
   not a completed or zero-percent training result.
@@ -50,6 +52,25 @@ Company providers track signed-in identity and active context; switching company
 discards old results, search and page state. Reads stay in repositories and existing
 database authorization remains the security boundary. Failed reads require an
 explicit retry, with no automatic polling.
+
+## Scalability follow-up
+
+Before supporting large companies, benchmark both RPCs in an isolated database
+with representative employee, lesson and progress volumes. Use
+`EXPLAIN (ANALYZE, BUFFERS)` on their underlying queries in the validated manager
+context; a top-level PL/pgSQL function call alone does not expose inner plans.
+The directory computes completion for up to 50 employees per request, but exact
+counts/search scan all company members and dashboard aggregates cover the whole
+company. Small response sizes do not bound database work.
+
+Existing indexes cover company/role memberships and progress timestamps; the
+progress primary key covers user/company/lesson lookups. If measured plans justify
+it, evaluate progress indexes on `(company_id, updated_at)` for participation and
+`(user_id, company_id, updated_at desc)` for latest activity, then consider reusing
+the eligible lesson set/denominator in completion queries. Literal substring
+search using `strpos(lower(...))` cannot use an ordinary B-tree index; any indexed
+search replacement must preserve case-insensitive literal `%`/`_` matching.
+Do not add speculative indexes, extensions or query rewrites without measurement.
 
 ## Verification
 

@@ -196,7 +196,7 @@ Employee _employee(Map<String, dynamic> row) {
     phone: '',
     birthDate: '',
     address: '',
-    status: EmployeeStatus.active,
+    status: EmployeeStatus.unknown,
     completionPct: (row['pct'] as num?)?.toDouble() ?? 0,
     hasCompletion: row['pct'] != null,
     lastActivity: '',

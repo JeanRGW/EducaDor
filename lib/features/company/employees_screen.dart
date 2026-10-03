@@ -22,7 +22,6 @@ class EmployeesScreen extends ConsumerStatefulWidget {
 }
 
 class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
-  int _chip = 0;
   int _pendingRevision = 0;
   String _search = '';
   int _offset = 0;
@@ -64,13 +63,14 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
       _debounce?.cancel();
       _offset = 0;
       _search = '';
-      _chip = 0;
       _pendingRevision++;
     }
     final companyId = identity.$2;
+    final queries = [
+      for (var offset = 0; offset <= _offset; offset += 50) _query(offset),
+    ];
     final pages = [
-      for (var offset = 0; offset <= _offset; offset += 50)
-        ref.watch(companyEmployeesProvider(_query(offset))),
+      for (final query in queries) ref.watch(companyEmployeesProvider(query)),
     ];
     final counts = pages.first.asData?.value;
     final employees = [for (final page in pages) ...?page.asData?.value.items];
@@ -143,37 +143,21 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
                         spacing: 8,
                         runSpacing: 8,
                         children: [
-                          for (final (index, label) in [
-                            (0, 'Todos os funcionários'),
-                            (
-                              1,
-                              'Ativos${counts == null ? '' : ' (${counts.totalCount})'}',
+                          Chip(
+                            label: Text(
+                              'Todos os funcionários${counts == null ? '' : ' (${counts.totalCount})'}',
                             ),
-                          ])
-                            ChoiceChip(
-                              label: Text(label),
-                              selected: _chip == index,
-                              showCheckmark: false,
-                              shape: const StadiumBorder(),
-                              selectedColor: AppColors.successBg,
-                              backgroundColor: AppColors.background,
-                              side: BorderSide(
-                                color: _chip == index
-                                    ? AppColors.successDarkGreen
-                                    : AppColors.border,
-                              ),
-                              labelStyle: AdminStyles.fieldLabel.copyWith(
-                                fontWeight: FontWeight.w500,
-                                color: _chip == index
-                                    ? AppColors.successDarkGreen
-                                    : const Color(0xFF475569),
-                              ),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                              ),
-                              visualDensity: VisualDensity.compact,
-                              onSelected: (_) => setState(() => _chip = index),
+                            shape: const StadiumBorder(),
+                            backgroundColor: AppColors.successBg,
+                            side: const BorderSide(
+                              color: AppColors.successDarkGreen,
                             ),
+                            labelStyle: AdminStyles.fieldLabel.copyWith(
+                              fontWeight: FontWeight.w500,
+                              color: AppColors.successDarkGreen,
+                            ),
+                            visualDensity: VisualDensity.compact,
+                          ),
                           Semantics(
                             enabled: false,
                             label: 'De licença, disponível em breve',
@@ -209,7 +193,7 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
                           CompanyErrorCard(
                             message: 'Não foi possível carregar funcionários.',
                             retry: () => ref.invalidate(
-                              companyEmployeesProvider(_query(page * 50)),
+                              companyEmployeesProvider(queries[page]),
                             ),
                           ),
                       if (pages.first.isLoading) ...[
@@ -317,11 +301,15 @@ class CompanyEmployeeCard extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(width: 8),
-            CompanyBadge(
-              employee.status == EmployeeStatus.active ? 'ATIVO' : 'De licença',
-              warning: employee.status != EmployeeStatus.active,
-            ),
+            if (employee.status != EmployeeStatus.unknown) ...[
+              const SizedBox(width: 8),
+              CompanyBadge(
+                employee.status == EmployeeStatus.active
+                    ? 'ATIVO'
+                    : 'De licença',
+                warning: employee.status == EmployeeStatus.onLeave,
+              ),
+            ],
           ],
         ),
         const Divider(height: 24),

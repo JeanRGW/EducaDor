@@ -8,7 +8,7 @@ enum ContentStatus { completed, inProgress, locked }
 
 enum CourseKind { video, audio, quiz, reading, pdf, module, course }
 
-enum EmployeeStatus { active, onLeave }
+enum EmployeeStatus { active, onLeave, unknown }
 
 class ManagementException implements Exception {
   final String message;

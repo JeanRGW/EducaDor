@@ -85,6 +85,7 @@ void main() {
       expect(result.completionPct, isNull);
       expect(result.engagement.single.activeUsers, 0);
       expect(result.highlights.single.fullName, 'Ana Silva');
+      expect(result.highlights.single.status, EmployeeStatus.unknown);
     },
   );
 
@@ -131,6 +132,10 @@ void main() {
       final result = await repo.page('company-a', search: ' %_ ', offset: 50);
       expect(result.totalCount, 125);
       expect(result.filteredCount, 51);
+      expect(
+        result.items.map((item) => item.status),
+        everyElement(EmployeeStatus.unknown),
+      );
       expect(
         result.items.first.lastActivityAt,
         DateTime.utc(2026, 10, 1, 12, 30),
@@ -215,6 +220,10 @@ void main() {
       );
       final rows = await repo.all('company-a');
       expect(rows.first.initials, 'AS');
+      expect(
+        rows.map((row) => row.status),
+        everyElement(EmployeeStatus.unknown),
+      );
       expect(rows.first.hasCompletion, isFalse);
       expect(rows.last.hasCompletion, isTrue);
       expect(rows.last.completionPct, 0);
