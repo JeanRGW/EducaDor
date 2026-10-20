@@ -25,7 +25,12 @@ Public staging inputs (`SUPABASE_URL`, `SUPABASE_ANON_KEY` publishable key, `CLO
 2. `AuthRepository` + context selection/session restoration + admin-only `invite-member` and `accept-invite`; onboard company managers and employees with one identity across companies.
 3. Storage buckets + `storage-*-url` functions; test 25MB PDF/MP3 upload.
 4. Live content catalog using the consolidated migration: platform pause/audience, company-wide employee pause, guarded metadata and atomic YouTube publishing with cover upload and responsible professional. Verify `supabase/tests/content_access.sql` as well as multi-context RLS. Company Content replaces the Gestores main tab; manager management lives under Profile. `CourseRepository` powers the live employee catalog/outline through RLS; playback, PDF/audio uploads and quiz authoring still follow player/storage/editor work. `AddCompanyScreen`/`AddEmployeeScreen` create invites via Edge Functions.
-5. `ProgressRepository` upsert + certificate fn → `RewardsScreen`/`EmployeeProgressScreen`.
+5. Employee learning screens, guarded `ProgressRepository` saves and
+   `issue-certificate` are implemented in `20261010000000_employee_features.sql`
+   and Flutter. Verify `supabase/tests/employee_features.sql`, then obtain approval
+   before migration → `issue-certificate` deployment → Flutter. The first player
+   is YouTube/video-only; metrics, settings boundaries and review checks are in
+   `06-employee-features.md`.
 6. Live Gestor dashboard/company/report queries are implemented in
    `20261001000000_gestor_data.sql`; verify `supabase/tests/gestor_data.sql` before
    an operator-approved staging migration. Metric semantics live in

@@ -1,41 +1,85 @@
 import 'package:educador/app/theme.dart';
 import 'package:educador/data/models/models.dart';
 import 'package:educador/data/repositories/repositories.dart';
-import 'package:educador/features/employee/live_courses.dart';
+import 'package:educador/data/session/session_controller.dart';
+import 'package:educador/features/employee/screens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-class _Courses extends CourseRepository {
+class _Session extends SessionController {
+  @override
+  Future<AppSession?> build() async => const AppSession(
+    user: User(
+      id: 'employee',
+      fullName: 'Ana',
+      email: 'ana@example.test',
+      initials: 'A',
+    ),
+    contexts: [],
+    active: AccessContext(
+      role: Role.funcionario,
+      companyId: 'company',
+      companyName: 'Empresa',
+    ),
+  );
+}
+
+class _Courses extends EmployeeLearningRepository {
   bool availableNow = true;
   int lessonsRead = 0;
-  static const course = LearningCourse(
-    id: 'course',
-    title: 'Segurança no trabalho',
+  @override
+  Future<LearningCourse?> course(String id) async => availableNow
+      ? const LearningCourse(id: 'course', title: 'Segurança no trabalho')
+      : null;
+  @override
+  Future<LearningPage<LearningItem>> catalog(
+    String companyId, {
+    String search = '',
+    String? kind,
+    String? state,
+    int offset = 0,
+  }) async => LearningPage(
+    total: availableNow ? 1 : 0,
+    items: availableNow
+        ? const [
+            LearningItem(
+              id: 'course',
+              title: 'Segurança no trabalho',
+              state: 'not_started',
+              lessonCount: 1,
+              completedCount: 0,
+            ),
+          ]
+        : [],
   );
-
   @override
-  Future<List<LearningCourse>> available({int offset = 0}) async =>
-      availableNow ? [course] : [];
-
-  @override
-  Future<LearningCourse?> byId(String id) async => availableNow ? course : null;
-
-  @override
-  Future<List<LearningLesson>> lessons(
+  Future<LearningPage<EmployeeLesson>> lessons(
+    String companyId,
     String courseId, {
     int offset = 0,
   }) async {
     lessonsRead++;
-    return const [
-      LearningLesson(
-        id: 'lesson',
-        title: 'Introdução',
-        moduleTitle: 'Módulo 1',
-        kind: CourseKind.video,
-      ),
-    ];
+    return const LearningPage(total: 0, items: []);
   }
+}
+
+Future<void> _show(WidgetTester tester, Widget screen, _Courses repo) async {
+  final container = ProviderContainer(
+    overrides: [
+      sessionProvider.overrideWith(_Session.new),
+      employeeLearningRepositoryProvider.overrideWithValue(repo),
+    ],
+  );
+  addTearDown(container.dispose);
+  await container.read(sessionProvider.future);
+  await tester.pumpWidget(
+    UncontrolledProviderScope(
+      container: container,
+      child: MaterialApp(theme: AppTheme.light, home: screen),
+    ),
+  );
+  await tester.pumpAndSettle();
 }
 
 void main() {
@@ -43,43 +87,22 @@ void main() {
     tester,
   ) async {
     final repo = _Courses()..availableNow = false;
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [courseRepositoryProvider.overrideWithValue(repo)],
-        child: MaterialApp(
-          theme: AppTheme.light,
-          home: const LearningCourseScreen(courseId: 'course'),
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
+    await _show(tester, const CourseDetailScreen(courseId: 'course'), repo);
     expect(find.textContaining('Conteúdo indisponível.'), findsOneWidget);
     expect(repo.lessonsRead, 0);
-    expect(find.text('Introdução'), findsNothing);
   });
-
   testWidgets('employee catalog reflects access changes on refresh', (
     tester,
   ) async {
     final repo = _Courses();
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [courseRepositoryProvider.overrideWithValue(repo)],
-        child: MaterialApp(
-          theme: AppTheme.light,
-          home: const LearningCatalogScreen(title: 'Meus cursos'),
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-    expect(find.text(_Courses.course.title), findsOneWidget);
+    await _show(tester, const ModulesScreen(), repo);
+    expect(find.text('Segurança no trabalho'), findsOneWidget);
     repo.availableNow = false;
-    final refresh = tester.widget<RefreshIndicator>(
-      find.byType(RefreshIndicator),
-    );
-    await refresh.onRefresh();
+    await tester
+        .widget<RefreshIndicator>(find.byType(RefreshIndicator))
+        .onRefresh();
     await tester.pumpAndSettle();
-    expect(find.text(_Courses.course.title), findsNothing);
-    expect(find.textContaining('Nenhum curso disponível.'), findsOneWidget);
+    expect(find.text('Segurança no trabalho'), findsNothing);
+    expect(find.textContaining('Nenhum curso disponível'), findsOneWidget);
   });
 }

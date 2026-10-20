@@ -45,6 +45,9 @@ dependencies:
   image_picker: ^1.2.3
   http: ^1.6.0
   image: ^4.10.1
+  youtube_player_flutter: ^10.0.1
+  pdf: ^3.13.1
+  printing: ^5.15.1
 
 dev_dependencies:
   flutter_test:

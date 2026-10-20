@@ -10,6 +10,7 @@ import '../features/auth/screens.dart';
 import '../features/auth/onboarding_screens.dart';
 import '../features/auth/invite_forms.dart';
 import '../features/employee/screens.dart';
+import '../features/employee/player_screen.dart';
 import '../features/company/screens.dart';
 import '../features/company/managers_screen.dart';
 import '../features/company/completion_screen.dart';
@@ -35,6 +36,8 @@ String? _inviteRedirect(String? candidate) {
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
+  GoRouter.optionURLReflectsImperativeAPIs = true;
+  String? pendingLocation;
   ref.listen(sessionProvider, (_, _) => sessionRefresh.refresh());
   final router = GoRouter(
     initialLocation: '/splash',
@@ -44,6 +47,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       final sessionState = ref.read(sessionProvider);
       final loc = state.matchedLocation;
       final isAuth = _authRoutes.contains(loc);
+      final protected =
+          loc.startsWith('/funcionario/') ||
+          loc.startsWith('/empresa/') ||
+          loc.startsWith('/gestor/');
+      if (protected &&
+          (sessionState.isLoading || sessionState.value?.active == null)) {
+        pendingLocation = state.uri.toString();
+      }
       if (sessionState.isLoading) {
         return loc == '/splash' ||
                 loc == '/invite/accept' ||
@@ -72,6 +83,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       }
       if (loc == '/set-password' || loc == '/contexts') return null;
       if (session.active == null) return '/contexts';
+      if (pendingLocation case final destination?) {
+        if (destination.startsWith('/${session.role!.name}/')) {
+          pendingLocation = null;
+          if (loc != Uri.parse(destination).path) return destination;
+        } else {
+          pendingLocation = null;
+        }
+      }
       if (isAuth) return session.homePath;
       if (!loc.startsWith('/${session.role!.name}/')) return session.homePath;
       return null;
@@ -108,6 +127,18 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
 
       // ---- Funcionário (employee) ----
+      GoRoute(
+        path: '/funcionario/perfil/edit',
+        builder: (_, _) =>
+            const ProfileEditScreen(fallbackLocation: '/funcionario/perfil'),
+      ),
+      GoRoute(
+        path: '/funcionario/course/:id/lesson/:lessonId',
+        builder: (_, state) => EmployeePlayerScreen(
+          courseId: state.pathParameters['id']!,
+          lessonId: state.pathParameters['lessonId']!,
+        ),
+      ),
       GoRoute(
         path: '/funcionario/course/:id',
         builder: (context, state) =>
