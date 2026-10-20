@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+export 'employee_models.dart';
+
 /// The three experiences in the platform.
 enum Role { gestor, empresa, funcionario }
 

@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart' hide User;
 
 import '../mock/mock_data.dart';
 import '../models/models.dart';
+import 'certificate_document_repository.dart';
 
 const _supabaseUrl = String.fromEnvironment('SUPABASE_URL');
 const _supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
@@ -815,9 +816,10 @@ class CourseRepository {
         .from('lessons')
         .select('id,title,kind,modules!inner(title,course_id,position)')
         .eq('modules.course_id', courseId)
-        .order('modules(position)')
-        .order('position')
-        .order('id')
+        .order('modules(position)', ascending: true)
+        .order('modules(id)', ascending: true)
+        .order('position', ascending: true)
+        .order('id', ascending: true)
         .range(offset, offset + 49);
     return rows
         .map(
@@ -830,6 +832,237 @@ class CourseRepository {
           ),
         )
         .toList();
+  }
+}
+
+class EmployeeLearningRepository {
+  final SupabaseClient? _injectedClient;
+  EmployeeLearningRepository({SupabaseClient? client})
+    : _injectedClient = client;
+  SupabaseClient get _api =>
+      _injectedClient ??
+      _client ??
+      (throw StateError('Configure o Supabase para aprender.'));
+
+  Future<EmployeeSummary> summary(String companyId) async {
+    final data =
+        await _api.rpc('employee_summary', params: {'p_company': companyId})
+            as Map<String, dynamic>;
+    return EmployeeSummary(
+      courseCount: (data['course_count'] as num).toInt(),
+      completedCourseCount: (data['completed_course_count'] as num).toInt(),
+      certificateCount: (data['certificate_count'] as num).toInt(),
+      balance: (data['balance'] as num).toInt(),
+      department: data['department'] as String? ?? '',
+      activity: (data['activity'] as List<dynamic>).map((item) {
+        final row = item as Map<String, dynamic>;
+        return StudyActivity(
+          DateTime.parse(row['day'] as String),
+          row['active'] as bool,
+        );
+      }).toList(),
+    );
+  }
+
+  Future<LearningPage<LearningItem>> catalog(
+    String companyId, {
+    String search = '',
+    String? kind,
+    String? state,
+    int offset = 0,
+  }) async {
+    final data =
+        await _api.rpc(
+              'employee_catalog',
+              params: {
+                'p_company': companyId,
+                'p_search': search.trim(),
+                'p_kind': kind,
+                'p_state': state,
+                'p_offset': offset,
+              },
+            )
+            as Map<String, dynamic>;
+    return LearningPage(
+      total: (data['total'] as num).toInt(),
+      items: (data['items'] as List<dynamic>).map((item) {
+        final row = item as Map<String, dynamic>;
+        return LearningItem(
+          id: row['id'] as String,
+          title: row['title'] as String,
+          state: row['state'] as String,
+          description: row['description'] as String?,
+          coverUrl: _publicCoverUrl(row['cover_key'] as String?),
+          lessonCount: (row['lesson_count'] as num).toInt(),
+          completedCount: (row['completed_count'] as num).toInt(),
+        );
+      }).toList(),
+    );
+  }
+
+  Future<LearningCourse?> course(String id) async {
+    final row = await _api
+        .from('courses')
+        .select('id,title,description,cover_key')
+        .eq('id', id)
+        .maybeSingle();
+    if (row == null) return null;
+    return LearningCourse(
+      id: row['id'] as String,
+      title: row['title'] as String,
+      description: row['description'] as String?,
+      coverUrl: _publicCoverUrl(row['cover_key'] as String?),
+    );
+  }
+
+  Future<LearningPage<EmployeeLesson>> lessons(
+    String companyId,
+    String courseId, {
+    int offset = 0,
+  }) async {
+    final data =
+        await _api.rpc(
+              'employee_lessons',
+              params: {
+                'p_company': companyId,
+                'p_course': courseId,
+                'p_offset': offset,
+              },
+            )
+            as Map<String, dynamic>;
+    return LearningPage(
+      total: (data['total'] as num).toInt(),
+      items: (data['items'] as List<dynamic>).map((item) {
+        final row = item as Map<String, dynamic>;
+        return EmployeeLesson(
+          id: row['id'] as String,
+          title: row['title'] as String,
+          moduleId: row['module_id'] as String,
+          moduleTitle: row['module_title'] as String,
+          kind: row['kind'] as String,
+          status: row['status'] as String,
+          videoId: row['video_id'] as String?,
+          positionSec: (row['position_sec'] as num).toInt(),
+        );
+      }).toList(),
+    );
+  }
+
+  Future<LearningPage<EarnedCertificate>> certificates(
+    String companyId, {
+    int offset = 0,
+  }) async {
+    final data =
+        await _api.rpc(
+              'employee_certificates',
+              params: {'p_company': companyId, 'p_offset': offset},
+            )
+            as Map<String, dynamic>;
+    return LearningPage(
+      total: (data['total'] as num).toInt(),
+      items: (data['items'] as List<dynamic>).map((item) {
+        final row = item as Map<String, dynamic>;
+        return EarnedCertificate(
+          id: row['id'] as String,
+          code: row['code'] as String,
+          courseId: row['course_id'] as String,
+          courseTitle: row['course_title'] as String,
+          companyName: row['company_name'] as String,
+          employeeName: row['employee_name'] as String,
+          issuedAt: DateTime.parse(row['issued_at'] as String),
+        );
+      }).toList(),
+    );
+  }
+
+  Future<List<RedeemableReward>> rewards({int offset = 0}) async {
+    final rows = await _api
+        .from('rewards')
+        .select('id,title,points_cost')
+        .eq('active', true)
+        .order('title', ascending: true)
+        .order('id', ascending: true)
+        .range(offset, offset + 49);
+    return rows
+        .map(
+          (row) => RedeemableReward(
+            id: row['id'] as String,
+            title: row['title'] as String,
+            cost: (row['points_cost'] as num).toInt(),
+          ),
+        )
+        .toList();
+  }
+
+  Future<List<EmployeeRank>> ranking(String companyId) async {
+    final rows =
+        await _api.rpc('employee_ranking', params: {'p_company': companyId})
+            as List<dynamic>;
+    return rows.map((item) {
+      final row = item as Map<String, dynamic>;
+      return EmployeeRank(
+        userId: row['user_id'] as String,
+        name: row['full_name'] as String,
+        department: row['dept'] as String? ?? '',
+        points: (row['points'] as num).toInt(),
+      );
+    }).toList();
+  }
+
+  Future<void> redeem(String companyId, String rewardId) async {
+    try {
+      await _api.rpc(
+        'redeem_employee_reward',
+        params: {'p_company': companyId, 'p_reward': rewardId},
+      );
+    } on PostgrestException catch (error) {
+      throw ManagementException(
+        error.message == 'Insufficient points'
+            ? 'Saldo insuficiente para este resgate.'
+            : 'A recompensa não está disponível. Atualize a lista.',
+      );
+    }
+  }
+
+  Future<void> issueCertificate(String companyId, String courseId) async {
+    try {
+      await _api.functions.invoke(
+        'issue-certificate',
+        body: {'companyId': companyId, 'courseId': courseId},
+      );
+    } on FunctionException catch (error) {
+      if (error.status == 409 &&
+          error.details is Map &&
+          (error.details as Map)['error'] == 'Course incomplete') {
+        throw const CourseIncompleteException();
+      }
+      rethrow;
+    }
+  }
+}
+
+class ProgressRepository {
+  final SupabaseClient? _injectedClient;
+  ProgressRepository({SupabaseClient? client}) : _injectedClient = client;
+  Future<void> save(
+    String companyId,
+    String lessonId, {
+    required int positionSec,
+    required bool completed,
+  }) async {
+    final api =
+        _injectedClient ??
+        _client ??
+        (throw StateError('Configure o Supabase para salvar o progresso.'));
+    await api.rpc(
+      'save_employee_progress',
+      params: {
+        'p_company': companyId,
+        'p_lesson': lessonId,
+        'p_position': positionSec,
+        'p_completed': completed,
+      },
+    );
   }
 }
 
@@ -1084,6 +1317,16 @@ final contentRepositoryProvider = Provider<ContentRepository>(
 final courseRepositoryProvider = Provider<CourseRepository>(
   (ref) => CourseRepository(),
 );
+final employeeLearningRepositoryProvider = Provider<EmployeeLearningRepository>(
+  (ref) => EmployeeLearningRepository(),
+);
+final progressRepositoryProvider = Provider<ProgressRepository>(
+  (ref) => ProgressRepository(),
+);
+final certificateDocumentRepositoryProvider =
+    Provider<CertificateDocumentRepository>(
+      (ref) => CertificateDocumentRepository(),
+    );
 final authRepositoryProvider = Provider<AuthRepository>(
   (ref) => AuthRepository(),
 );

@@ -117,10 +117,12 @@ authoring remain separate roadmap work; the form publishes video only and the
 non-video type tiles are disabled. Failed cover uploads keep the draft on
 screen instead of publishing without the cover.
 
-With Supabase configured, employee Home/Modules and course outlines use
-`CourseRepository` and normal RLS-protected reads instead of mock courses.
-Blocked direct course URLs show an unavailable state. Playback/progress UI is
-still separate roadmap work; the live outline does not simulate completion.
+Employee Home/Modules and course outlines use `EmployeeLearningRepository`,
+guarded RPCs and RLS-protected course reads instead of mock courses.
+Blocked direct course URLs show an unavailable state. Employee playback/progress,
+certificate issuance, redemption and screen parity are implemented in
+`20261010000000_employee_features.sql`; see [Employee features](06-employee-features.md)
+for metric definitions, guards, video-only scope and deployment order.
 
 ## Reports (SQL, export client-side)
 

@@ -56,8 +56,15 @@ class SectionHeader extends StatelessWidget {
   final String title;
   final String? action;
   final VoidCallback? onAction;
+  final bool compact;
 
-  const SectionHeader(this.title, {super.key, this.action, this.onAction});
+  const SectionHeader(
+    this.title, {
+    super.key,
+    this.action,
+    this.onAction,
+    this.compact = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -66,18 +73,32 @@ class SectionHeader extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: Text(title,
-                style: const TextStyle(
-                    fontSize: 17, fontWeight: FontWeight.w700)),
+            child: Text(
+              title,
+              style: TextStyle(
+                fontFamily: compact ? AppFonts.outfit : null,
+                color: compact ? AppColors.textPrimary : null,
+                fontSize: compact ? 14 : 17,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
           if (action != null)
             GestureDetector(
               onTap: onAction,
-              child: Text(action!,
-                  style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.primary)),
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: compact ? 12 : 0),
+                child: Text(
+                  action!,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: compact
+                        ? AppColors.successDarkGreen
+                        : AppColors.primary,
+                  ),
+                ),
+              ),
             ),
         ],
       ),
@@ -181,7 +202,12 @@ class StatusChip extends StatelessWidget {
   final Color color;
   final Color bg;
 
-  const StatusChip(this.label, {super.key, required this.color, required this.bg});
+  const StatusChip(
+    this.label, {
+    super.key,
+    required this.color,
+    required this.bg,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -191,11 +217,14 @@ class StatusChip extends StatelessWidget {
         color: bg,
         borderRadius: BorderRadius.circular(20),
       ),
-      child: Text(label,
-          style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: color)),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: color,
+        ),
+      ),
     );
   }
 }
@@ -207,6 +236,7 @@ class FilterChips extends StatelessWidget {
   final Color activeColor;
   final bool outlined;
   final bool plainInactive;
+  final bool solidSelection;
 
   const FilterChips({
     super.key,
@@ -216,6 +246,7 @@ class FilterChips extends StatelessWidget {
     this.activeColor = AppColors.successDarkGreen,
     this.outlined = false,
     this.plainInactive = false,
+    this.solidSelection = false,
   });
 
   @override
@@ -237,7 +268,9 @@ class FilterChips extends StatelessWidget {
               decoration: BoxDecoration(
                 color: outlined
                     ? active
-                          ? AppColors.successBg
+                          ? solidSelection
+                                ? activeColor
+                                : AppColors.successBg
                           : AppColors.background
                     : active
                     ? activeColor
@@ -256,7 +289,9 @@ class FilterChips extends StatelessWidget {
                   fontWeight: outlined ? FontWeight.w500 : FontWeight.w600,
                   color: outlined
                       ? active
-                            ? activeColor
+                            ? solidSelection
+                                  ? Colors.white
+                                  : activeColor
                             : const Color(0xFF475569)
                       : active
                       ? Colors.white
@@ -360,28 +395,37 @@ class StatCard extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: Text(label,
-                    style: const TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.textMuted)),
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textMuted,
+                  ),
+                ),
               ),
               SvgIcon(icon, size: 17, color: AppColors.primary),
             ],
           ),
           const SizedBox(height: 8),
-          Text(value,
-              style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary)),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
+              color: AppColors.textPrimary,
+            ),
+          ),
           if (delta != null) ...[
             const SizedBox(height: 4),
-            Text(delta!,
-                style: TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
-                    color: deltaColor)),
+            Text(
+              delta!,
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+                color: deltaColor,
+              ),
+            ),
           ],
         ],
       ),
@@ -473,8 +517,7 @@ class FormFieldLabel extends StatelessWidget {
           icon: const SvgIcon(AppIcons.chevronDown, color: AppColors.primary),
           style: const TextStyle(color: AppColors.textPrimary, fontSize: 15),
           items: items
-              .map((e) =>
-                  DropdownMenuItem<String>(value: e, child: Text(e)))
+              .map((e) => DropdownMenuItem<String>(value: e, child: Text(e)))
               .toList(),
           onChanged: (v) {
             if (v != null) onChanged?.call(v);

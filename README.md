@@ -14,8 +14,11 @@ define name, even though its value is a publishable key. These values are
 already visible in any web build; row-level security protects the data.
 
 Authentication, context selection and invitations use Supabase. Gestor
-Dashboard, Companies, Content and Reports use live repositories; some company
-and employee screens still use mocks. CSV export remains deferred. Report
+Dashboard, Companies, Content and Reports, and all company-manager screens,
+use live repositories. Employee screens now cover live learning,
+YouTube playback/resume, progress, certificates, rewards/redemption and profile
+editing; see [Employee features](stack/06-employee-features.md) for deployment
+requirements and deferred boundaries. CSV export remains deferred. Report
 metric definitions and current-completion/activity-period semantics are
 documented in [the backend contract](stack/01-backend.md#gestor-data-integration).
 Gestor lifecycle routes support company edits/pause, manager grant revocation,

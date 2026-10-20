@@ -13,7 +13,11 @@ import 'management_widgets.dart';
 import 'widgets.dart';
 
 class ProfileEditScreen extends ConsumerStatefulWidget {
-  const ProfileEditScreen({super.key});
+  final String fallbackLocation;
+  const ProfileEditScreen({
+    super.key,
+    this.fallbackLocation = '/gestor/perfil',
+  });
   @override
   ConsumerState<ProfileEditScreen> createState() => _ProfileEditScreenState();
 }
@@ -34,10 +38,15 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
   Widget build(BuildContext context) => FutureBuilder<OwnProfile>(
     future: _profile,
     builder: (context, snapshot) {
-      if (snapshot.hasData) return _ProfileEditor(profile: snapshot.data!);
+      if (snapshot.hasData) {
+        return _ProfileEditor(
+          profile: snapshot.data!,
+          fallbackLocation: widget.fallbackLocation,
+        );
+      }
       return ManagementPage(
         title: 'Configurações de conta',
-        fallbackLocation: '/gestor/perfil',
+        fallbackLocation: widget.fallbackLocation,
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
@@ -57,7 +66,8 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
 
 class _ProfileEditor extends ConsumerStatefulWidget {
   final OwnProfile profile;
-  const _ProfileEditor({required this.profile});
+  final String fallbackLocation;
+  const _ProfileEditor({required this.profile, required this.fallbackLocation});
   @override
   ConsumerState<_ProfileEditor> createState() => _ProfileEditorState();
 }
@@ -108,7 +118,7 @@ class _ProfileEditorState extends ConsumerState<_ProfileEditor> {
       await controller.reload();
       if (mounted) {
         showManagementMessage(context, 'Perfil atualizado.');
-        leaveManagementPage(context, '/gestor/perfil');
+        leaveManagementPage(context, widget.fallbackLocation);
       }
     } catch (_) {
       if (mounted) {
@@ -127,7 +137,7 @@ class _ProfileEditorState extends ConsumerState<_ProfileEditor> {
   @override
   Widget build(BuildContext context) => ManagementPage(
     title: 'Configurações de conta',
-    fallbackLocation: '/gestor/perfil',
+    fallbackLocation: widget.fallbackLocation,
     busy: _busy,
     child: Form(
       key: _form,

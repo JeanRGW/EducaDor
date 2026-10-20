@@ -73,7 +73,7 @@ class RoleShell extends StatelessWidget {
                     child: _TabButton(
                       item: tabs[i],
                       selected: navigationShell.currentIndex == i,
-                      compact: role != Role.funcionario,
+                      compact: true,
                       onTap: () => navigationShell.goBranch(
                         i,
                         initialLocation: i == navigationShell.currentIndex,
