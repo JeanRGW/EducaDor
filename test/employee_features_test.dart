@@ -342,6 +342,22 @@ Future<void> _visible(
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  testWidgets('balance count aligns with the banner right padding', (
+    tester,
+  ) async {
+    await _show(tester, const RewardsScreen());
+    final banner = tester.getRect(
+      find.byKey(const ValueKey('employee-balance')),
+    );
+    expect(
+      banner.right - tester.getRect(find.text('50')).right,
+      closeTo(16, 1),
+    );
+    expect(
+      banner.right - tester.getRect(find.text('Pontos')).right,
+      closeTo(16, 1),
+    );
+  });
   testWidgets(
     'Rewards uses compact tiles, horizontal balance and current-user highlight',
     (tester) async {

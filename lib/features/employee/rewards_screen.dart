@@ -121,6 +121,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                         result: summary,
                         retry: () => ref.invalidate(employeeSummaryProvider),
                         builder: (data) => Container(
+                          key: const ValueKey('employee-balance'),
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(
@@ -161,7 +162,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                                 ),
                               ),
                               const SizedBox(width: 12),
-                              Flexible(
+                              Expanded(
                                 child: Semantics(
                                   label: '${data.balance} pontos disponíveis',
                                   child: Column(
