@@ -16,10 +16,10 @@ List<TabItem> tabsForRole(Role role) {
   switch (role) {
     case Role.funcionario:
       return const [
-        TabItem('Início', AppIcons.grid),
+        TabItem('Início', AppIcons.home),
         TabItem('Módulos', AppIcons.book),
         TabItem('Progresso', AppIcons.reports),
-        TabItem('Recompensas', AppIcons.rewards),
+        TabItem('Recompensas', AppIcons.award),
         TabItem('Perfil', AppIcons.profile),
       ];
     case Role.empresa:
@@ -65,7 +65,7 @@ class RoleShell extends StatelessWidget {
         child: SafeArea(
           top: false,
           child: SizedBox(
-            height: 68,
+            height: 68 + MediaQuery.textScalerOf(context).scale(10) - 10,
             child: Row(
               children: [
                 for (var i = 0; i < tabs.length; i++)
@@ -104,28 +104,41 @@ class _TabButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          SvgIcon(
-            item.icon,
-            color: selected ? AppColors.successDarkGreen : AppColors.textMuted,
-            size: compact ? 20 : 24,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            item.label,
-            style: TextStyle(
-              fontSize: compact ? 10 : 10.5,
-              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: InkWell(
+        onTap: onTap,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SvgIcon(
+              item.icon,
               color: selected
                   ? AppColors.successDarkGreen
                   : AppColors.textMuted,
+              size: compact ? 20 : 24,
             ),
-          ),
-        ],
+            const SizedBox(height: 4),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  item.label,
+                  style: TextStyle(
+                    fontFamily: AppFonts.outfit,
+                    fontSize: compact ? 10 : 10.5,
+                    fontWeight: FontWeight.w500,
+                    color: selected
+                        ? AppColors.successDarkGreen
+                        : AppColors.textMuted,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

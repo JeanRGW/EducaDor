@@ -46,7 +46,7 @@ class EmployeeProgressScreen extends ConsumerWidget {
                         children: [
                           DonutChart(
                             data.completion ?? 0,
-                            color: AppColors.successDarkGreen,
+                            color: AppColors.primary,
                             size: 90,
                           ),
                           const SizedBox(width: 16),
@@ -128,7 +128,10 @@ class _InProgressState extends ConsumerState<_InProgress> {
                 for (final course in page.items)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 12),
-                    child: LearningCard(course: course),
+                    child: LearningCard(
+                      course: course,
+                      progressColor: AppColors.successDarkGreen,
+                    ),
                   ),
               ],
             ),

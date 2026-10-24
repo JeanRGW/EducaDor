@@ -207,7 +207,7 @@ class _CatalogState extends ConsumerState<_Catalog> {
                 ),
               ),
               SliverPadding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                 sliver: SliverToBoxAdapter(
                   child: Column(
                     children: [

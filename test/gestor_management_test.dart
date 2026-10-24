@@ -923,7 +923,9 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('profile fields share labels and teal controls', (tester) async {
+  testWidgets('profile fields keep labels and use the blue primary action', (
+    tester,
+  ) async {
     await _show(tester, const ProfileEditScreen(), profiles: _Profiles());
     expect(find.text('E-mail de acesso'), findsOneWidget);
     expect(find.text('Dados pessoais'), findsOneWidget);
@@ -941,7 +943,7 @@ void main() {
           .style
           ?.backgroundColor
           ?.resolve({}),
-      AppColors.successDarkGreen,
+      AppColors.primary,
     );
     expect(tester.takeException(), isNull);
   });

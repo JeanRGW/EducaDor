@@ -105,6 +105,8 @@ class _CourseState extends ConsumerState<_Course> {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Detalhes'),
+          toolbarHeight: 52,
+          titleTextStyle: AdminStyles.cardTitle.copyWith(fontSize: 16),
           leading: IconButton(
             tooltip: 'Voltar',
             onPressed: () =>
@@ -145,11 +147,12 @@ class _CourseState extends ConsumerState<_Course> {
                                   url: data.coverUrl,
                                   width: double.infinity,
                                   height: 180,
+                                  borderRadius: 0,
                                 ),
                                 Positioned.fill(
                                   child: ColoredBox(
-                                    color: AppColors.navy.withValues(
-                                      alpha: 0.65,
+                                    color: AppColors.primary.withValues(
+                                      alpha: 0.75,
                                     ),
                                   ),
                                 ),
@@ -160,6 +163,7 @@ class _CourseState extends ConsumerState<_Course> {
                                   child: Text(
                                     data.title,
                                     style: AdminStyles.pageTitle.copyWith(
+                                      fontSize: 22,
                                       color: Colors.white,
                                     ),
                                   ),
@@ -240,7 +244,14 @@ class _CourseState extends ConsumerState<_Course> {
                               ),
                             ),
                           AppCard(
-                            padding: const EdgeInsets.all(14),
+                            borderRadius: 12,
+                            color:
+                                lesson.playable &&
+                                    !lesson.completed &&
+                                    lesson.positionSec > 0
+                                ? AppColors.successBgSoft
+                                : null,
+                            padding: const EdgeInsets.all(12),
                             onTap: lesson.playable ? () => _open(lesson) : null,
                             child: Row(
                               children: [
@@ -250,7 +261,11 @@ class _CourseState extends ConsumerState<_Course> {
                                       : lesson.playable
                                       ? AppIcons.playCircle
                                       : AppIcons.lock,
-                                  color: AppColors.successDarkGreen,
+                                  color: !lesson.playable
+                                      ? AppColors.textMuted
+                                      : lesson.completed
+                                      ? AppColors.success
+                                      : AppColors.successDarkGreen,
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
@@ -260,7 +275,11 @@ class _CourseState extends ConsumerState<_Course> {
                                     children: [
                                       Text(
                                         lesson.title,
-                                        style: AdminStyles.cardTitle,
+                                        style: AdminStyles.cardTitle.copyWith(
+                                          color: lesson.playable
+                                              ? AppColors.textPrimary
+                                              : AppColors.textMuted,
+                                        ),
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
@@ -271,7 +290,11 @@ class _CourseState extends ConsumerState<_Course> {
                                             : lesson.positionSec > 0
                                             ? 'Em andamento · retomar aos ${lesson.positionSec}s'
                                             : 'Disponível',
-                                        style: AdminStyles.body,
+                                        style: AdminStyles.body.copyWith(
+                                          color: lesson.playable
+                                              ? AppColors.textSecondary
+                                              : AppColors.textMuted,
+                                        ),
                                       ),
                                     ],
                                   ),

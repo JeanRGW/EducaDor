@@ -81,7 +81,7 @@ class _CompaniesScreenState extends ConsumerState<CompaniesScreen> {
         title: const Text('Empresas Registradas'),
       ),
       floatingActionButton: FloatingActionButton(
-        backgroundColor: AppColors.successDarkGreen,
+        backgroundColor: AppColors.primary,
         shape: const CircleBorder(
           side: BorderSide(color: Colors.white, width: 2),
         ),
@@ -103,7 +103,7 @@ class _CompaniesScreenState extends ConsumerState<CompaniesScreen> {
               compact: true,
               prefixIcon: const SvgIcon(
                 AppIcons.search,
-                size: 26,
+                size: 18,
                 color: Color(0xFF475569),
               ),
               onChanged: (value) {
@@ -210,9 +210,7 @@ class _CompanyCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
-                color: company.active
-                    ? AppColors.successBg
-                    : AppColors.dangerBg,
+                color: company.active ? AppColors.activeBg : AppColors.dangerBg,
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Text(

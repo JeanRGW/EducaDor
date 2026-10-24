@@ -281,6 +281,10 @@ void main() {
     expect(find.text('84%'), findsOneWidget);
     expect(find.text('Liberar para'), findsNothing);
     expect(find.text('Editar'), findsNothing);
+    expect(
+      tester.widget<Switch>(find.byType(Switch)).activeTrackColor,
+      AppColors.primary,
+    );
     await tester.tap(find.byType(Switch));
     await tester.pumpAndSettle();
     expect(repo.companyWrites, 1);
@@ -301,6 +305,7 @@ void main() {
       final control = tester.widget<Switch>(find.byType(Switch));
       expect(control.onChanged, isNull);
       expect(control.value, isTrue);
+      expect(control.activeTrackColor, AppColors.border);
       expect(repo.companyWrites, 0);
     },
   );

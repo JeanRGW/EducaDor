@@ -345,7 +345,7 @@ class _CourseEditorState extends ConsumerState<_CourseEditor> {
             PrimaryButton(
               _busy ? 'Salvando...' : 'Salvar dados da trilha',
               compact: true,
-              color: AppColors.successDarkGreen,
+              color: AppColors.primary,
               onPressed: _busy || _picking ? null : _save,
             ),
             const SizedBox(height: 24),
@@ -593,7 +593,7 @@ class _LessonEditorState extends ConsumerState<_LessonEditor> {
           PrimaryButton(
             _busy ? 'Salvando...' : 'Salvar aula',
             compact: true,
-            color: AppColors.successDarkGreen,
+            color: AppColors.primary,
             onPressed: _busy ? null : _save,
           ),
         ],

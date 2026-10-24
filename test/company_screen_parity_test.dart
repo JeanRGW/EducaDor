@@ -508,7 +508,7 @@ void main() {
         tester
             .widget<FloatingActionButton>(find.byType(FloatingActionButton))
             .backgroundColor,
-        AppColors.successDarkGreen,
+        AppColors.primary,
       );
       final progress = find.byType(ProgressBar).first;
       final caption = find.text('Progresso de Conclusão').first;
@@ -516,10 +516,7 @@ void main() {
         tester.getTopLeft(progress).dy,
         lessThan(tester.getTopLeft(caption).dy),
       );
-      expect(
-        tester.widget<ProgressBar>(progress).color,
-        AppColors.successDarkGreen,
-      );
+      expect(tester.widget<ProgressBar>(progress).color, AppColors.primary);
       expect(find.text('Nenhuma atividade registrada'), findsWidgets);
       await tester.enterText(find.byType(TextField), 'RH');
       await tester.pump(const Duration(milliseconds: 350));
@@ -594,15 +591,27 @@ void main() {
             .round();
         final y = (margin + 12 + (size.height - 34) * (1 - counts[i] / maximum))
             .round();
-        final offset = (y * width + x) * 4;
-        expect(
-          [
-            for (var channel = 0; channel < 4; channel++)
-              pixels!.getUint8(offset + channel),
-          ],
-          [(blue >> 16) & 255, (blue >> 8) & 255, blue & 255, 255],
-          reason: 'Month $i must render a dot at its normalized count',
+        final nearby = [
+          for (var dy = -1; dy <= 1; dy++)
+            for (var dx = -1; dx <= 1; dx++) ((y + dy) * width + x + dx) * 4,
+        ];
+        final offset = nearby.reduce(
+          (a, b) => pixels!.getUint8(a + 3) > pixels.getUint8(b + 3) ? a : b,
         );
+        final alpha = pixels!.getUint8(offset + 3);
+        expect(
+          alpha,
+          greaterThanOrEqualTo(128),
+          reason: 'Month $i must lie on the line at its normalized count',
+        );
+        // A thin line has antialiased endpoints; the buffer is premultiplied.
+        for (var channel = 0; channel < 3; channel++) {
+          final expected = (blue >> (16 - channel * 8)) & 255;
+          expect(
+            pixels.getUint8(offset + channel),
+            closeTo(expected * alpha / 255, 1),
+          );
+        }
       }
       final semantics = tester.widget<Semantics>(
         find.ancestor(of: chart, matching: find.byType(Semantics)).first,

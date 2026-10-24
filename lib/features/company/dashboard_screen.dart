@@ -184,7 +184,7 @@ class CompanyDashboardScreen extends ConsumerWidget {
                           style: TextStyle(
                             fontFamily: AppFonts.inter,
                             fontSize: 11,
-                            color: AppColors.successDarkGreen,
+                            color: AppColors.primary,
                           ),
                         ),
                       ],
@@ -341,6 +341,7 @@ class _Metric extends StatelessWidget {
                     fontFamily: AppFonts.outfit,
                     fontSize: 24,
                     fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary,
                     height: 1.2,
                   ),
                 ),
@@ -351,7 +352,7 @@ class _Metric extends StatelessWidget {
                     color:
                         caption == 'Em breve' || caption.startsWith('Sem dados')
                         ? AppColors.textMuted
-                        : AppColors.successDarkGreen,
+                        : AppColors.success,
                   ),
                 ),
               ],

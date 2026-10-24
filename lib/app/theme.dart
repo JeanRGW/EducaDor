@@ -16,6 +16,7 @@ class AppColors {
 
   // Text
   static const textPrimary = Color(0xFF0F172A);
+  static const textSecondary = Color(0xFF475569);
   static const textMuted = Color(0xFF94A3B8);
   static const border = Color(0xFFE2E8F0);
 
@@ -24,6 +25,7 @@ class AppColors {
   static const successBright = Color(0xFF23D3B4);
   static const successBg = Color(0xFFCCFBF1);
   static const successBgSoft = Color(0xFFF0FDF4);
+  static const activeBg = Color(0xFFD1FAE5);
   static const successDarkGreen = Color(0xFF0D9488);
   static const warning = Color(0xFFF59E0B);
   static const warningBg = Color(0xFFFFFBEB);
@@ -56,15 +58,81 @@ class AppTheme {
   static ThemeData get light {
     final base = ThemeData(
       useMaterial3: true,
+      visualDensity: VisualDensity.standard,
       fontFamily: AppFonts.inter,
       colorScheme: ColorScheme.fromSeed(
         seedColor: AppColors.primary,
         brightness: Brightness.light,
+        primary: AppColors.primary,
+        onPrimary: Colors.white,
+        primaryContainer: const Color(0xFFE0F2FE),
+        onPrimaryContainer: AppColors.primaryDark,
+        secondary: AppColors.successDarkGreen,
+        onSecondary: Colors.white,
+        secondaryContainer: AppColors.successBg,
+        onSecondaryContainer: AppColors.successDarkGreen,
+        surface: AppColors.surface,
+        onSurface: AppColors.textPrimary,
+        onSurfaceVariant: AppColors.textSecondary,
+        surfaceContainerLowest: AppColors.surface,
+        surfaceContainerLow: AppColors.background,
+        surfaceContainer: AppColors.chipBg,
+        surfaceContainerHigh: AppColors.chipBg,
+        surfaceContainerHighest: AppColors.border,
+        outline: AppColors.textMuted,
+        outlineVariant: AppColors.border,
+        error: AppColors.danger,
+        onError: Colors.white,
+        errorContainer: AppColors.dangerBg,
+        onErrorContainer: AppColors.danger,
       ),
       scaffoldBackgroundColor: AppColors.background,
     );
 
     return base.copyWith(
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: AppColors.primary,
+          foregroundColor: Colors.white,
+          minimumSize: const Size(0, 48),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          textStyle: const TextStyle(
+            fontFamily: AppFonts.inter,
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.primary,
+          side: const BorderSide(color: AppColors.border),
+          minimumSize: const Size(0, 44),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: AppColors.successDarkGreen,
+        ),
+      ),
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        shape: CircleBorder(side: BorderSide(color: Colors.white, width: 2)),
+      ),
+      progressIndicatorTheme: const ProgressIndicatorThemeData(
+        color: AppColors.primary,
+        linearTrackColor: AppColors.chipBg,
+      ),
+      dialogTheme: const DialogThemeData(
+        backgroundColor: AppColors.surface,
+        surfaceTintColor: Colors.transparent,
+      ),
       textTheme: base.textTheme
           .apply(
             bodyColor: AppColors.textPrimary,
@@ -133,7 +201,7 @@ class AppTheme {
         fillColor: AppColors.surface,
       ),
       appBarTheme: const AppBarTheme(
-        backgroundColor: AppColors.background,
+        backgroundColor: AppColors.surface,
         foregroundColor: AppColors.textPrimary,
         elevation: 0,
         centerTitle: false,

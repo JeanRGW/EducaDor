@@ -26,7 +26,7 @@ class AppCard extends StatelessWidget {
     this.onTap,
     this.color,
     this.showBorder = true,
-    this.borderRadius = 14,
+    this.borderRadius = 16,
   });
 
   @override
@@ -76,8 +76,8 @@ class SectionHeader extends StatelessWidget {
             child: Text(
               title,
               style: TextStyle(
-                fontFamily: compact ? AppFonts.outfit : null,
-                color: compact ? AppColors.textPrimary : null,
+                fontFamily: AppFonts.outfit,
+                color: AppColors.textPrimary,
                 fontSize: compact ? 14 : 17,
                 fontWeight: FontWeight.w700,
               ),
@@ -91,7 +91,7 @@ class SectionHeader extends StatelessWidget {
                 child: Text(
                   action!,
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: compact ? 12 : 14,
                     fontWeight: FontWeight.w600,
                     color: compact
                         ? AppColors.successDarkGreen
@@ -156,13 +156,14 @@ class AvatarBadge extends StatelessWidget {
       height: size,
       alignment: Alignment.center,
       decoration: const BoxDecoration(
-        color: AppColors.successBgSoft,
+        color: AppColors.successBg,
         shape: BoxShape.circle,
       ),
       child: Text(
         initials,
         style: TextStyle(
-          color: AppColors.navy,
+          fontFamily: AppFonts.outfit,
+          color: AppColors.successDarkGreen,
           fontWeight: FontWeight.w800,
           fontSize: size * 0.36,
         ),
@@ -190,7 +191,7 @@ class ProgressBar extends StatelessWidget {
       child: LinearProgressIndicator(
         value: value.clamp(0.0, 1.0),
         minHeight: height,
-        backgroundColor: AppColors.border,
+        backgroundColor: AppColors.chipBg,
         valueColor: AlwaysStoppedAnimation<Color>(color),
       ),
     );
@@ -398,9 +399,9 @@ class StatCard extends StatelessWidget {
                 child: Text(
                   label,
                   style: const TextStyle(
-                    fontSize: 12.5,
+                    fontSize: 12,
                     fontWeight: FontWeight.w500,
-                    color: AppColors.textMuted,
+                    color: AppColors.textSecondary,
                   ),
                 ),
               ),
@@ -411,6 +412,7 @@ class StatCard extends StatelessWidget {
           Text(
             value,
             style: const TextStyle(
+              fontFamily: AppFonts.outfit,
               fontSize: 24,
               fontWeight: FontWeight.w800,
               color: AppColors.textPrimary,

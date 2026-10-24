@@ -103,22 +103,14 @@ class _ContentCatalogScreenState extends ConsumerState<ContentCatalogScreen> {
     appBar: AppBar(
       automaticallyImplyLeading: false,
       titleSpacing: 16,
-      backgroundColor: widget.platform ? AppColors.surface : null,
-      titleTextStyle: widget.platform
-          ? const TextStyle(
-              fontFamily: AppFonts.outfit,
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
-              height: 1.2,
-            )
-          : null,
+      backgroundColor: AppColors.surface,
+      titleTextStyle: AdminStyles.pageTitle,
       title: const Text('Conteúdo Educacional'),
     ),
     floatingActionButton: widget.platform
         ? FloatingActionButton(
             tooltip: 'Adicionar trilha',
-            backgroundColor: AppColors.successDarkGreen,
+            backgroundColor: AppColors.primary,
             shape: const CircleBorder(
               side: BorderSide(color: Colors.white, width: 2),
             ),
@@ -152,7 +144,7 @@ class _ContentCatalogScreenState extends ConsumerState<ContentCatalogScreen> {
                   compact: true,
                   prefixIcon: SvgIcon(
                     AppIcons.search,
-                    size: widget.platform ? 26 : 18,
+                    size: 18,
                     color: const Color(0xFF475569),
                   ),
                   onChanged: (value) {
@@ -167,8 +159,10 @@ class _ContentCatalogScreenState extends ConsumerState<ContentCatalogScreen> {
                 ),
                 const SizedBox(height: 14),
                 FilterChips(
-                  plainInactive: widget.platform,
-                  outlined: !widget.platform,
+                  plainInactive: true,
+                  activeColor: widget.platform
+                      ? AppColors.successDarkGreen
+                      : AppColors.primary,
                   options: const ['Todos', 'Cursos', 'Módulos', 'Quizzes'],
                   selected: _chip,
                   onSelected: (index) {
@@ -279,7 +273,7 @@ class ManagedContentCard extends StatelessWidget {
         ? 'Acesso liberado'
         : 'Liberado para os funcionários';
     return ClipRRect(
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(16),
       child: AppCard(
         padding: EdgeInsets.zero,
         child: Column(
@@ -324,7 +318,7 @@ class ManagedContentCard extends StatelessWidget {
                           fontFamily: AppFonts.inter,
                           fontSize: platform ? 10 : 11,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.navy,
+                          color: AppColors.successDarkGreen,
                         ),
                       ),
                     ),
@@ -349,7 +343,11 @@ class ManagedContentCard extends StatelessWidget {
                                 : AppColors.textMuted,
                             height: 1.3,
                           )
-                        : AdminStyles.cardTitle.copyWith(fontSize: 16),
+                        : AdminStyles.cardTitle.copyWith(
+                            color: available
+                                ? AppColors.textPrimary
+                                : AppColors.textMuted,
+                          ),
                   ),
                   const SizedBox(height: 4),
                   if (platform)
@@ -417,7 +415,7 @@ class ManagedContentCard extends StatelessWidget {
                               ? AppColors.textMuted
                               : platform
                               ? AppColors.textPrimary
-                              : AppColors.successDarkGreen,
+                              : AppColors.primary,
                         ),
                       ),
                     ],
@@ -426,7 +424,9 @@ class ManagedContentCard extends StatelessWidget {
                   ProgressBar(
                     (item.completionPct ?? 0) / 100,
                     height: platform ? 4 : 6,
-                    color: AppColors.successDarkGreen,
+                    color: platform
+                        ? AppColors.successDarkGreen
+                        : AppColors.primary,
                   ),
                   const SizedBox(height: 8),
                   Row(
@@ -461,23 +461,18 @@ class ManagedContentCard extends StatelessWidget {
                               value: platform
                                   ? item.platformEnabled
                                   : item.companyEnabled,
-                              activeThumbColor: platform
-                                  ? Colors.white
-                                  : AppColors.successDarkGreen,
-                              activeTrackColor: platform
-                                  ? AppColors.successDarkGreen
-                                  : null,
-                              inactiveThumbColor: platform
-                                  ? Colors.white
-                                  : null,
-                              inactiveTrackColor: platform
+                              activeThumbColor: Colors.white,
+                              activeTrackColor:
+                                  busy || (!platform && !item.platformEnabled)
                                   ? AppColors.border
-                                  : null,
-                              trackOutlineColor: platform
-                                  ? const WidgetStatePropertyAll(
-                                      Colors.transparent,
-                                    )
-                                  : null,
+                                  : platform
+                                  ? AppColors.successDarkGreen
+                                  : AppColors.primary,
+                              inactiveThumbColor: Colors.white,
+                              inactiveTrackColor: AppColors.border,
+                              trackOutlineColor: const WidgetStatePropertyAll(
+                                Colors.transparent,
+                              ),
                               onChanged:
                                   busy || (!platform && !item.platformEnabled)
                                   ? null

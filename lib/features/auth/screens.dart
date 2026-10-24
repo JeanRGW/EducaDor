@@ -132,7 +132,7 @@ class WelcomeScreen extends StatelessWidget {
                             FilledButton(
                               onPressed: () => context.go('/login'),
                               style: FilledButton.styleFrom(
-                                backgroundColor: const Color(0xFF4A90E2),
+                                backgroundColor: AppColors.primary,
                                 foregroundColor: Colors.white,
                                 minimumSize: const Size(130, 44),
                                 elevation: 2,

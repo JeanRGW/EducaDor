@@ -197,7 +197,7 @@ class _AddCompanyScreenState extends ConsumerState<AddCompanyScreen> {
           PrimaryButton(
             _busy ? 'Criando...' : 'Criar empresa e convite',
             compact: true,
-            color: AppColors.successDarkGreen,
+            color: AppColors.primary,
             onPressed: _busy ? null : _submit,
           ),
         ],
@@ -311,7 +311,7 @@ class _GestorProfileScreenState extends ConsumerState<GestorProfileScreen> {
                     PrimaryButton(
                       'Convidar gestor da plataforma',
                       compact: true,
-                      color: AppColors.successDarkGreen,
+                      color: AppColors.primary,
                       onPressed: () async {
                         await context.push('/gestor/manager/add');
                         if (mounted) setState(() => _pendingRevision++);

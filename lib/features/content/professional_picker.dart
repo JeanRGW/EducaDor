@@ -173,7 +173,7 @@ class _ProfessionalPickerState extends ConsumerState<_ProfessionalPicker> {
             child: PrimaryButton(
               'Confirmar seleção',
               compact: true,
-              color: AppColors.successDarkGreen,
+              color: AppColors.primary,
               onPressed: _selected == null
                   ? null
                   : () => Navigator.pop(context, _selected),
