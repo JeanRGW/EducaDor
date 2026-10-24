@@ -236,7 +236,7 @@ class _ProfileEditorState extends ConsumerState<_ProfileEditor> {
                 ? 'Atualizar sessão'
                 : 'Salvar perfil',
             compact: true,
-            color: AppColors.successDarkGreen,
+            color: AppColors.primary,
             onPressed: _busy ? null : _save,
           ),
         ],

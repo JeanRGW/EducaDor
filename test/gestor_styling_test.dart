@@ -289,7 +289,7 @@ void main() {
   );
 
   testWidgets(
-    'company and employee invitations share compact teal form styling',
+    'company and employee invitations share compact forms and blue actions',
     (tester) async {
       for (final role in [Role.empresa, Role.funcionario]) {
         await _show(tester, InvitePersonScreen(role: role));
@@ -302,6 +302,10 @@ void main() {
         expect(
           tester.widget<PrimaryButton>(find.byType(PrimaryButton)).compact,
           isTrue,
+        );
+        expect(
+          tester.widget<PrimaryButton>(find.byType(PrimaryButton)).color,
+          AppColors.primary,
         );
         expect(
           Theme.of(

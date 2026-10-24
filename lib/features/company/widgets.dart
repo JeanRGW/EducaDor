@@ -26,7 +26,7 @@ abstract class CompanyStyles {
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
-        foregroundColor: AppColors.successDarkGreen,
+        foregroundColor: AppColors.primary,
         side: const BorderSide(color: AppColors.border),
         minimumSize: const Size(0, 44),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -36,7 +36,7 @@ abstract class CompanyStyles {
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
-        backgroundColor: AppColors.successDarkGreen,
+        backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         minimumSize: const Size(0, 44),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -67,11 +67,13 @@ class CompanyAvatar extends StatelessWidget {
   final String initials;
   final double size;
   final bool outlined;
+  final Color foregroundColor;
   const CompanyAvatar({
     super.key,
     required this.initials,
     this.size = 40,
     this.outlined = false,
+    this.foregroundColor = AppColors.successDarkGreen,
   });
 
   @override
@@ -93,7 +95,7 @@ class CompanyAvatar extends StatelessWidget {
         fontFamily: AppFonts.outfit,
         fontSize: size * 0.34,
         fontWeight: FontWeight.w700,
-        color: AppColors.successDarkGreen,
+        color: foregroundColor,
       ),
     ),
   );
@@ -108,7 +110,7 @@ class CompanyBadge extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
     decoration: BoxDecoration(
-      color: warning ? AppColors.dangerBg : AppColors.successBg,
+      color: warning ? AppColors.dangerBg : AppColors.activeBg,
       borderRadius: BorderRadius.circular(6),
     ),
     child: Text(

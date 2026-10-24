@@ -424,7 +424,7 @@ class _PublishVideoScreenState extends ConsumerState<PublishVideoScreen> {
                   PrimaryButton(
                     _saving ? 'Publicando...' : 'Publicar',
                     compact: true,
-                    color: AppColors.successDarkGreen,
+                    color: AppColors.primary,
                     onPressed: _saving ? null : _publish,
                   ),
                 ],

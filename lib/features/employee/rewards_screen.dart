@@ -94,6 +94,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
       child: Scaffold(
         appBar: AppBar(
           automaticallyImplyLeading: false,
+          toolbarHeight: 64,
           title: const Text('Recompensas e Certificados'),
         ),
         body: RefreshIndicator(

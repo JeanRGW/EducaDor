@@ -56,7 +56,7 @@ class _CompanyManagersScreenState extends ConsumerState<CompanyManagersScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         tooltip: 'Convidar gestor da empresa',
-        backgroundColor: AppColors.successDarkGreen,
+        backgroundColor: AppColors.primary,
         shape: const CircleBorder(
           side: BorderSide(color: Colors.white, width: 2),
         ),

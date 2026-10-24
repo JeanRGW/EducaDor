@@ -315,7 +315,7 @@ class _DashboardStatCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              SvgIcon(metric.icon, size: 16, color: AppColors.successDarkGreen),
+              SvgIcon(metric.icon, size: 16, color: AppColors.primary),
             ],
           ),
           const SizedBox(height: 10),
@@ -368,7 +368,7 @@ class _ActivityRow extends StatelessWidget {
             ),
             child: SvgIcon(
               activity.kind == 'company' ? AppIcons.building : AppIcons.book,
-              color: AppColors.successDarkGreen,
+              color: AppColors.primary,
               size: 16,
             ),
           ),

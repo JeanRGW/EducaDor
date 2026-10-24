@@ -12,6 +12,7 @@ abstract class AppIcons {
 
   // ---- Bottom navigation (glyphs exported from Figma) ----
   static const String grid = 'assets/icons/nav_grid.svg';
+  static const String home = 'assets/icons/nav_home.svg';
   static const String book = 'assets/icons/nav_book.svg';
   static const String reports = 'assets/icons/nav_reports.svg';
   static const String rewards = 'assets/icons/nav_rewards.svg';

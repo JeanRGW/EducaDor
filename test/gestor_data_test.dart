@@ -322,7 +322,7 @@ void main() {
           (widget) => widget is SvgIcon && widget.asset == AppIcons.search,
         ),
       );
-      expect(search.size, 26);
+      expect(search.size, 18);
       expect(search.color, const Color(0xFF475569));
 
       final nameStyle = tester.widget<Text>(find.text('Empresa 0')).style!;
@@ -342,7 +342,7 @@ void main() {
       final addButton = tester.widget<FloatingActionButton>(
         find.byType(FloatingActionButton),
       );
-      expect(addButton.backgroundColor, AppColors.successDarkGreen);
+      expect(addButton.backgroundColor, AppColors.primary);
       expect(addButton.shape, isA<CircleBorder>());
       expect(tester.takeException(), isNull);
     },
@@ -362,7 +362,7 @@ void main() {
         find.byType(ReportBarRow).first,
       );
       expect(completionBar.compact, isTrue);
-      expect(completionBar.color, AppColors.successDarkGreen);
+      expect(completionBar.color, AppColors.primary);
       expect(find.text('38%'), findsOneWidget);
       expect(find.text('Sem dados'), findsOneWidget);
       await tester.scrollUntilVisible(find.text('Curso real'), 200);

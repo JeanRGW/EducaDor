@@ -225,7 +225,7 @@ class _AudiencePickerState extends ConsumerState<_AudiencePicker> {
             child: PrimaryButton(
               'Confirmar seleção',
               compact: true,
-              color: AppColors.successDarkGreen,
+              color: AppColors.primary,
               onPressed: !_all && _selected.isEmpty
                   ? null
                   : () => Navigator.pop(

@@ -446,6 +446,10 @@ void main() {
       expect(find.text('Olá, Ana!'), findsOneWidget);
       expect(find.text('Empresa A'), findsOneWidget);
       expect(find.text('25% concluído'), findsOneWidget);
+      expect(
+        tester.widget<ProgressBar>(find.byType(ProgressBar).first).color,
+        AppColors.primary,
+      );
       expect(find.text('1 de 4 cursos disponíveis concluídos'), findsOneWidget);
       expect(find.text('Continue aprendendo'), findsOneWidget);
       expect(find.text('Recomendado para você'), findsOneWidget);

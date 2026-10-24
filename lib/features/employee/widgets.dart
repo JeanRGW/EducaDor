@@ -9,31 +9,32 @@ import '../../shared/widgets/common.dart';
 import '../gestor/widgets.dart' show DataSkeleton, DataErrorCard;
 
 abstract class EmployeeStyles {
-  static ThemeData theme(
-    ThemeData base,
-  ) => AdminStyles.formTheme(base).copyWith(
-    textTheme: base.textTheme.copyWith(bodyMedium: AdminStyles.body),
-    colorScheme: base.colorScheme.copyWith(primary: AppColors.successDarkGreen),
-    appBarTheme: base.appBarTheme.copyWith(
-      backgroundColor: AppColors.surface,
-      titleSpacing: 16,
-      titleTextStyle: AdminStyles.pageTitle,
-      shape: const Border(bottom: BorderSide(color: AppColors.border)),
-    ),
-    filledButtonTheme: FilledButtonThemeData(
-      style: FilledButton.styleFrom(
-        backgroundColor: AppColors.successDarkGreen,
-        minimumSize: const Size(0, 48),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-    ),
-    textButtonTheme: TextButtonThemeData(
-      style: TextButton.styleFrom(
-        foregroundColor: AppColors.successDarkGreen,
-        minimumSize: const Size(0, 44),
-      ),
-    ),
-  );
+  static ThemeData theme(ThemeData base) =>
+      AdminStyles.formTheme(base).copyWith(
+        textTheme: base.textTheme.copyWith(bodyMedium: AdminStyles.body),
+        appBarTheme: base.appBarTheme.copyWith(
+          backgroundColor: AppColors.surface,
+          titleSpacing: 16,
+          titleTextStyle: AdminStyles.pageTitle,
+          shape: const Border(bottom: BorderSide(color: AppColors.border)),
+        ),
+        filledButtonTheme: FilledButtonThemeData(
+          style: FilledButton.styleFrom(
+            backgroundColor: AppColors.primary,
+            foregroundColor: Colors.white,
+            minimumSize: const Size(0, 48),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
+        textButtonTheme: TextButtonThemeData(
+          style: TextButton.styleFrom(
+            foregroundColor: AppColors.successDarkGreen,
+            minimumSize: const Size(0, 44),
+          ),
+        ),
+      );
 }
 
 class EmployeeResult<T> extends StatelessWidget {
@@ -63,10 +64,17 @@ class EmployeeResult<T> extends StatelessWidget {
 class LearningCover extends StatelessWidget {
   final String? url;
   final double height, width;
-  const LearningCover({super.key, this.url, this.height = 72, this.width = 72});
+  final double borderRadius;
+  const LearningCover({
+    super.key,
+    this.url,
+    this.height = 72,
+    this.width = 72,
+    this.borderRadius = 10,
+  });
   @override
   Widget build(BuildContext context) => ClipRRect(
-    borderRadius: BorderRadius.circular(12),
+    borderRadius: BorderRadius.circular(borderRadius),
     child: SizedBox(
       height: height,
       width: width,
@@ -91,7 +99,13 @@ class LearningCover extends StatelessWidget {
 class LearningCard extends StatelessWidget {
   final LearningItem course;
   final bool compact;
-  const LearningCard({super.key, required this.course, this.compact = false});
+  final Color progressColor;
+  const LearningCard({
+    super.key,
+    required this.course,
+    this.compact = false,
+    this.progressColor = AppColors.primary,
+  });
   @override
   Widget build(BuildContext context) => AppCard(
     padding: const EdgeInsets.all(12),
@@ -108,7 +122,7 @@ class LearningCard extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             course.title,
-            style: AdminStyles.cardTitle,
+            style: AdminStyles.cardTitle.copyWith(fontSize: 12),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
@@ -121,7 +135,7 @@ class LearningCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(course.title, style: AdminStyles.formTitle),
+                    Text(course.title, style: AdminStyles.cardTitle),
                     const SizedBox(height: 4),
                     Text(
                       '${course.lessonCount} ${course.lessonCount == 1 ? 'aula' : 'aulas'}',
@@ -136,28 +150,34 @@ class LearningCard extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: Text(switch (course.state) {
-                'completed' => 'Concluído',
-                'in_progress' => 'Em andamento',
-                _ => 'Disponível',
-              }, style: AdminStyles.fieldLabel),
+              child: Text(
+                switch (course.state) {
+                  'completed' => 'Concluído',
+                  'in_progress' => 'Em andamento',
+                  _ => 'Disponível',
+                },
+                style: AdminStyles.fieldLabel.copyWith(
+                  color: compact
+                      ? AppColors.successDarkGreen
+                      : AppColors.textSecondary,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
             ),
             if (!compact)
               Text(
                 '${(course.progress * 100).round()}%',
                 style: AdminStyles.fieldLabel.copyWith(
-                  color: AppColors.successDarkGreen,
+                  color: course.state == 'completed'
+                      ? AppColors.successDarkGreen
+                      : progressColor,
                 ),
               ),
           ],
         ),
         if (!compact) ...[
           const SizedBox(height: 6),
-          ProgressBar(
-            course.progress,
-            color: AppColors.successDarkGreen,
-            height: 6,
-          ),
+          ProgressBar(course.progress, color: progressColor, height: 6),
         ],
       ],
     ),

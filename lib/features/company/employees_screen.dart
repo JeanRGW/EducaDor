@@ -84,7 +84,7 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
           title: const Text('Funcionários cadastrados'),
         ),
         floatingActionButton: FloatingActionButton(
-          backgroundColor: AppColors.successDarkGreen,
+          backgroundColor: AppColors.primary,
           tooltip: 'Convidar funcionário',
           shape: const CircleBorder(
             side: BorderSide(color: Colors.white, width: 2),
@@ -282,7 +282,11 @@ class CompanyEmployeeCard extends StatelessWidget {
       children: [
         Row(
           children: [
-            CompanyAvatar(initials: employee.initials, size: 36),
+            CompanyAvatar(
+              initials: employee.initials,
+              size: 36,
+              foregroundColor: AppColors.primary,
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -316,7 +320,7 @@ class CompanyEmployeeCard extends StatelessWidget {
         ProgressBar(
           employee.hasCompletion ? employee.completionPct / 100 : 0,
           height: 6,
-          color: AppColors.successDarkGreen,
+          color: AppColors.primary,
         ),
         const SizedBox(height: 4),
         Row(
@@ -336,7 +340,7 @@ class CompanyEmployeeCard extends StatelessWidget {
                   : 'Sem dados',
               style: CompanyStyles.caption.copyWith(
                 fontWeight: FontWeight.w700,
-                color: AppColors.successDarkGreen,
+                color: AppColors.primary,
               ),
             ),
           ],

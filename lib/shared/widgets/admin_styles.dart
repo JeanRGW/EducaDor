@@ -5,6 +5,7 @@ import '../../app/theme.dart';
 /// Shared typography and form treatment for the platform-management screens.
 abstract class AdminStyles {
   static const pageTitle = TextStyle(
+    letterSpacing: 0,
     fontFamily: AppFonts.outfit,
     fontSize: 20,
     fontWeight: FontWeight.w700,
@@ -12,6 +13,7 @@ abstract class AdminStyles {
     height: 1.2,
   );
   static const formTitle = TextStyle(
+    letterSpacing: 0,
     fontFamily: AppFonts.outfit,
     fontSize: 18,
     fontWeight: FontWeight.w700,
@@ -19,6 +21,7 @@ abstract class AdminStyles {
     height: 1.3,
   );
   static const cardTitle = TextStyle(
+    letterSpacing: 0,
     fontFamily: AppFonts.outfit,
     fontSize: 14,
     fontWeight: FontWeight.w700,
@@ -26,6 +29,7 @@ abstract class AdminStyles {
     height: 1.3,
   );
   static const body = TextStyle(
+    letterSpacing: 0,
     fontFamily: AppFonts.inter,
     fontSize: 13,
     fontWeight: FontWeight.w400,
@@ -33,6 +37,7 @@ abstract class AdminStyles {
     height: 1.4,
   );
   static const fieldLabel = TextStyle(
+    letterSpacing: 0,
     fontFamily: AppFonts.inter,
     fontSize: 12,
     fontWeight: FontWeight.w600,
@@ -40,6 +45,7 @@ abstract class AdminStyles {
     height: 1.4,
   );
   static const fieldText = TextStyle(
+    letterSpacing: 0,
     fontFamily: AppFonts.inter,
     fontSize: 13,
     fontWeight: FontWeight.w400,
@@ -47,6 +53,7 @@ abstract class AdminStyles {
     height: 1.25,
   );
   static const emptyState = TextStyle(
+    letterSpacing: 0,
     fontFamily: AppFonts.inter,
     fontSize: 12,
     fontWeight: FontWeight.w400,

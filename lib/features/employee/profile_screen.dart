@@ -88,13 +88,17 @@ class EmployeeProfileScreen extends ConsumerWidget {
                                 children: [
                                   Text(
                                     value,
-                                    style: AdminStyles.pageTitle,
+                                    style: AdminStyles.pageTitle.copyWith(
+                                      fontSize: 18,
+                                    ),
                                     textAlign: TextAlign.center,
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
                                     label,
-                                    style: AdminStyles.body,
+                                    style: AdminStyles.body.copyWith(
+                                      fontSize: 12,
+                                    ),
                                     textAlign: TextAlign.center,
                                   ),
                                 ],

@@ -42,26 +42,6 @@ class _LinePainter extends CustomPainter {
       return Offset(x, y);
     }
 
-    // Area fill
-    final fill = Path()..moveTo(point(0).dx, topPad + chartH);
-    for (var i = 0; i < data.length; i++) {
-      fill.lineTo(point(i).dx, point(i).dy);
-    }
-    fill.lineTo(point(data.length - 1).dx, topPad + chartH);
-    fill.close();
-    canvas.drawPath(
-      fill,
-      Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            AppColors.chartBlue.withValues(alpha: 0.25),
-            AppColors.chartBlue.withValues(alpha: 0.02),
-          ],
-        ).createShader(Rect.fromLTWH(0, 0, size.width, size.height)),
-    );
-
     // Line
     final line = Path();
     for (var i = 0; i < data.length; i++) {
@@ -77,15 +57,10 @@ class _LinePainter extends CustomPainter {
       Paint()
         ..color = AppColors.chartBlue
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.5
+        ..strokeWidth = 2
         ..strokeCap = StrokeCap.round
         ..strokeJoin = StrokeJoin.round,
     );
-
-    // Dots
-    for (var i = 0; i < data.length; i++) {
-      canvas.drawCircle(point(i), 3, Paint()..color = AppColors.chartBlue);
-    }
 
     final secondary = secondaryData;
     if (secondary != null && secondary.length == data.length) {
@@ -98,18 +73,13 @@ class _LinePainter extends CustomPainter {
         } else {
           path.lineTo(x, y);
         }
-        canvas.drawCircle(
-          Offset(x, y),
-          3,
-          Paint()..color = AppColors.accentTeal,
-        );
       }
       canvas.drawPath(
         path,
         Paint()
           ..color = AppColors.accentTeal
           ..style = PaintingStyle.stroke
-          ..strokeWidth = 2.5,
+          ..strokeWidth = 2,
       );
     }
 
@@ -121,7 +91,11 @@ class _LinePainter extends CustomPainter {
     for (var i = 0; i < data.length; i++) {
       tp.text = TextSpan(
         text: data[i].key,
-        style: const TextStyle(color: AppColors.textMuted, fontSize: 10),
+        style: const TextStyle(
+          fontFamily: AppFonts.inter,
+          color: AppColors.textMuted,
+          fontSize: 10,
+        ),
       );
       tp.layout();
       tp.paint(canvas, Offset(point(i).dx - tp.width / 2, topPad + chartH + 6));
@@ -162,7 +136,9 @@ class BarChart extends StatelessWidget {
                     height: (height - 22) * data[i].value,
                     decoration: BoxDecoration(
                       color: color,
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(2),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 6),
@@ -200,8 +176,8 @@ class DonutChart extends StatelessWidget {
     super.key,
     this.size = 96,
     this.strokeWidth = 10,
-    this.color = AppColors.successDarkGreen,
-    this.trackColor = AppColors.border,
+    this.color = AppColors.primary,
+    this.trackColor = AppColors.chipBg,
   });
 
   @override
@@ -215,6 +191,7 @@ class DonutChart extends StatelessWidget {
           child: Text(
             '${(value * 100).round()}%',
             style: TextStyle(
+              fontFamily: AppFonts.outfit,
               fontSize: 18,
               fontWeight: FontWeight.w800,
               color: color,

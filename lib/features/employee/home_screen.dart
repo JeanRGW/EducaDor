@@ -86,20 +86,26 @@ class EmployeeHomeScreen extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Wrap(
-                        spacing: 12,
-                        runSpacing: 8,
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'Seu progresso de aprendizado',
-                            style: AdminStyles.cardTitle,
+                          const Expanded(
+                            child: Text(
+                              'Seu progresso de aprendizado',
+                              style: AdminStyles.cardTitle,
+                            ),
                           ),
-                          Text(
-                            data.completion == null
-                                ? 'Sem cursos disponíveis'
-                                : '${(data.completion! * 100).round()}% concluído',
-                            style: AdminStyles.fieldLabel.copyWith(
-                              color: AppColors.successDarkGreen,
+                          const SizedBox(width: 12),
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 140),
+                            child: Text(
+                              data.completion == null
+                                  ? 'Sem cursos disponíveis'
+                                  : '${(data.completion! * 100).round()}% concluído',
+                              style: AdminStyles.fieldLabel.copyWith(
+                                color: AppColors.primary,
+                              ),
+                              textAlign: TextAlign.right,
                             ),
                           ),
                         ],
@@ -107,7 +113,8 @@ class EmployeeHomeScreen extends ConsumerWidget {
                       const SizedBox(height: 12),
                       ProgressBar(
                         data.completion ?? 0,
-                        color: AppColors.successDarkGreen,
+                        color: AppColors.primary,
+                        height: 10,
                       ),
                       const SizedBox(height: 10),
                       Text(
