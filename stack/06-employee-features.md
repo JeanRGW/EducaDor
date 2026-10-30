@@ -123,8 +123,9 @@ Browser preview uses isolated test repositories, not staging Auth or data.
 
 Nothing is applied or deployed implicitly. Deployment order, after approval:
 
-1. Apply `20261010000000_employee_features.sql` to staging; run the SQL tests on an
-   isolated database first. Never rewrite already-applied migrations.
+1. Follow [Database workflow](07-database.md) to generate and deploy migrations from
+   `supabase/schemas/`; run SQL tests on an isolated database first. Never rewrite
+   deployed migrations.
 2. Deploy `issue-certificate` with `--no-verify-jwt` (the function performs verified
    `getUser` authentication itself, like the existing invitation functions).
    Existing `SUPABASE_*` secrets and app-origin allowlist are required.

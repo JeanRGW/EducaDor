@@ -24,16 +24,15 @@ selection applies to one signed Auth session, not all devices for that user.
 it does not push Auth settings or run the sample seed. Do **not** run
 `supabase config push` against the linked staging project without reviewing
 `supabase config diff` and the remote Auth URL first. Never run
-`supabase db reset --linked` on shared data.
+`supabase db reset --linked` on shared data. The one-time approved pre-production
+wipe and replacement baseline are documented in [Database workflow](07-database.md).
 
 ## Set up staging before inviting anyone
 
-1. Apply the two foundation migrations, then
-   `20260930000003_multi_context_content.sql`.
-   The consolidated migration moves legacy roles to `platform_gestors` and
-   `company_memberships`, and backfills progress/certificates/redemptions with
-   the user's former company. It aborts if a legacy learning record has no
-   company, rather than assigning it arbitrarily.
+1. Apply the generated declarative baseline and Storage provisioning migration
+   to a fresh project. `supabase/schemas/` contains the final multi-context model,
+   not transitional single-role columns or data backfills. Follow
+   [Database workflow](07-database.md) to generate, test and deploy future changes.
 2. Configure Supabase Auth Site URL to your app origin and allow the exact
    `/invite/accept` and `/set-password` paths (including query parameters),
    localhost and any staging preview origins used for testing. Keep the
@@ -104,7 +103,7 @@ or run `supabase/seed.sql` on production.
   sign-in. The authorized inviter sees the link only once for private handoff.
   If it was lost, use **Gerar novo link** on the pending invitation: the old
   invitation token is invalidated, and only the newly generated link is shown.
-  Platform gestores find pending invitations under Perfil (other platform
+   Platform gestores find pending invitations under Perfil → Configurações da plataforma (other platform
   gestores) or Empresas (company managers); company managers find theirs under
   Gestores or Funcionários.
   Company invitations must be regenerated for the existing company, not by

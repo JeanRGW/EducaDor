@@ -6,8 +6,17 @@
 --    API: gestor@educador.com / empresa@educador.com / joao.silva@santamaria.com
 --    (share the throwaway password out-of-band; rotate on first login).
 --    Never commit real credentials – AGENTS.md forbids secrets in the repo.
--- 2. Run this file via SQL editor or supabase db reset.
+-- 2. Run this optional data-only file with privileged psql AFTER creating users.
+--    db reset deletes local Auth users; do not enable this as an automatic seed.
 -- Profiles resolve user IDs by email lookup, so no hardcoded auth UUIDs.
+
+begin;
+do $$ begin
+  if (select count(*) from auth.users where email in
+    ('gestor@educador.com','empresa@educador.com','joao.silva@santamaria.com')) <> 3 then
+    raise exception 'Create all three demo Auth users before running this optional seed';
+  end if;
+end $$;
 
 -- ---- companies ----
 insert into companies (id, name, cnpj, code_prefix, responsible, email, phone,
@@ -107,3 +116,4 @@ values
   ('30000000-0000-4000-8000-000000000003', 'Headset', 900, true),
   ('30000000-0000-4000-8000-000000000004', 'Cartão-presente', 1200, true)
 on conflict (id) do nothing;
+commit;

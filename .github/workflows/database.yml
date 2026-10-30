@@ -1,0 +1,33 @@
+name: Database
+
+on:
+  pull_request:
+    paths: ['supabase/**', 'scripts/db.sh', '.github/workflows/database.yml']
+  push:
+    branches: [main]
+    paths: ['supabase/**', 'scripts/db.sh', '.github/workflows/database.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  schema:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Start isolated database
+        run: npx --yes supabase@2.122.0 db start
+      - name: Rebuild from migrations
+        run: bash scripts/db.sh reset
+      - name: Check declarative schema matches migrations
+        run: bash scripts/db.sh check
+      - name: Run SQL regression tests
+        run: bash scripts/db.sh test
+      - name: Test invitation handler
+        run: node --test supabase/tests/invite_member.test.mjs
+      - name: Stop local database
+        if: always()
+        run: npx --yes supabase@2.122.0 stop --no-backup

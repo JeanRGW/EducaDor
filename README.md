@@ -33,7 +33,9 @@ existing-data limits and intentional differences are documented in
 ## Local setup
 
 Read [the onboarding runbook](stack/03-onboarding.md) for Supabase staging,
-migrations, Auth URLs, Edge Function secrets and first-gestor provisioning.
+Auth URLs, Edge Function secrets and first-gestor provisioning. Database definitions
+live in [`supabase/schemas/`](supabase/schemas/); see the
+[declarative database workflow](stack/07-database.md) for generation, testing and deployment.
 Backend contracts and shipping notes are in [stack/01-backend.md](stack/01-backend.md)
 and [stack/02-ship.md](stack/02-ship.md).
 
@@ -72,8 +74,22 @@ link in the public JSON file or the repository. `supabase/config.toml` configure
 **local** Supabase development (localhost Auth URL); do not run
 `supabase config push` against staging without reviewing the differences.
 
-`supabase/tests/multi_context.sql`, `supabase/tests/content_access.sql`,
-`supabase/tests/gestor_data.sql` and `supabase/tests/gestor_management.sql` check
-selected-session tenancy, content access, platform aggregates and guarded
-lifecycle operations on an **isolated** PostgreSQL database after applying
-migrations. They create fixtures inside transactions and roll them back.
+## Database development
+
+Requires Node.js 24 and Docker. Commands pin Supabase CLI 2.122.0 and use pg-delta.
+
+```bash
+npx --yes supabase@2.122.0 db start
+# Edit SQL definitions under supabase/schemas/, then:
+bash scripts/db.sh generate meaningful_change_name
+# Review the generated migration before applying it locally:
+bash scripts/db.sh reset
+bash scripts/db.sh check
+bash scripts/db.sh test
+node --test supabase/tests/invite_member.test.mjs
+```
+
+`reset` is local-only and deletes local data. `check` fails on declarative/migration
+drift. SQL tests create transactional fixtures and roll them back. CI repeats this
+workflow without credentials or access to staging. Storage buckets are provisioned
+by a separate DML migration; the sample `supabase/seed.sql` is never automatic.

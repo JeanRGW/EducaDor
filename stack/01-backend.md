@@ -81,11 +81,11 @@ create policy pub_write on storage.objects for insert
 
 `redeem_reward` requires an employee context, locks the user/company balance,
 calculates earned/spent points within that company, and inserts a company-scoped
-redemption. See the full SQL in `supabase/migrations/20260930000003_multi_context_content.sql`.
+redemption. See `supabase/schemas/public/functions/redeem_reward.sql`.
 
 ### Content access controls
 
-`20260930000003_multi_context_content.sql` separates three gates for each trail:
+The declarative helpers in `supabase/schemas/public/functions/` separate three gates for each trail:
 
 1. Platform switch: `courses.status` is `released` or `paused`.
 2. Platform audience: `courses.all_companies = true` includes current and future
@@ -94,8 +94,7 @@ redemption. See the full SQL in `supabase/migrations/20260930000003_multi_contex
 3. Company switch: `assignments.company_enabled` controls every employee in that
    company. A missing row defaults to enabled. It never overrides either platform gate.
 
-Existing trails migrate to explicit-company mode, retaining their audience. New
-trails default to all-company mode. Audience replacement changes only `released`,
+New trails default to all-company mode. Audience replacement changes only `released`,
 so company pause preferences survive removals/re-additions and global pauses.
 Paused content cannot be read or have progress inserted/updated by employees;
 existing progress, balances and certificates remain intact. Reports use audience
@@ -121,7 +120,7 @@ Employee Home/Modules and course outlines use `EmployeeLearningRepository`,
 guarded RPCs and RLS-protected course reads instead of mock courses.
 Blocked direct course URLs show an unavailable state. Employee playback/progress,
 certificate issuance, redemption and screen parity are implemented in
-`20261010000000_employee_features.sql`; see [Employee features](06-employee-features.md)
+`supabase/schemas/public/functions/`; see [Employee features](06-employee-features.md)
 for metric definitions, guards, video-only scope and deployment order.
 
 ## Reports (SQL, export client-side)
@@ -130,7 +129,7 @@ Guarded views/RPC read via PostgREST, CSV export in Flutter. No BigQuery, no cou
 
 ### Company-manager data integration
 
-`20261002000001_company_data.sql` adds `company_dashboard(p_company)` and
+`supabase/schemas/public/functions/` defines `company_dashboard(p_company)` and
 `company_employees(p_company, p_search, p_offset)`. Both require the signed Auth
 session's active `empresa` role and require `p_company = own_company_id()`.
 A global gestor grant does not bypass this context check; missing, revoked,
@@ -171,7 +170,7 @@ deployment; no Edge Function changes are required.
 
 ### Gestor data integration
 
-`20261001000000_gestor_data.sql` adds the live platform queries. These RPCs
+`supabase/schemas/public/functions/gestor_*.sql` defines the live platform queries. These RPCs
 require the **active** `gestor` context, not just a platform grant or a legacy
 JWT claim. `empresa`, `funcionario`, missing contexts and revoked grants cannot
 use them. Flutter accesses them only through repository providers; no new API,
@@ -235,7 +234,7 @@ new migrations to shared/staging databases without operator approval.
 
 ### Gestor lifecycle management
 
-`20261002000000_gestor_management.sql` adds guarded company edits and
+`supabase/schemas/public/functions/` defines guarded company edits and
 pause/reactivation, paginated platform/company gestor directories, scoped access
 revocation, own-profile editing, and course metadata/lesson editing. Verify with
 `supabase/tests/gestor_management.sql` on an isolated database first.

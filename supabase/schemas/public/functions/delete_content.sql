@@ -1,7 +1,12 @@
--- Preserve the applied content migration. All hard deletes require an active gestor.
--- Existing foreign keys cascade children, assignments, progress and course certificates.
-create function public.delete_content(p_kind text,p_id uuid)
-returns void language plpgsql security definer set search_path='' as $$
+CREATE OR REPLACE FUNCTION public.delete_content (
+  p_kind text,
+  p_id   uuid
+)
+  RETURNS void
+  LANGUAGE plpgsql
+  SECURITY DEFINER
+  SET search_path TO ''
+  AS $function$
 declare parent uuid;
 begin
   if not coalesce(public.is_gestor(),false) then raise exception 'Forbidden'; end if;
@@ -20,6 +25,12 @@ begin
   else raise exception 'Invalid content type';
   end if;
   if not found then raise exception 'Content unavailable'; end if;
-end $$;
-revoke all on function public.delete_content(text,uuid) from public,anon;
-grant execute on function public.delete_content(text,uuid) to authenticated;
+end $function$;
+
+GRANT EXECUTE ON FUNCTION "public"."delete_content"(text, uuid) TO "authenticated";
+
+REVOKE ALL ON FUNCTION "public"."delete_content"(text, uuid) FROM "postgres";
+
+GRANT EXECUTE ON FUNCTION "public"."delete_content"(text, uuid) TO "postgres";
+
+REVOKE ALL ON FUNCTION "public"."delete_content"(text, uuid) FROM PUBLIC, "anon", "service_role";

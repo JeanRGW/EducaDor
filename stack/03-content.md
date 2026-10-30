@@ -3,8 +3,8 @@
 The catalog contains courses. Each course contains ordered modules; each module
 contains ordered lessons. New courses start paused, available to all companies
 once the gestor releases them in the catalog. Audience and company pause
-preferences remain course-level gates. Existing catalog IDs, assignments and
-progress are preserved; legacy catalog kinds become `course`.
+preferences remain course-level gates. Content edits preserve catalog IDs,
+assignments and progress; the pre-production database wipe is a separate operation.
 
 Gestors create a course, edit its metadata, add/rename modules, and add/edit
 lessons. Lesson types are YouTube video, MP3 audio, PDF, plain-text reading,
@@ -28,8 +28,8 @@ Repository reads explicitly order positions and IDs ascending (the Dart client
 defaults to descending), matching the mutation order and append-at-end defaults.
 
 Platform gestors can permanently delete courses, modules, or lessons after an
-explicit confirmation. Apply the follow-up `20261030000001_content_deletion.sql`;
-the consolidated migration has already been applied and must not be rewritten.
+explicit confirmation. The guarded `delete_content` RPC is declared in
+`supabase/schemas/public/functions/delete_content.sql`.
 Deletes cascade descendants and their progress, and course deletion also removes
 assignments and certificates. Derived employee points decrease when completed
 lessons are removed (balances may become negative after previous redemptions).
@@ -50,11 +50,9 @@ pauses animation. Audio supports seek/resume and company-scoped checkpoints.
 
 ## Storage and deployment
 
-- All new content changes are consolidated into `20261030000000_lesson_formats.sql`
-  (formats, supporting text, single images, counts, and ordering). The four original
-  content migrations had not been applied; older project migrations are unchanged.
-  Apply this single new migration through the normal migration workflow;
-  do not apply to shared/production databases without operator approval.
+- Content definitions live in `supabase/schemas/public/` (formats, supporting text,
+  single images, counts, ordering and deletion). Follow [Database workflow](07-database.md)
+  to generate/review migrations; hosted changes still require operator approval.
 - Deploy the updated `storage-upload-url` and new `storage-download-url` functions.
   Both authenticate the caller. Only the selected gestor context can upload.
 - Configure `STORAGE_BUCKET_PRIVATE=educador-private` along with the existing

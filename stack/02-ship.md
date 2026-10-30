@@ -8,7 +8,11 @@
 
 * Web push: VAPID keypair (public key in build, private in function secrets) + `firebase-messaging-sw.js` in `build/web`; tokens use the same `fcm_tokens` upsert.
 
-## Planned CI (`.github/workflows/` not yet created, per AGENTS.md secrets rule)
+## CI
+
+`database.yml` is implemented: isolated database rebuild, declarative drift check,
+SQL regressions and invitation-handler tests, without staging credentials or deploy.
+The remaining workflows below are planned.
 
 | File | Trigger | Does |
 |---|---|---|
@@ -21,27 +25,27 @@ Public staging inputs (`SUPABASE_URL`, `SUPABASE_ANON_KEY` publishable key, `CLO
 
 ## Build order
 
-1. Supabase project + foundation migrations + `20260930000003_multi_context_content.sql` (multi-context onboarding, service-role grants and content controls) + RLS; verify with `supabase/tests/multi_context.sql` and `supabase/tests/content_access.sql`, seed staging from `mock_data.dart` only when test users exist, configure Auth redirect URLs and hook. No public self-signup; follow `03-onboarding.md` for manual-link invites and first-gestor bootstrap.
+1. Supabase project + generated declarative baseline + Storage provisioning + RLS; follow `07-database.md` and verify with `bash scripts/db.sh check` and `bash scripts/db.sh test`. Seed staging from `mock_data.dart` only when test users exist; configure Auth redirect URLs and hook. No public self-signup; follow `03-onboarding.md` for manual-link invites and first-gestor bootstrap.
 2. `AuthRepository` + context selection/session restoration + admin-only `invite-member` and `accept-invite`; onboard company managers and employees with one identity across companies.
 3. Storage buckets + `storage-*-url` functions; test 25MB PDF/MP3 upload.
-4. Live content catalog using the consolidated migration: platform pause/audience, company-wide employee pause, guarded metadata and atomic YouTube publishing with cover upload and responsible professional. Verify `supabase/tests/content_access.sql` as well as multi-context RLS. Company Content replaces the Gestores main tab; manager management lives under Profile. `CourseRepository` powers the live employee catalog/outline through RLS; playback, PDF/audio uploads and quiz authoring still follow player/storage/editor work. `AddCompanyScreen`/`AddEmployeeScreen` create invites via Edge Functions.
+4. Live content catalog defined under `supabase/schemas/public/`: platform pause/audience, company-wide employee pause, guarded metadata and atomic YouTube publishing with cover upload and responsible professional. Verify `supabase/tests/content_access.sql` as well as multi-context RLS. Company Content replaces the Gestores main tab; manager management lives under Profile. `CourseRepository` powers the live employee catalog/outline through RLS; playback, PDF/audio uploads and quiz authoring still follow player/storage/editor work. `AddCompanyScreen`/`AddEmployeeScreen` create invites via Edge Functions.
 5. Employee learning screens, guarded `ProgressRepository` saves and
-   `issue-certificate` are implemented in `20261010000000_employee_features.sql`
+   `issue-certificate` are implemented in `supabase/schemas/public/functions/`
    and Flutter. Verify `supabase/tests/employee_features.sql`, then obtain approval
    before migration → `issue-certificate` deployment → Flutter. The first player
    is YouTube/video-only; metrics, settings boundaries and review checks are in
    `06-employee-features.md`.
 6. Live Gestor dashboard/company/report queries are implemented in
-   `20261001000000_gestor_data.sql`; verify `supabase/tests/gestor_data.sql` before
+   `supabase/schemas/public/functions/gestor_*.sql`; verify `supabase/tests/gestor_data.sql` before
    an operator-approved staging migration. Metric semantics live in
    `01-backend.md#gestor-data-integration`. Client-side CSV export remains deferred.
-7. Gestor lifecycle management uses `20261002000000_gestor_management.sql`:
+7. Gestor lifecycle management uses `supabase/schemas/public/functions/`:
    company edits/pause, accepted gestor directories/revocation, own-profile edits
    and in-place course/video edits. Verify `supabase/tests/gestor_management.sql`
    before an operator-approved migration. Deploy the updated `accept-invite`
    function **after** the migration, then build/deploy Flutter; invitation
    acceptance now requires its server-only atomic RPC.
-8. Company-manager data integration uses `20261002000001_company_data.sql`:
+8. Company-manager data integration uses `supabase/schemas/public/functions/`:
    exact dashboard/profile counts, monthly participation, company-wide highlights
    and searched/paginated employee metadata with company-scoped last activity.
    Verify `supabase/tests/company_data.sql` before operator-approved migration,

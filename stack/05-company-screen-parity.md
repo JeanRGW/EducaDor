@@ -2,7 +2,7 @@
 
 Visual comparison against `../Figma_Educador/screens/ca-*.png`. Presentation uses
 company-scoped repositories/views. The follow-up data integration adds guarded
-RPCs in `20261002000001_company_data.sql` without new tables or product rules.
+RPCs in `supabase/schemas/public/functions/` without new tables or product rules.
 
 | Prototype | App entry point | Changes |
 |---|---|---|

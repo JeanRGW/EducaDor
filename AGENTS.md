@@ -27,7 +27,8 @@ The stack is locked – do not improvise alternatives, ask instead.
 * `lib/data/repositories/repositories.dart` – **the seam**. All backend access goes here as `*Repository` + Riverpod providers. `features/` and `shared/widgets/` must never import `supabase_flutter`, `firebase_*`, or S3 SDKs directly.
 * `lib/data/session/session_controller.dart` – session built from base `profiles` plus `available_contexts()`/`selected_context()`; active context is checked by DB per Auth session.
 * `lib/features/{auth,gestor,company,employee}/screens.dart` – role UIs. `lib/features/content/` – live catalog, audience/professional pickers, cover processing and YouTube publishing. `Liberar para:` uses `courses.all_companies` or explicit `assignments(course_id,company_id,released)`; company manager management is under Profile, not a main tab.
-* `stack/` – backend, shipping, onboarding docs. `scripts/bootstrap_gestor.py` – trusted first-gestor bootstrap. `.github/workflows/` – CI (to be created per `stack/02-ship.md`).
+* `supabase/schemas/` – editable database source of truth (tables, functions, views, policies and grants). `supabase/migrations/` – generated deployment history plus explicit DML provisioning. `stack/07-database.md` – declarative workflow and reset runbook.
+* `stack/` – backend, shipping, onboarding docs. `scripts/bootstrap_gestor.py` – trusted first-gestor bootstrap. `.github/workflows/database.yml` – isolated schema drift and SQL regression checks; other CI follows `stack/02-ship.md`.
 
 ## Patterns (must follow)
 
@@ -47,11 +48,15 @@ The stack is locked – do not improvise alternatives, ask instead.
 ```bash
 flutter analyze
 flutter test
+bash scripts/db.sh generate meaningful_change_name
+bash scripts/db.sh reset
+bash scripts/db.sh check
+bash scripts/db.sh test
 flutter build web --release --pwa-strategy offline-first --dart-define-from-file=config/staging.public.json
 CLOUDFLARE_ACCOUNT_ID=785b73d97c037eb906aae65de518cad6 npx wrangler pages deploy build/web --project-name=educador --branch=main
 ```
 
-Supabase changes: edit migrations, never hand-edit prod DB; seed from `mock_data.dart`; keep staging on 2nd free project. `supabase/config.toml` is local-only (localhost Auth Site URL); never push it to staging without reviewing the remote config diff.
+Supabase changes: edit `supabase/schemas/`, then generate and review migrations with `bash scripts/db.sh generate <name>` (pinned Supabase CLI 2.122.0, pg-delta). Never use `db diff` for declarative changes or edit the live schema in Studio/SQL editor. Do not hand-edit generated migrations or rewrite deployed history. DML (including Storage buckets) belongs in an explicit migration or opt-in seed, never in declarative SQL. The pre-production history was replaced once with a fresh baseline; future changes roll forward. Remote resets require explicit operator approval. Seed demo data only when its Auth users exist; keep staging on 2nd free project. `supabase/config.toml` is local-only (localhost Auth Site URL); never push it to staging without reviewing the remote config diff.
 
 ## Workflow
 
