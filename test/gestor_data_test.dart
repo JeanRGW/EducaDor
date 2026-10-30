@@ -460,7 +460,7 @@ void main() {
     expect(find.byType(ContentCatalogScreen), findsOneWidget);
     await _show(tester, const AddTrailScreen());
     expect(find.byType(PublishVideoScreen), findsOneWidget);
-    expect(find.text('Vídeo do YouTube'), findsOneWidget);
+    expect(find.text('Criar curso'), findsOneWidget);
   });
 
   for (final width in [320.0, 1000.0]) {

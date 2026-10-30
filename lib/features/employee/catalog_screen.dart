@@ -29,7 +29,15 @@ class _CatalogState extends ConsumerState<_Catalog> {
   String _search = '';
   int _filter = 0, _tab = 0, _offset = 0;
   Timer? _debounce;
-  static const _kinds = [null, 'video', 'audio', 'quiz', 'reading', 'pdf'];
+  static const _kinds = [
+    null,
+    'video',
+    'audio',
+    'quiz',
+    'reading',
+    'pdf',
+    'animation',
+  ];
   LearningQuery _query(int offset) => (
     scope: widget.scope,
     search: _search,
@@ -192,6 +200,7 @@ class _CatalogState extends ConsumerState<_Catalog> {
                           'Quizzes',
                           'Leitura',
                           'PDFs',
+                          'Imagens e animações',
                         ],
                         selected: _filter,
                         outlined: true,

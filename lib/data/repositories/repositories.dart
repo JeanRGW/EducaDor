@@ -548,6 +548,151 @@ class ReportRepository {
 }
 
 class ContentRepository {
+  Future<void> moveItem(String kind, String id, int direction) async {
+    await _contentClient.rpc(
+      'move_content_item',
+      params: {'p_kind': kind, 'p_id': id, 'p_direction': direction},
+    );
+  }
+
+  Future<String> createCourse(String title) async =>
+      await _contentClient.rpc(
+            'create_content_course',
+            params: {'p_title': title.trim()},
+          )
+          as String;
+
+  Future<List<ContentModule>> modules(String courseId, {int offset = 0}) async {
+    final rows = await _contentClient
+        .from('modules')
+        .select('id,title')
+        .eq('course_id', courseId)
+        .order('position')
+        .order('id')
+        .range(offset, offset + 49);
+    return rows
+        .map(
+          (r) =>
+              ContentModule(id: r['id'] as String, title: r['title'] as String),
+        )
+        .toList();
+  }
+
+  Future<void> saveModule(String courseId, String title, {String? id}) async {
+    await _contentClient.rpc(
+      'save_content_module',
+      params: {'p_course': courseId, 'p_title': title.trim(), 'p_module': id},
+    );
+  }
+
+  Future<List<ContentLesson>> moduleLessons(
+    String moduleId, {
+    int offset = 0,
+  }) async {
+    final rows = await _contentClient
+        .from('lessons')
+        .select()
+        .eq('module_id', moduleId)
+        .order('position')
+        .order('id')
+        .range(offset, offset + 49);
+    return rows.map(ContentLesson.fromJson).toList();
+  }
+
+  Future<ContentLesson> lesson(String id) async => ContentLesson.fromJson(
+    await _contentClient.from('lessons').select().eq('id', id).single(),
+  );
+
+  Future<void> saveContentLesson({
+    required String moduleId,
+    required String title,
+    required String kind,
+    required Map<String, dynamic> data,
+    String? id,
+  }) async {
+    await _contentClient.rpc(
+      'save_content_lesson',
+      params: {
+        'p_module': moduleId,
+        'p_title': title.trim(),
+        'p_kind': kind,
+        'p_data': data,
+        'p_lesson': id,
+      },
+    );
+  }
+
+  Future<String> uploadLessonFile(Uint8List bytes, String contentType) async {
+    if (bytes.isEmpty || bytes.length > 50 * 1024 * 1024) {
+      throw StateError('File must be between 1 byte and 50 MB.');
+    }
+    final response = await _contentClient.functions.invoke(
+      'storage-upload-url',
+      body: {
+        'prefix': 'lessons',
+        'contentType': contentType,
+        'size': bytes.length,
+      },
+    );
+    final data = response.data as Map<String, dynamic>;
+    final uploaded = await http.put(
+      Uri.parse(data['putUrl'] as String),
+      headers: {'Content-Type': contentType},
+      body: bytes,
+    );
+    if (uploaded.statusCode < 200 || uploaded.statusCode >= 300) {
+      throw StateError('Upload failed');
+    }
+    return data['key'] as String;
+  }
+
+  final _downloadCache =
+      <String, ({Map<String, String> urls, DateTime expires})>{};
+  Future<List<String>> lessonFileUrls(
+    String lessonId,
+    List<String> keys,
+  ) async {
+    final session = _contentClient.auth.currentSession;
+    final selected =
+        await _contentClient.rpc('selected_context') as List<dynamic>;
+    final cacheKey = '${session?.accessToken}:$selected:$lessonId';
+    final cached = _downloadCache[cacheKey];
+    if (cached != null &&
+        cached.expires.isAfter(DateTime.now()) &&
+        keys.every(cached.urls.containsKey)) {
+      return keys
+          .map(
+            (key) => cached.urls[key] ?? (throw StateError('File unavailable')),
+          )
+          .toList();
+    }
+    final response = await _contentClient.functions.invoke(
+      'storage-download-url',
+      body: {'lessonId': lessonId},
+    );
+    final urls = Map<String, String>.from(
+      (response.data as Map<String, dynamic>)['urls'] as Map,
+    );
+    _downloadCache.removeWhere(
+      (_, value) => value.expires.isBefore(DateTime.now()),
+    );
+    _downloadCache[cacheKey] = (
+      urls: urls,
+      expires: DateTime.now().add(const Duration(minutes: 55)),
+    );
+    return keys
+        .map((key) => urls[key] ?? (throw StateError('File unavailable')))
+        .toList();
+  }
+
+  Future<Uint8List> lessonFileBytes(String lessonId, String key) async {
+    final response = await http.get(
+      Uri.parse((await lessonFileUrls(lessonId, [key])).single),
+    );
+    if (response.statusCode != 200) throw StateError('Download failed');
+    return response.bodyBytes;
+  }
+
   final SupabaseClient? _injectedClient;
   ContentRepository({SupabaseClient? client}) : _injectedClient = client;
 
@@ -681,6 +826,7 @@ class ContentRepository {
         companyIds: (row['company_ids'] as List<dynamic>? ?? []).cast<String>(),
         companyCount: (row['company_count'] as num).toInt(),
         lessonCount: (row['lesson_count'] as num).toInt(),
+        moduleCount: (row['module_count'] as num?)?.toInt() ?? 0,
         completionPct: (row['completion_pct'] as num?)?.toDouble(),
       );
     }).toList();

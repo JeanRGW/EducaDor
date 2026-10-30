@@ -7,6 +7,7 @@ import 'package:educador/data/repositories/repositories.dart';
 import 'package:educador/data/session/session_controller.dart';
 import 'package:educador/features/content/catalog_screen.dart';
 import 'package:educador/features/content/cover_image.dart';
+import 'package:educador/features/content/course_edit_screen.dart';
 import 'package:educador/features/content/publish_video_screen.dart';
 import 'package:educador/shared/widgets/common.dart';
 import 'package:flutter/material.dart';
@@ -49,6 +50,38 @@ class _People extends PeopleRepository {
 }
 
 class _Catalog extends ContentRepository {
+  String? createdTitle;
+  @override
+  Future<String> createCourse(String title) async {
+    createdTitle = title;
+    return 'content';
+  }
+
+  @override
+  Future<EditableCourse> detail(String id) async => const EditableCourse(
+    id: 'content',
+    title: 'Novo curso',
+    description: '',
+    responsible: ProfessionalOption(id: 'gestor', name: 'Gestora Marina'),
+    platformEnabled: false,
+    allCompanies: true,
+  );
+  @override
+  Future<List<ContentModule>> modules(
+    String courseId, {
+    int offset = 0,
+  }) async => [];
+  @override
+  Future<void> updateMetadata(
+    String id, {
+    required String title,
+    required String description,
+    String? coverKey,
+    String? responsibleId,
+  }) async {
+    publishedResponsible = responsibleId;
+  }
+
   String title = 'Segurança no trabalho';
   double? completionPct = 84;
   bool platformEnabled = true;
@@ -117,6 +150,7 @@ class _Catalog extends ContentRepository {
             ? 2
             : currentAudience.companyIds.length,
         lessonCount: 4,
+        moduleCount: 2,
         completionPct: completionPct,
       ),
     ];
@@ -279,6 +313,11 @@ void main() {
     final repo = _Catalog();
     await _showCatalog(tester, repo);
     expect(find.text('84%'), findsOneWidget);
+    expect(
+      find.textContaining('2 módulos', findRichText: true),
+      findsOneWidget,
+    );
+    expect(find.textContaining('4 aulas', findRichText: true), findsOneWidget);
     expect(find.text('Liberar para'), findsNothing);
     expect(find.text('Editar'), findsNothing);
     expect(
@@ -353,7 +392,8 @@ void main() {
     await tester.pump(const Duration(milliseconds: 350));
     await tester.pumpAndSettle();
     expect(repo.search, 'segurança');
-    await tester.tap(find.text('Quizzes'));
+    await tester.ensureVisible(find.text('Quiz'));
+    await tester.tap(find.text('Quiz'));
     await tester.pumpAndSettle();
     expect(repo.kind, 'quiz');
   });
@@ -476,7 +516,7 @@ void main() {
     },
   );
 
-  testWidgets('publishing defaults to all companies and stores a YouTube ID', (
+  testWidgets('creating a course opens its hierarchy editor without a video', (
     tester,
   ) async {
     final repo = _Catalog();
@@ -492,6 +532,11 @@ void main() {
           ),
         ),
         GoRoute(path: '/add', builder: (_, _) => const PublishVideoScreen()),
+        GoRoute(
+          path: '/gestor/course/:id',
+          builder: (_, state) =>
+              CourseEditScreen(courseId: state.pathParameters['id']!),
+        ),
       ],
     );
     addTearDown(router.dispose);
@@ -507,25 +552,18 @@ void main() {
     );
     await tester.tap(find.text('Adicionar'));
     await tester.pumpAndSettle();
-    expect(find.text('Todas as empresas'), findsOneWidget);
-    expect(find.text('Gestora Marina'), findsOneWidget);
-    await tester.enterText(find.byType(TextFormField).at(0), 'Nova trilha');
-    await tester.enterText(
-      find.byType(TextFormField).at(3),
-      'https://youtu.be/abcdefghijk',
-    );
-    await tester.ensureVisible(find.text('Publicar'));
-    await tester.tap(find.text('Publicar'));
+    expect(find.text('Adicionar curso'), findsOneWidget);
+    await tester.enterText(find.byType(TextFormField).first, 'Novo curso');
+    await tester.ensureVisible(find.text('Criar curso'));
+    await tester.tap(find.text('Criar curso'));
     await tester.pumpAndSettle();
-    expect(repo.publishedVideo, 'abcdefghijk');
-    expect(repo.publishedAudience?.allCompanies, isTrue);
-    expect(repo.publishedResponsible, 'gestor');
-    expect(repo.publishedCover, isNull);
+    expect(repo.createdTitle, 'Novo curso');
+    expect(repo.publishedVideo, isNull);
     expect(repo.coverUploads, 0);
-    expect(find.text('Trilha publicada.'), findsOneWidget);
+    expect(find.text('Detalhes do curso'), findsOneWidget);
   });
 
-  testWidgets('responsible professional can be changed before publishing', (
+  testWidgets('responsible professional can be changed in the course editor', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(800, 1400));
@@ -533,7 +571,10 @@ void main() {
     final repo = _Catalog();
     final router = GoRouter(
       routes: [
-        GoRoute(path: '/', builder: (_, _) => const PublishVideoScreen()),
+        GoRoute(
+          path: '/',
+          builder: (_, _) => const CourseEditScreen(courseId: 'content'),
+        ),
       ],
     );
     addTearDown(router.dispose);
@@ -556,13 +597,9 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Confirmar seleção'));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextFormField).at(0), 'Nova trilha');
-    await tester.enterText(
-      find.byType(TextFormField).at(3),
-      'https://youtu.be/abcdefghijk',
-    );
+    await tester.enterText(find.byType(TextFormField).at(0), 'Novo curso');
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Publicar'), warnIfMissed: false);
+    await tester.tap(find.text('Salvar dados do curso'), warnIfMissed: false);
     await tester.pumpAndSettle();
     expect(repo.publishedResponsible, 'other');
   });
@@ -584,18 +621,28 @@ void main() {
     );
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [sessionProvider.overrideWith(_GestorSession.new)],
+        overrides: [
+          sessionProvider.overrideWith(_GestorSession.new),
+          contentRepositoryProvider.overrideWithValue(_Catalog()),
+        ],
         child: MaterialApp(
           theme: AppTheme.light,
-          home: const PublishVideoScreen(),
+          home: const CourseEditScreen(courseId: 'content'),
         ),
       ),
     );
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Toque para escolher uma imagem'));
-    await tester.tap(find.text('Toque para escolher uma imagem'));
+    await tester.ensureVisible(find.text('Alterar imagem de capa'));
+    await tester.tap(find.text('Alterar imagem de capa'));
     await tester.pump();
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(
+      tester
+          .widget<OutlinedButton>(
+            find.widgetWithText(OutlinedButton, 'Alterar imagem de capa'),
+          )
+          .onPressed,
+      isNull,
+    );
     await tester.pumpWidget(const SizedBox.shrink());
     selection.complete('/unused-cover.png');
     await tester.pumpAndSettle();

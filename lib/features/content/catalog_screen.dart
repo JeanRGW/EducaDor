@@ -32,7 +32,15 @@ class _ContentCatalogScreenState extends ConsumerState<ContentCatalogScreen> {
   String _search = '';
   Timer? _debounce;
   final Set<String> _busy = {};
-  static const _kinds = [null, 'course', 'module', 'quiz'];
+  static const _kinds = [
+    null,
+    'video',
+    'audio',
+    'pdf',
+    'reading',
+    'quiz',
+    'animation',
+  ];
 
   @override
   void initState() {
@@ -109,7 +117,7 @@ class _ContentCatalogScreenState extends ConsumerState<ContentCatalogScreen> {
     ),
     floatingActionButton: widget.platform
         ? FloatingActionButton(
-            tooltip: 'Adicionar trilha',
+            tooltip: 'Adicionar curso',
             backgroundColor: AppColors.primary,
             shape: const CircleBorder(
               side: BorderSide(color: Colors.white, width: 2),
@@ -140,7 +148,7 @@ class _ContentCatalogScreenState extends ConsumerState<ContentCatalogScreen> {
             child: Column(
               children: [
                 SearchField(
-                  'Pesquisar cursos, módulos...',
+                  'Pesquisar cursos...',
                   compact: true,
                   prefixIcon: SvgIcon(
                     AppIcons.search,
@@ -163,7 +171,15 @@ class _ContentCatalogScreenState extends ConsumerState<ContentCatalogScreen> {
                   activeColor: widget.platform
                       ? AppColors.successDarkGreen
                       : AppColors.primary,
-                  options: const ['Todos', 'Cursos', 'Módulos', 'Quizzes'],
+                  options: const [
+                    'Todos',
+                    'Vídeo',
+                    'Áudio',
+                    'PDF',
+                    'Leitura',
+                    'Quiz',
+                    'Imagens e animações',
+                  ],
                   selected: _chip,
                   onSelected: (index) {
                     _debounce?.cancel();
@@ -356,7 +372,7 @@ class ManagedContentCard extends StatelessWidget {
                         children: [
                           TextSpan(
                             text:
-                                '${item.lessonCount} ${item.lessonCount == 1 ? 'aula' : 'aulas'}  ·  ',
+                                '${item.moduleCount} ${item.moduleCount == 1 ? 'módulo' : 'módulos'}  ·  ${item.lessonCount} ${item.lessonCount == 1 ? 'aula' : 'aulas'}  ·  ',
                           ),
                           TextSpan(
                             text: item.allCompanies
@@ -379,7 +395,7 @@ class ManagedContentCard extends StatelessWidget {
                     )
                   else
                     Text(
-                      '${item.lessonCount} ${item.lessonCount == 1 ? 'aula' : 'aulas'}',
+                      '${item.moduleCount} ${item.moduleCount == 1 ? 'módulo' : 'módulos'}  ·  ${item.lessonCount} ${item.lessonCount == 1 ? 'aula' : 'aulas'}',
                       style: AdminStyles.body.copyWith(fontSize: 11),
                     ),
                   const SizedBox(height: 14),

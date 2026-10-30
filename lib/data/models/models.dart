@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 export 'employee_models.dart';
+export 'content_models.dart';
 
 /// The three experiences in the platform.
 enum Role { gestor, empresa, funcionario }
@@ -8,7 +9,7 @@ enum Role { gestor, empresa, funcionario }
 /// Generic content status used across courses/modules/lessons.
 enum ContentStatus { completed, inProgress, locked }
 
-enum CourseKind { video, audio, quiz, reading, pdf, module, course }
+enum CourseKind { video, audio, quiz, reading, pdf, animation, module, course }
 
 enum EmployeeStatus { active, onLeave, unknown }
 
@@ -236,6 +237,7 @@ class ManagedContent {
   final List<String> companyIds;
   final int companyCount;
   final int lessonCount;
+  final int moduleCount;
   final double? completionPct;
 
   const ManagedContent({
@@ -250,6 +252,7 @@ class ManagedContent {
     required this.companyIds,
     required this.companyCount,
     required this.lessonCount,
+    this.moduleCount = 0,
     this.completionPct,
   });
 

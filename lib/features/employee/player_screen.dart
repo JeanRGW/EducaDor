@@ -9,6 +9,7 @@ import '../../data/session/playback_progress.dart';
 import '../../shared/widgets/app_icons.dart';
 import '../gestor/management_widgets.dart' show leaveManagementPage;
 import 'widgets.dart';
+import 'content_player.dart';
 
 class EmployeePlayerScreen extends ConsumerWidget {
   final String courseId, lessonId;
@@ -67,6 +68,9 @@ class _PlayerLoaderState extends ConsumerState<_PlayerLoader> {
     future: _lesson,
     builder: (context, snapshot) {
       if (snapshot.data case final lesson? when lesson.playable) {
+        if (lesson.kind != 'video') {
+          return ContentPlayer(lesson: lesson, courseId: widget.courseId);
+        }
         return _VideoPlayer(courseId: widget.courseId, lesson: lesson);
       }
       return Theme(
@@ -171,7 +175,8 @@ class _VideoPlayerState extends ConsumerState<_VideoPlayer>
       if (_started &&
           (value.playerState == PlayerState.paused ||
               value.playerState == PlayerState.ended)) {
-        if (value.playerState == PlayerState.ended && _duration > Duration.zero) {
+        if (value.playerState == PlayerState.ended &&
+            _duration > Duration.zero) {
           _progress.update(_duration, _duration);
         }
         unawaited(_checkpoint(force: true));

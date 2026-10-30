@@ -60,7 +60,9 @@ class EmployeeLesson {
     this.videoId,
     required this.positionSec,
   });
-  bool get playable => kind == 'video' && videoId != null;
+  bool get playable => kind == 'video'
+      ? videoId != null
+      : const ['audio', 'pdf', 'reading', 'quiz', 'animation'].contains(kind);
   bool get completed => status == 'completed';
 }
 

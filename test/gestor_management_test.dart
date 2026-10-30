@@ -197,6 +197,47 @@ class _Profiles extends ProfileRepository {
 }
 
 class _Content extends ContentRepository {
+  final moduleWrites = <({String course, String title, String? id})>[];
+  @override
+  Future<void> saveModule(String courseId, String title, {String? id}) async {
+    moduleWrites.add((course: courseId, title: title, id: id));
+  }
+
+  @override
+  Future<List<ContentModule>> modules(
+    String courseId, {
+    int offset = 0,
+  }) async => const [ContentModule(id: 'module', title: 'Módulo original')];
+
+  @override
+  Future<List<ContentLesson>> moduleLessons(
+    String moduleId, {
+    int offset = 0,
+  }) async {
+    if (failLessons) throw StateError('Offline');
+    return const [
+      ContentLesson(
+        id: 'lesson',
+        title: 'Aula original',
+        kind: 'video',
+        moduleId: 'module',
+        data: {'video_id': 'dQw4w9WgXcQ'},
+      ),
+    ];
+  }
+
+  @override
+  Future<void> saveContentLesson({
+    required String moduleId,
+    required String title,
+    required String kind,
+    required Map<String, dynamic> data,
+    String? id,
+  }) async {
+    lessonId = id;
+    videoId = data['video_id'] as String?;
+  }
+
   bool fail = false;
   bool failAudience = false;
   bool failLessons = false;
@@ -715,6 +756,51 @@ void main() {
     expect(session.reloads, 2);
   });
 
+  testWidgets(
+    'module floating add and pencil rename preserve management actions',
+    (tester) async {
+      final repo = _Content();
+      await _show(
+        tester,
+        const CourseEditScreen(courseId: 'course'),
+        content: repo,
+      );
+      await _tap(tester, find.text('Módulos e aulas'));
+      expect(find.byType(FloatingActionButton), findsOneWidget);
+      expect(find.text('Adicionar módulo'), findsNothing);
+      expect(find.text('Renomear módulo'), findsNothing);
+      await _tap(tester, find.byTooltip('Adicionar módulo'));
+      await tester.enterText(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.byType(TextFormField),
+        ),
+        'Novo módulo',
+      );
+      await _tap(tester, find.text('Salvar'));
+      expect(repo.moduleWrites.single, (
+        course: 'course',
+        title: 'Novo módulo',
+        id: null,
+      ));
+      await _tap(tester, find.byTooltip('Renomear módulo'));
+      await tester.enterText(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.byType(TextFormField),
+        ),
+        'Módulo renomeado',
+      );
+      await _tap(tester, find.text('Salvar'));
+      expect(repo.moduleWrites.last, (
+        course: 'course',
+        title: 'Módulo renomeado',
+        id: 'module',
+      ));
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('course metadata save preserves cover and responsible', (
     tester,
   ) async {
@@ -724,14 +810,44 @@ void main() {
       const CourseEditScreen(courseId: 'course'),
       content: repo,
     );
-    await tester.enterText(_field('Título da trilha'), 'Curso editado');
-    await _tap(tester, find.text('Salvar dados da trilha'));
+    await tester.enterText(_field('Título do curso'), 'Curso editado');
+    await _tap(tester, find.text('Salvar dados do curso'));
     expect(repo.savedTitle, 'Curso editado');
     expect(repo.savedCover, 'legacy.webp');
     expect(repo.savedResponsible, 'author');
     expect(find.text('Pausada pela plataforma'), findsNothing);
     expect(find.text('Empresas selecionadas'), findsWidgets);
   });
+
+  testWidgets(
+    'course tabs preserve the draft and module pages fit narrow screens',
+    (tester) async {
+      await _show(
+        tester,
+        const CourseEditScreen(courseId: 'course'),
+        content: _Content(),
+        width: 320,
+        textScale: 1.8,
+      );
+      await tester.enterText(_field('Título do curso'), 'Novo rascunho');
+      await _tap(tester, find.text('Módulos e aulas'));
+      expect(find.text('Módulos do curso'), findsOneWidget);
+      await _tap(tester, find.text('Gerenciar aulas'));
+      expect(find.text('Aulas do módulo'), findsOneWidget);
+      expect(find.text('Aula original'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await _tap(tester, find.byTooltip('Voltar'));
+      await _tap(tester, find.text('Dados do curso'));
+      expect(
+        tester
+            .widget<TextFormField>(_field('Título do curso'))
+            .controller!
+            .text,
+        'Novo rascunho',
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('course editor uses labeled fields and teal selectors', (
     tester,
@@ -743,12 +859,20 @@ void main() {
     );
     final title = tester.widget<TextField>(
       find.descendant(
-        of: _field('Título da trilha'),
+        of: _field('Título do curso'),
         matching: find.byType(TextField),
       ),
     );
     expect(title.decoration!.labelText, isNull);
     expect(find.text('Imagem de capa'), findsOneWidget);
+    for (final label in ['Remover capa', 'Remover responsável']) {
+      expect(
+        TextButtonTheme.of(
+          tester.element(find.text(label)),
+        ).style!.textStyle!.resolve({})!.fontSize,
+        12,
+      );
+    }
     expect(find.text('Profissional responsável'), findsOneWidget);
     final responsible = find.widgetWithText(OutlinedButton, 'Autora');
     expect(responsible, findsOneWidget);
@@ -762,20 +886,13 @@ void main() {
     expect(find.text('Acesso liberado'), findsNothing);
     expect(find.text('Pausada pela plataforma'), findsNothing);
     expect(find.textContaining('Editar não altera'), findsNothing);
-    await tester.scrollUntilVisible(
-      find.text('Módulos e aulas'),
-      150,
-      scrollable: find.byType(Scrollable).first,
-    );
+    await _tap(tester, find.text('Módulos e aulas'));
     await tester.pumpAndSettle();
     expect(
-      tester.widget<Text>(find.text('Módulos e aulas')).style,
+      tester.widget<Text>(find.text('Módulos do curso')).style,
       AdminStyles.cardTitle,
     );
-    expect(
-      tester.widget<Text>(find.text('Aula original')).style,
-      AdminStyles.cardTitle,
-    );
+    expect(find.text('Módulo original'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -788,18 +905,20 @@ void main() {
       const CourseEditScreen(courseId: 'course'),
       content: repo,
     );
+    await _tap(tester, find.text('Módulos e aulas'));
+    await _tap(tester, find.text('Gerenciar aulas'));
     await tester.scrollUntilVisible(
-      find.text('Tentar novamente'),
+      find.text('Falha ao carregar aulas. Tentar novamente'),
       150,
       scrollable: find.byType(Scrollable).first,
     );
     await tester.pumpAndSettle();
     expect(
-      tester.widget<Text>(find.text('Não foi possível carregar aulas.')).style,
-      AdminStyles.body,
+      find.text('Falha ao carregar aulas. Tentar novamente'),
+      findsOneWidget,
     );
     repo.failLessons = false;
-    await _tap(tester, find.text('Tentar novamente'));
+    await _tap(tester, find.text('Falha ao carregar aulas. Tentar novamente'));
     expect(find.text('Aula original'), findsOneWidget);
     expect(find.text('Não foi possível carregar aulas.'), findsNothing);
     expect(tester.takeException(), isNull);
@@ -840,20 +959,21 @@ void main() {
         const CourseEditScreen(courseId: 'course'),
         content: repo,
       );
-      await tester.enterText(_field('Título da trilha'), 'Rascunho do curso');
-      await _tap(tester, find.text('Salvar dados da trilha'));
+      await tester.enterText(_field('Título do curso'), 'Rascunho do curso');
+      await _tap(tester, find.text('Salvar dados do curso'));
       expect(repo.savedTitle, isNull);
       expect(
         tester
-            .widget<TextFormField>(_field('Título da trilha'))
+            .widget<TextFormField>(_field('Título do curso'))
             .controller!
             .text,
         'Rascunho do curso',
       );
       repo.fail = false;
+      await tester.pump(const Duration(seconds: 5));
       await _tap(tester, find.text('Remover capa'));
       await _tap(tester, find.text('Remover responsável'));
-      await _tap(tester, find.text('Salvar dados da trilha'));
+      await _tap(tester, find.text('Salvar dados do curso'));
       expect(repo.savedTitle, 'Rascunho do curso');
       expect(repo.savedCover, isNull);
       expect(repo.savedResponsible, isNull);
@@ -869,6 +989,8 @@ void main() {
       const CourseEditScreen(courseId: 'course'),
       content: repo,
     );
+    await _tap(tester, find.text('Módulos e aulas'));
+    await _tap(tester, find.text('Gerenciar aulas'));
     await tester.scrollUntilVisible(
       find.text('Editar aula'),
       500,
@@ -876,19 +998,25 @@ void main() {
     );
     await tester.pumpAndSettle();
     await _tap(tester, find.text('Editar aula'));
-    await tester.enterText(_field('Vídeo do YouTube'), 'invalid');
+    await tester.enterText(_field('URL ou ID do YouTube'), 'invalid');
     await _tap(tester, find.text('Salvar aula'));
-    expect(find.text('Informe uma URL ou ID válido.'), findsOneWidget);
+    expect(find.text('Informe um vídeo válido do YouTube.'), findsOneWidget);
     expect(repo.lessonId, isNull);
     await tester.enterText(
-      _field('Vídeo do YouTube'),
+      _field('URL ou ID do YouTube'),
       'https://youtu.be/abcdefghijk',
     );
     await _tap(tester, find.text('Salvar aula'));
     await _tap(tester, find.text('Cancelar'));
     expect(repo.lessonId, isNull);
     await _tap(tester, find.text('Salvar aula'));
-    await _tap(tester, find.widgetWithText(FilledButton, 'Substituir vídeo'));
+    await _tap(
+      tester,
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.widgetWithText(FilledButton, 'Salvar aula'),
+      ),
+    );
     expect(repo.lessonId, 'lesson');
     expect(repo.videoId, 'abcdefghijk');
     expect(tester.takeException(), isNull);

@@ -180,33 +180,9 @@ void main() {
       expect(tester.getSize(saveSurface).height, closeTo(46, 0.1));
 
       await _show(tester, const AddTrailScreen(), platform: platform);
-      expect(tester.getTopLeft(find.text('Adicionar Trilha')).dx, 48);
-      final video = find.byWidgetPredicate(
-        (widget) =>
-            widget is TextField &&
-            widget.decoration?.hintText == 'https://youtu.be/...',
-      );
-      final author = find.ancestor(
-        of: find.text('Marina Silva'),
-        matching: find.byType(InkWell),
-      );
-      final audience = find.ancestor(
-        of: find.text('Todas as empresas'),
-        matching: find.byType(InkWell),
-      );
-      expect(tester.getSize(video).height, closeTo(40, 2));
-      expect(
-        tester.getSize(author).height,
-        closeTo(tester.getSize(video).height, 0.1),
-      );
-      expect(
-        tester.getSize(audience).height,
-        closeTo(tester.getSize(video).height, 0.1),
-      );
-      expect(
-        tester.getTopLeft(author).dy,
-        closeTo(tester.getTopLeft(video).dy, 0.1),
-      );
+      expect(find.text('Adicionar curso'), findsOneWidget);
+      expect(find.text('Título do curso'), findsWidgets);
+      expect(find.text('Criar curso'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   }
@@ -263,7 +239,7 @@ void main() {
   });
 
   testWidgets(
-    'publishing uses compact fields without enabling deferred content types',
+    'course creation uses compact fields before adding modules and lessons',
     (tester) async {
       await _show(tester, const AddTrailScreen());
       final form = find.byType(TextFormField).first;
@@ -273,17 +249,8 @@ void main() {
       final border =
           theme.inputDecorationTheme.enabledBorder! as OutlineInputBorder;
       expect(border.borderRadius, BorderRadius.circular(8));
-      expect(find.text('Módulos'), findsOneWidget);
-      expect(find.text('Vídeo do YouTube'), findsOneWidget);
-      await tester.tap(find.text('Áudio'));
-      await tester.pumpAndSettle();
-      expect(
-        find.text(
-          'Disponível em breve. Por enquanto, publique vídeos do YouTube.',
-        ),
-        findsOneWidget,
-      );
-      expect(find.text('Vídeo do YouTube'), findsOneWidget);
+      expect(find.text('Curso → Módulos → Aulas'), findsOneWidget);
+      expect(find.text('Criar curso'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );
@@ -378,7 +345,7 @@ void main() {
               reason: '${screen.runtimeType}',
             );
             if (screen is AddTrailScreen) {
-              await tester.ensureVisible(find.text('Publicar'));
+              await tester.ensureVisible(find.text('Criar curso'));
               expect(tester.takeException(), isNull);
             }
           }
