@@ -24,6 +24,18 @@ A gestor-only mutation locks the parent, swaps adjacent items, and normalizes
 duplicate legacy positions. It does
 not replace content IDs or change progress. Loaded pages refresh after a move;
 the last loaded item can move down across a pagination boundary.
+Repository reads explicitly order positions and IDs ascending (the Dart client
+defaults to descending), matching the mutation order and append-at-end defaults.
+
+Platform gestors can permanently delete courses, modules, or lessons after an
+explicit confirmation. Apply the follow-up `20261030000001_content_deletion.sql`;
+the consolidated migration has already been applied and must not be rewritten.
+Deletes cascade descendants and their progress, and course deletion also removes
+assignments and certificates. Derived employee points decrease when completed
+lessons are removed (balances may become negative after previous redemptions).
+Uploaded objects are retained for operator-managed cleanup. Company managers and
+employees cannot invoke the deletion RPC. Pausing remains the non-destructive
+alternative.
 
 The visual lesson type (`animation`, labeled “Imagem / Animação”) also accepts a
 single PNG/JPEG/WebP image with optional supporting text. Still images display

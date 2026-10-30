@@ -14,6 +14,7 @@ import 'audience_picker.dart';
 import 'professional_picker.dart';
 import 'cover_image.dart';
 import 'course_structure.dart';
+import 'delete_content.dart';
 
 class CourseEditScreen extends ConsumerStatefulWidget {
   final String courseId;
@@ -168,6 +169,32 @@ class _CourseEditorState extends ConsumerState<_CourseEditor> {
         showManagementMessage(
           context,
           'Não foi possível atualizar o público. Tente novamente.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _delete() async {
+    if (!await confirmContentDeletion(context, 'course', widget.course.title) ||
+        !mounted) {
+      return;
+    }
+    setState(() => _busy = true);
+    try {
+      await ref
+          .read(contentRepositoryProvider)
+          .deleteContent('course', widget.course.id);
+      ref.invalidate(gestorDashboardProvider);
+      ref.invalidate(gestorCompletionProvider);
+      ref.invalidate(gestorActivityReportProvider);
+      if (mounted) leaveManagementPage(context, '/gestor/conteudo');
+    } catch (_) {
+      if (mounted) {
+        showManagementMessage(
+          context,
+          'Não foi possível excluir o curso. Tente novamente.',
         );
       }
     } finally {
@@ -352,6 +379,13 @@ class _CourseEditorState extends ConsumerState<_CourseEditor> {
                               ),
                               const SizedBox(height: 20),
                               const SizedBox(height: 24),
+                              TextButton(
+                                onPressed: _busy ? null : _delete,
+                                style: TextButton.styleFrom(
+                                  foregroundColor: AppColors.danger,
+                                ),
+                                child: const Text('Excluir curso'),
+                              ),
                             ],
                           ),
                         ),

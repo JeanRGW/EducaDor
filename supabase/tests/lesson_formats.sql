@@ -52,6 +52,8 @@ end $$;
 select public.select_context('empresa','b8300000-0000-4000-8000-000000000001');
 do $$ begin
   if exists(select 1 from public.lessons where module_id='d8300000-0000-4000-8000-000000000001') then raise exception 'Manager read lesson files'; end if;
+  begin perform public.delete_content('course','c8300000-0000-4000-8000-000000000001'); raise exception 'Manager deleted course';
+    exception when raise_exception then if sqlerrm<>'Forbidden' then raise; end if; end;
   begin perform public.move_content_item('module','d8300000-0000-4000-8000-000000000001',1); raise exception 'Manager reordered content';
     exception when raise_exception then if sqlerrm<>'Forbidden' then raise; end if; end;
   if (select module_count from public.content_catalog() where id='c8300000-0000-4000-8000-000000000001')<>1 then raise exception 'Manager missing module count'; end if;
@@ -60,6 +62,8 @@ do $$ begin
 end $$;
 select public.select_context('funcionario','b8300000-0000-4000-8000-000000000001');
 do $$ declare l uuid; begin
+  begin perform public.delete_content('module','d8300000-0000-4000-8000-000000000001'); raise exception 'Employee deleted module';
+    exception when raise_exception then if sqlerrm<>'Forbidden' then raise; end if; end;
   for l in select id from public.lessons where module_id='d8300000-0000-4000-8000-000000000001' loop
     perform public.save_employee_progress(public.own_company_id(),l,0,true);
     perform public.save_employee_progress(public.own_company_id(),l,0,false);
@@ -98,5 +102,23 @@ do $$ declare l uuid; begin
   if (select count(*) from public.lesson_progress where status='completed')<>10 then raise exception 'Reorder reset progress'; end if;
   begin perform public.move_content_item('lesson',l,0); raise exception 'Invalid direction accepted';
     exception when raise_exception then if sqlerrm<>'Invalid move' then raise; end if; end;
+end $$;
+do $$ declare l uuid; m uuid:='d8300000-0000-4000-8000-000000000001'; c uuid:='c8300000-0000-4000-8000-000000000001'; begin
+  if has_function_privilege('anon','public.delete_content(text,uuid)','EXECUTE') then raise exception 'Anonymous delete grant'; end if;
+  l:=public.save_content_module(c,'Appended module');
+  if (select id from public.modules where course_id=c order by position desc,id desc limit 1)<>l then raise exception 'New module not appended'; end if;
+  perform public.delete_content('module',l);
+  l:=public.save_content_lesson(m,'Appended lesson','reading','{"body":"Last"}');
+  if (select id from public.lessons where module_id=m order by position desc,id desc limit 1)<>l then raise exception 'New lesson not appended'; end if;
+  perform public.delete_content('lesson',l);
+  select id into l from public.lessons where title='Still png';
+  perform public.delete_content('lesson',l);
+  if exists(select 1 from public.lessons where id=l) or exists(select 1 from public.lesson_progress where lesson_id=l) then raise exception 'Lesson deletion failed'; end if;
+  if not exists(select 1 from public.lessons where title='Still jpg') then raise exception 'Sibling deleted'; end if;
+  perform public.delete_content('module',m);
+  if exists(select 1 from public.modules where id=m) or exists(select 1 from public.lessons where module_id=m) then raise exception 'Module deletion failed'; end if;
+  if not exists(select 1 from public.courses where id=c) then raise exception 'Module deleted parent course'; end if;
+  perform public.delete_content('course',c);
+  if exists(select 1 from public.courses where id=c) then raise exception 'Course deletion failed'; end if;
 end $$;
 rollback;

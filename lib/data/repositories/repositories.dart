@@ -548,6 +548,13 @@ class ReportRepository {
 }
 
 class ContentRepository {
+  Future<void> deleteContent(String kind, String id) async {
+    await _contentClient.rpc(
+      'delete_content',
+      params: {'p_kind': kind, 'p_id': id},
+    );
+  }
+
   Future<void> moveItem(String kind, String id, int direction) async {
     await _contentClient.rpc(
       'move_content_item',
@@ -567,8 +574,8 @@ class ContentRepository {
         .from('modules')
         .select('id,title')
         .eq('course_id', courseId)
-        .order('position')
-        .order('id')
+        .order('position', ascending: true)
+        .order('id', ascending: true)
         .range(offset, offset + 49);
     return rows
         .map(
@@ -593,8 +600,8 @@ class ContentRepository {
         .from('lessons')
         .select()
         .eq('module_id', moduleId)
-        .order('position')
-        .order('id')
+        .order('position', ascending: true)
+        .order('id', ascending: true)
         .range(offset, offset + 49);
     return rows.map(ContentLesson.fromJson).toList();
   }

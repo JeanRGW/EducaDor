@@ -10,6 +10,7 @@ import '../../shared/widgets/common.dart';
 import '../../shared/widgets/app_icons.dart';
 import '../gestor/widgets.dart' show DataSkeleton;
 import 'order_controls.dart';
+import 'delete_content.dart';
 
 class CourseStructure extends ConsumerStatefulWidget {
   final String courseId;
@@ -130,6 +131,29 @@ class _CourseStructureState extends ConsumerState<CourseStructure> {
     }
   }
 
+  Future<void> _delete(ContentModule module) async {
+    if (!await confirmContentDeletion(context, 'module', module.title) ||
+        !mounted) {
+      return;
+    }
+    setState(() => _busy = true);
+    try {
+      await ref
+          .read(contentRepositoryProvider)
+          .deleteContent('module', module.id);
+      if (mounted) await _load(retainPages: true);
+    } catch (_) {
+      if (mounted) {
+        showManagementMessage(
+          context,
+          'Não foi possível excluir o módulo. Tente novamente.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: Colors.transparent,
@@ -227,6 +251,15 @@ class _CourseStructureState extends ConsumerState<CourseStructure> {
                           color: AppColors.successDarkGreen,
                         ),
                         label: const Text('Gerenciar aulas'),
+                      ),
+                      TextButton(
+                        onPressed: _busy || widget.disabled
+                            ? null
+                            : () => _delete(module),
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppColors.danger,
+                        ),
+                        child: const Text('Excluir módulo'),
                       ),
                       OrderControls(
                         label: 'módulo',
@@ -361,6 +394,29 @@ class _ModuleLessonsState extends ConsumerState<ModuleLessons> {
     if (saved == true && mounted) await _load();
   }
 
+  Future<void> _delete(ContentLesson lesson) async {
+    if (!await confirmContentDeletion(context, 'lesson', lesson.title) ||
+        !mounted) {
+      return;
+    }
+    setState(() => _loading = true);
+    try {
+      await ref
+          .read(contentRepositoryProvider)
+          .deleteContent('lesson', lesson.id);
+      if (mounted) await _load(retainPages: true);
+    } catch (_) {
+      if (mounted) {
+        showManagementMessage(
+          context,
+          'Não foi possível excluir a aula. Tente novamente.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: Colors.transparent,
@@ -428,6 +484,15 @@ class _ModuleLessonsState extends ConsumerState<ModuleLessons> {
                             ? null
                             : () => _edit(lesson),
                         child: const Text('Editar aula'),
+                      ),
+                      TextButton(
+                        onPressed: widget.disabled || _loading
+                            ? null
+                            : () => _delete(lesson),
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppColors.danger,
+                        ),
+                        child: const Text('Excluir aula'),
                       ),
                     ],
                   ),

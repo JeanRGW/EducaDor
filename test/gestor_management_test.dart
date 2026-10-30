@@ -197,6 +197,13 @@ class _Profiles extends ProfileRepository {
 }
 
 class _Content extends ContentRepository {
+  String? deletedCourse;
+  @override
+  Future<void> deleteContent(String kind, String id) async {
+    if (fail) throw StateError('Offline');
+    deletedCourse = id;
+  }
+
   final moduleWrites = <({String course, String title, String? id})>[];
   @override
   Future<void> saveModule(String courseId, String title, {String? id}) async {
@@ -818,6 +825,41 @@ void main() {
     expect(find.text('Pausada pela plataforma'), findsNothing);
     expect(find.text('Empresas selecionadas'), findsWidgets);
   });
+
+  testWidgets(
+    'course deletion confirms the cascade before leaving the editor',
+    (tester) async {
+      final repo = _Content();
+      await _show(
+        tester,
+        const CourseEditScreen(courseId: 'course'),
+        content: repo,
+      );
+      await tester.scrollUntilVisible(
+        find.text('Excluir curso'),
+        200,
+        scrollable: find
+            .byWidgetPredicate(
+              (w) => w is Scrollable && w.axisDirection == AxisDirection.down,
+            )
+            .first,
+      );
+      await _tap(tester, find.text('Excluir curso'));
+      expect(find.textContaining('certificados deste curso'), findsOneWidget);
+      await _tap(tester, find.text('Cancelar'));
+      expect(repo.deletedCourse, isNull);
+      await _tap(tester, find.text('Excluir curso'));
+      await _tap(
+        tester,
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.widgetWithText(FilledButton, 'Excluir curso'),
+        ),
+      );
+      expect(repo.deletedCourse, 'course');
+      expect(find.byType(CourseEditScreen), findsNothing);
+    },
+  );
 
   testWidgets(
     'course tabs preserve the draft and module pages fit narrow screens',
