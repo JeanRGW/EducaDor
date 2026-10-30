@@ -18,6 +18,7 @@ import '../features/gestor/screens.dart';
 import '../features/gestor/company_detail_screen.dart';
 import '../features/gestor/managers_screen.dart';
 import '../features/gestor/profile_edit_screen.dart';
+import '../features/gestor/platform_settings_screen.dart';
 import '../features/content/course_edit_screen.dart';
 
 const _authRoutes = ['/splash', '/welcome', '/login', '/recover'];
@@ -157,6 +158,11 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       // ---- Empresa (company admin) ----
       GoRoute(
+        path: '/empresa/perfil/edit',
+        builder: (_, _) =>
+            const ProfileEditScreen(fallbackLocation: '/empresa/perfil'),
+      ),
+      GoRoute(
         path: '/empresa/employee/add',
         builder: (_, _) => const AddEmployeeScreen(),
       ),
@@ -177,6 +183,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       ]),
 
       // ---- Gestor (super admin) ----
+      GoRoute(
+        path: '/gestor/configuracoes',
+        builder: (_, _) => const PlatformSettingsScreen(),
+      ),
       GoRoute(
         path: '/gestor/gestores',
         builder: (_, _) => const GestorManagersScreen(),

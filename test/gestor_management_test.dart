@@ -7,6 +7,7 @@ import 'package:educador/features/content/course_edit_screen.dart';
 import 'package:educador/features/gestor/company_detail_screen.dart';
 import 'package:educador/features/gestor/managers_screen.dart';
 import 'package:educador/features/gestor/profile_edit_screen.dart';
+import 'package:educador/features/gestor/platform_settings_screen.dart';
 import 'package:educador/features/company/screens.dart';
 import 'package:educador/shared/widgets/admin_styles.dart';
 import 'package:flutter/material.dart';
@@ -495,7 +496,8 @@ void main() {
     for (final entry in {
       '/gestor/company/company': '/gestor/empresas',
       '/gestor/company/company/gestores': '/gestor/company/company',
-      '/gestor/gestores': '/gestor/perfil',
+      '/gestor/gestores': '/gestor/configuracoes',
+      '/gestor/configuracoes': '/gestor/perfil',
       '/gestor/perfil/edit': '/gestor/perfil',
       '/gestor/course/course': '/gestor/conteudo',
     }.entries) {
@@ -597,6 +599,7 @@ void main() {
         '/gestor/company/company': CompanyDetailScreen,
         '/gestor/company/company/gestores': GestorManagersScreen,
         '/gestor/gestores': GestorManagersScreen,
+        '/gestor/configuracoes': PlatformSettingsScreen,
         '/gestor/perfil/edit': ProfileEditScreen,
         '/gestor/course/course': CourseEditScreen,
       };

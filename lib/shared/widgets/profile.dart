@@ -1,0 +1,300 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../app/theme.dart';
+import '../../data/session/session_controller.dart';
+import 'admin_styles.dart';
+import 'app_icons.dart';
+import 'common.dart';
+
+class ProfilePage extends StatelessWidget {
+  final String initials;
+  final String name;
+  final String subtitle;
+  final String badge;
+  final Widget? summary;
+  final Widget settings;
+  final Future<void> Function()? onRefresh;
+
+  const ProfilePage({
+    super.key,
+    required this.initials,
+    required this.name,
+    required this.subtitle,
+    required this.badge,
+    required this.settings,
+    this.summary,
+    this.onRefresh,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final content = ListView(
+      padding: EdgeInsets.zero,
+      physics: const AlwaysScrollableScrollPhysics(),
+      children: [
+        Container(
+          decoration: const BoxDecoration(
+            color: AppColors.surface,
+            border: Border(bottom: BorderSide(color: AppColors.border)),
+          ),
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 672),
+              child: Column(
+                children: [
+                  AvatarBadge(initials, size: 72),
+                  const SizedBox(height: 16),
+                  Text(
+                    name,
+                    style: AdminStyles.pageTitle,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: AdminStyles.body,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.successBg,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      badge,
+                      textAlign: TextAlign.center,
+                      style: AdminStyles.fieldLabel.copyWith(
+                        color: AppColors.successDarkGreen,
+                      ),
+                    ),
+                  ),
+                  if (summary != null) ...[
+                    const SizedBox(height: 28),
+                    summary!,
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+        Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 720),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
+              child: settings,
+            ),
+          ),
+        ),
+      ],
+    );
+    return Theme(
+      data: AdminStyles.screenTheme(Theme.of(context)),
+      child: Scaffold(
+        body: SafeArea(
+          child: onRefresh == null
+              ? content
+              : RefreshIndicator(onRefresh: onRefresh!, child: content),
+        ),
+      ),
+    );
+  }
+}
+
+class ProfileMenuRow extends StatelessWidget {
+  final String label;
+  final String icon;
+  final VoidCallback? onTap;
+  final String? status;
+
+  const ProfileMenuRow({
+    super.key,
+    required this.label,
+    required this.icon,
+    this.onTap,
+    this.status,
+  });
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 8),
+    child: Material(
+      color: AppColors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: AppColors.border),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 48),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
+              children: [
+                SvgIcon(icon, size: 20, color: AppColors.textSecondary),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: AdminStyles.body.copyWith(
+                      color: AppColors.textPrimary,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+                if (status != null) ...[
+                  const SizedBox(width: 12),
+                  Flexible(
+                    child: Text(
+                      status!,
+                      style: AdminStyles.body.copyWith(fontSize: 12),
+                      textAlign: TextAlign.right,
+                    ),
+                  ),
+                ],
+                if (onTap != null) ...[
+                  const SizedBox(width: 8),
+                  const SvgIcon(
+                    AppIcons.chevronRight,
+                    size: 18,
+                    color: AppColors.textMuted,
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+class ProfileAccountSettings extends ConsumerStatefulWidget {
+  final String editLocation;
+  final VoidCallback? onProfileEdited;
+  final List<Widget> managementActions;
+  final List<Widget> notices;
+
+  const ProfileAccountSettings({
+    super.key,
+    required this.editLocation,
+    this.onProfileEdited,
+    this.managementActions = const [],
+    this.notices = const [],
+  });
+
+  @override
+  ConsumerState<ProfileAccountSettings> createState() =>
+      _ProfileAccountSettingsState();
+}
+
+class _ProfileAccountSettingsState
+    extends ConsumerState<ProfileAccountSettings> {
+  bool _signingOut = false;
+
+  Future<void> _logout() async {
+    setState(() => _signingOut = true);
+    try {
+      await ref.read(sessionProvider.notifier).logout();
+      if (mounted) context.go('/welcome');
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Não foi possível sair. Tente novamente.'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _signingOut = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final session = ref.watch(sessionProvider).value;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ...widget.notices,
+        if (widget.managementActions.isNotEmpty) ...[
+          const Text('Gestão', style: AdminStyles.cardTitle),
+          const SizedBox(height: 12),
+          ...widget.managementActions,
+          const SizedBox(height: 12),
+        ],
+        const Text('Configurações de conta', style: AdminStyles.cardTitle),
+        const SizedBox(height: 12),
+        ProfileMenuRow(
+          label: 'Editar dados pessoais',
+          icon: AppIcons.manageAccount,
+          onTap: () async {
+            await context.push(widget.editLocation);
+            if (mounted) widget.onProfileEdited?.call();
+          },
+        ),
+        const ProfileMenuRow(
+          label: 'Notificações',
+          icon: AppIcons.bell,
+          status: 'Em breve',
+        ),
+        const ProfileMenuRow(
+          label: 'Idioma',
+          icon: AppIcons.globe,
+          status: 'Português (Brasil)',
+        ),
+        const ProfileMenuRow(
+          label: 'Modo escuro',
+          icon: AppIcons.moon,
+          status: 'Em breve',
+        ),
+        const ProfileMenuRow(
+          label: 'Segurança e MFA',
+          icon: AppIcons.security,
+          status: 'Em breve',
+        ),
+        const ProfileMenuRow(
+          label: 'Suporte e ajuda',
+          icon: AppIcons.help,
+          status: 'Em breve',
+        ),
+        if ((session?.contexts.length ?? 0) > 1)
+          ProfileMenuRow(
+            label: 'Trocar perfil',
+            icon: AppIcons.profile,
+            onTap: () => context.go('/contexts'),
+          ),
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          onPressed: _signingOut ? null : _logout,
+          style: OutlinedButton.styleFrom(
+            foregroundColor: AppColors.danger,
+            backgroundColor: AppColors.surface,
+            side: BorderSide(color: AppColors.danger.withValues(alpha: 0.3)),
+            minimumSize: const Size.fromHeight(48),
+            textStyle: AdminStyles.body.copyWith(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          icon: const SvgIcon(
+            AppIcons.logout,
+            size: 20,
+            color: AppColors.danger,
+          ),
+          label: Text(_signingOut ? 'Saindo...' : 'Sair'),
+        ),
+      ],
+    );
+  }
+}

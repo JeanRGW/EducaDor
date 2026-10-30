@@ -124,7 +124,7 @@ void main() {
     }
   });
   testWidgets(
-    'profile matches the prototype identity and keeps added controls',
+    'profile uses the shared identity and links to platform settings',
     (tester) async {
       await _show(tester, const GestorProfileScreen());
       final avatar = find.byWidgetPredicate(
@@ -135,28 +135,22 @@ void main() {
           tester.widget<Container>(avatar).decoration! as BoxDecoration;
       expect(decoration.color, AppColors.successBg);
       expect(
-        (decoration.border! as Border).top.color,
-        AppColors.successDarkGreen,
-      );
-      expect(
         tester.widget<Text>(find.text('Marina Silva')).style,
-        AdminStyles.formTitle,
+        AdminStyles.pageTitle,
       );
-      expect(find.text('SUPER ADMIN'), findsOneWidget);
-      expect(find.text('Convidar gestor da plataforma'), findsOneWidget);
-      expect(find.text('Nenhum convite pendente.'), findsOneWidget);
+      expect(find.text('Gestor da plataforma'), findsOneWidget);
+      expect(find.text('Convidar gestor da plataforma'), findsNothing);
+      expect(find.text('Convites pendentes'), findsNothing);
+      expect(find.text('Configurações da plataforma'), findsOneWidget);
       expect(find.text('Trocar perfil'), findsOneWidget);
       expect(
-        tester
-            .widget<Text>(find.text('Configurações de Conta'))
-            .style!
-            .fontSize,
+        tester.widget<Text>(find.text('Editar dados pessoais')).style!.fontSize,
         14,
       );
       await tester.ensureVisible(find.text('Sair'));
       final logoutIcon = tester.widget<SvgIcon>(
         find.byWidgetPredicate(
-          (widget) => widget is SvgIcon && widget.asset == AppIcons.userOff,
+          (widget) => widget is SvgIcon && widget.asset == AppIcons.logout,
         ),
       );
       expect(logoutIcon.color, AppColors.danger);

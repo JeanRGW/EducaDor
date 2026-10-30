@@ -631,12 +631,11 @@ void main() {
       final companies = _Companies();
       await _show(tester, const CompanyProfileScreen(), companies: companies);
       expect(companies.calls, ['company-a']);
-      final avatar = tester.widget<CompanyAvatar>(find.byType(CompanyAvatar));
+      final avatar = tester.widget<AvatarBadge>(find.byType(AvatarBadge));
       expect(avatar.size, 72);
-      expect(avatar.outlined, isTrue);
       expect(avatar.initials, 'GSM');
       expect(find.text('CNPJ: 12.345.678/0001-90'), findsOneWidget);
-      expect(find.text('3 Funcionários'), findsOneWidget);
+      expect(find.text('3 funcionários'), findsOneWidget);
       expect(find.text('Trocar perfil'), findsOneWidget);
       expect(find.textContaining('24/7'), findsNothing);
       await tester.tap(find.text('Gestores da empresa'));

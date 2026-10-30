@@ -124,7 +124,7 @@ class _GestorManagersScreenState extends ConsumerState<GestorManagersScreen> {
   @override
   Widget build(BuildContext context) => ManagementPage(
     fallbackLocation: widget.companyId == null
-        ? '/gestor/perfil'
+        ? '/gestor/configuracoes'
         : '/gestor/company/${widget.companyId}',
     title: widget.companyId == null
         ? 'Gestores da plataforma'

@@ -426,7 +426,7 @@ void main() {
       expect(second - first, closeTo(third - second, 1));
       expect(find.text('Notificações'), findsOneWidget);
       expect(find.text('Português (Brasil)'), findsOneWidget);
-      expect(find.text('Em breve'), findsNWidgets(3));
+      expect(find.text('Em breve'), findsNWidgets(4));
       expect(find.byType(Switch), findsNothing);
     },
   );
