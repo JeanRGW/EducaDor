@@ -1,61 +1,30 @@
-import { S3Client, PutObjectCommand } from 'npm:@aws-sdk/client-s3@3';
-import { getSignedUrl } from 'npm:@aws-sdk/s3-request-presigner@3';
-import { caller, preflight, respond } from '../_shared/invites.ts';
-
-// Covers are resized to WebP on the device; the app holds no storage keys.
-// Flow: POST here (Supabase JWT) → PUT bytes to putUrl → save key via content RPC.
-const maxSize = 50 * 1024 * 1024; // Supabase Free per-file ceiling.
-const expiresIn = 15 * 60;
-
-Deno.serve(async (req) => {
-  const blocked = preflight(req);
-  if (blocked) return blocked;
-  const current = await caller(req);
-  if (!current) return respond(req, { error: 'Authentication required' }, 401);
-
-  try {
-    const { data: selected, error: contextError } =
-      await current.client.rpc('selected_context');
-    if (contextError || selected?.[0]?.role !== 'gestor') {
-      return respond(req, { error: 'Forbidden' }, 403);
-    }
-
-    const input = await req.json();
-    const prefix = input.prefix as string;
-    const contentType = input.contentType as string;
-    const size = input.size as number;
-    const types: Record<string, string> = {
-      'application/pdf': 'pdf', 'audio/mpeg': 'mp3', 'image/gif': 'gif',
-      'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp',
+import { storageAuth } from '../_shared/storage_runtime.ts';
+import { signPut, storageConfig } from '../_shared/storage_s3.ts';
+import { uploadHandler } from './handler.ts';
+Deno.serve(uploadHandler({
+  ...storageAuth,
+  uuid: () => crypto.randomUUID(),
+  async sign(input) {
+    const config = storageConfig(input.public);
+    const publicBase = Deno.env.get('SUPABASE_URL');
+    if (!config || (input.public && !publicBase)) return null;
+    const { s3, bucket } = config;
+    const putUrl = await signPut(
+      s3,
+      bucket,
+      input.key,
+      input.contentType,
+      input.size,
+      input.expiresIn,
+    );
+    return {
+      putUrl,
+      ...(input.public
+        ? {
+          publicUrl:
+            `${publicBase}/storage/v1/object/public/${bucket}/${input.key}`,
+        }
+        : {}),
     };
-    if (!((prefix === 'covers' && contentType === 'image/webp') ||
-      (prefix === 'lessons' && Object.hasOwn(types, contentType))) ||
-      !Number.isInteger(size) || !(size >= 1 && size <= maxSize)) {
-      return respond(req, { error: 'Invalid upload' }, 400);
-    }
-
-    const endpoint = Deno.env.get('STORAGE_S3_ENDPOINT');
-    const region = Deno.env.get('STORAGE_S3_REGION');
-    const accessKeyId = Deno.env.get('STORAGE_S3_ACCESS_KEY_ID');
-    const secretAccessKey = Deno.env.get('STORAGE_S3_SECRET_ACCESS_KEY');
-    const bucket = Deno.env.get(prefix === 'covers' ? 'STORAGE_BUCKET_PUBLIC' : 'STORAGE_BUCKET_PRIVATE');
-    if (!endpoint || !region || !accessKeyId || !secretAccessKey || !bucket) {
-      return respond(req, { error: 'Storage upload not configured' }, 503);
-    }
-
-    const key = `${prefix}/${crypto.randomUUID()}.${types[contentType]}`;
-    const s3 = new S3Client({
-      endpoint, region, forcePathStyle: true,
-      credentials: { accessKeyId, secretAccessKey },
-    });
-    // Sign host only: content headers vary by HTTP client and would break
-    // the signature when they differ by case or presence.
-    const putUrl = await getSignedUrl(s3, new PutObjectCommand({
-      Bucket: bucket, Key: key, ContentType: contentType,
-    }), { expiresIn });
-    return respond(req, { key, putUrl,
-      ...(prefix === 'covers' ? { publicUrl: `${Deno.env.get('SUPABASE_URL')}/storage/v1/object/public/${bucket}/${key}` } : {}) });
-  } catch {
-    return respond(req, { error: 'Invalid request' }, 400);
-  }
-});
+  },
+}));
