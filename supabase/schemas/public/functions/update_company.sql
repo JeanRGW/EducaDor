@@ -16,7 +16,16 @@ begin
       p_fields->>'email' !~ '^[^@\s]+@[^@\s]+\.[^@\s]+$') then
     raise exception 'Invalid company';
   end if;
+  -- Validate edits only: preserve historical prefixes and already issued codes.
+  -- New prefixes are 1-12 ASCII uppercase letters/digits (PREFIX-XXXXXX).
+  if p_fields ? 'code_prefix' and (
+    jsonb_typeof(p_fields->'code_prefix') <> 'string' or
+    coalesce(p_fields->>'code_prefix', '') !~ '^[A-Z0-9]{1,12}$'
+  ) then
+    raise exception 'Invalid certificate prefix';
+  end if;
   update public.companies set name = trim(p_fields->>'name'),
+    code_prefix = case when p_fields ? 'code_prefix' then p_fields->>'code_prefix' else code_prefix end,
     cnpj = nullif(trim(p_fields->>'cnpj'), ''),
     responsible = nullif(trim(p_fields->>'responsible'), ''),
     email = nullif(trim(p_fields->>'email'), ''),
