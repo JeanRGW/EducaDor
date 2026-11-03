@@ -39,6 +39,10 @@ live in [`supabase/schemas/`](supabase/schemas/); see the
 Backend contracts and shipping notes are in [stack/01-backend.md](stack/01-backend.md)
 and [stack/02-ship.md](stack/02-ship.md).
 
+The [implementation gap review](stack/08-implementation-roadmap.md) distinguishes
+assigned workstreams, remaining prerequisites, intentional deferrals and features
+already implemented. Assignment does not imply a merged or deployed feature.
+
 ```bash
 flutter pub get
 flutter run -d chrome --web-port=8080 \
