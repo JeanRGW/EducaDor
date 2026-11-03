@@ -47,5 +47,11 @@ jobs:
         with:
           deno-version: '2.9.8'
       - run: node --test scripts/*test.mjs supabase/tests/*.test.mjs
-      - name: Test all Edge Function units (no runtime permissions)
-        run: deno test supabase/functions/
+      - name: Test Edge Function units (no runtime permissions)
+        run: deno test supabase/functions/ --ignore=supabase/functions/storage-upload-url/signing_test.ts
+      - name: Check locked storage function entrypoints
+        run: |
+          deno check --frozen --config supabase/functions/storage-upload-url/deno.json supabase/functions/storage-upload-url/index.ts supabase/functions/storage-upload-url/storage_test.ts supabase/functions/storage-upload-url/signing_test.ts
+          deno check --frozen --config supabase/functions/storage-download-url/deno.json supabase/functions/storage-download-url/index.ts
+      - name: Test locked S3 signing (no network runtime permissions)
+        run: deno test --frozen --config supabase/functions/storage-upload-url/deno.json '--allow-env=AWS_*,SMITHY_*,HOME,USERPROFILE,HOMEPATH,HOMEDRIVE,_X_AMZN_TRACE_ID' --allow-sys=osRelease supabase/functions/storage-upload-url/signing_test.ts
