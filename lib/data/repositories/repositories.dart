@@ -1220,8 +1220,13 @@ class ProgressRepository {
 }
 
 class AuthRepository {
+  final SupabaseClient? _injectedClient;
+  AuthRepository({SupabaseClient? client}) : _injectedClient = client;
+
   SupabaseClient get _authClient =>
-      _client ?? (throw StateError('Configure o Supabase para entrar.'));
+      _injectedClient ??
+      _client ??
+      (throw StateError('Configure o Supabase para entrar.'));
 
   Future<AppSession> login({
     required String email,
@@ -1235,7 +1240,7 @@ class AuthRepository {
   }
 
   Future<AppSession?> current() async {
-    final client = _client;
+    final client = _injectedClient ?? _client;
     final authUser = client?.auth.currentUser;
     if (client == null || authUser == null) return null;
     final profile = await client
@@ -1298,14 +1303,11 @@ class AuthRepository {
   Future<void> updatePassword(String password) async {
     final client = _authClient;
     await client.auth.updateUser(UserAttributes(password: password));
-    await client
-        .from('profiles')
-        .update({'needs_password': false})
-        .eq('id', client.auth.currentUser!.id);
+    await client.rpc('complete_password_setup');
   }
 
   Future<void> signOut() async {
-    if (_client == null) return;
+    if (_injectedClient == null && _client == null) return;
     try {
       await _authClient.rpc('clear_context');
     } catch (_) {
