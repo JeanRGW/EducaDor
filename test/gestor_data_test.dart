@@ -52,6 +52,8 @@ class _Session extends SessionController {
 class _Invites extends InvitationRepository {
   @override
   Future<List<PendingInvitation>> pending({
+    String search = '',
+    int offset = 0,
     Role? role,
     String? companyId,
   }) async => [];
@@ -287,11 +289,22 @@ void main() {
     );
     expect(find.text('Empresa 50'), findsOneWidget);
     await tester.scrollUntilVisible(
-      find.byType(SearchField),
+      find.byWidgetPredicate(
+        (w) =>
+            w is TextField &&
+            w.decoration?.hintText == 'Pesquise o nome da empresa',
+      ),
       -1000,
       scrollable: find.byType(Scrollable).first,
     );
-    await tester.enterText(find.byType(TextField), ' %_ ');
+    await tester.enterText(
+      find.byWidgetPredicate(
+        (w) =>
+            w is TextField &&
+            w.decoration?.hintText == 'Pesquise o nome da empresa',
+      ),
+      ' %_ ',
+    );
     await tester.pump(const Duration(milliseconds: 350));
     await tester.pumpAndSettle();
     expect(repo.calls.last.search, '%_');
@@ -328,12 +341,25 @@ void main() {
       final titleStyle = DefaultTextStyle.of(tester.element(title)).style;
       expect(titleStyle.fontFamily, AppFonts.outfit);
       expect(titleStyle.fontWeight, FontWeight.w700);
-      expect(tester.getSize(find.byType(TextField)).height, 36);
+      expect(
+        tester
+            .getSize(
+              find.byWidgetPredicate(
+                (w) =>
+                    w is TextField &&
+                    w.decoration?.hintText == 'Pesquise o nome da empresa',
+              ),
+            )
+            .height,
+        36,
+      );
       expect(tester.getSize(find.byType(FilterChips)).height, 28);
       final search = tester.widget<SvgIcon>(
-        find.byWidgetPredicate(
-          (widget) => widget is SvgIcon && widget.asset == AppIcons.search,
-        ),
+        find
+            .byWidgetPredicate(
+              (widget) => widget is SvgIcon && widget.asset == AppIcons.search,
+            )
+            .first,
       );
       expect(search.size, 18);
       expect(search.color, const Color(0xFF475569));

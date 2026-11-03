@@ -328,6 +328,8 @@ class _Content extends ContentRepository {
 class _Invites extends InvitationRepository {
   @override
   Future<List<PendingInvitation>> pending({
+    String search = '',
+    int offset = 0,
     Role? role,
     String? companyId,
   }) async => [];
