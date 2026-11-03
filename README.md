@@ -60,6 +60,8 @@ your machine; emulator IDs are local and may differ between developers.
 
 ## Manual staging deploy
 
+Deployment requires explicit operator approval; generating the artifact does not authorize publication.
+
 ```bash
 flutter build web --release --pwa-strategy offline-first \
   --dart-define-from-file=config/staging.public.json

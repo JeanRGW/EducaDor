@@ -39,7 +39,7 @@ The stack is locked – do not improvise alternatives, ask instead.
 5. **Push via app-invoked function → FCM.** `firebase_messaging` token → upsert `fcm_tokens`. After the app inserts `assignments`/`certificates` it calls `push-on-assign` directly (no DB triggers; missed pushes acceptable, no resend UI in v1). Server sends via FCM HTTP v1 using service-account secret stored in Supabase secrets only.
 6. **Env/secrets.** Public (baked at build): `SUPABASE_URL`, `SUPABASE_ANON_KEY` (the publishable key) in `config/staging.public.json` via `--dart-define-from-file`. Secret (never in app): Supabase service-role, Supabase S3 access keys, FCM service account → Supabase Function secrets / Actions secrets only.
 7. **Free-tier discipline (egress budget).** PWA shell stays on Pages (zero Supabase egress). Covers/avatars via the public bucket (cached egress – keep WebP <200KB). PDFs/audio via short-lived signed URLs (metered egress). Video is YouTube-only (never Storage) to protect the 5GB quota. Paginate everything (`.range(0,49)`), no polling (Realtime only for ranking), cache signed URLs per session, no `bytea` columns, no event-log tables (activity from `lesson_progress.updated_at`; balances derived from `lessons.points`, no ledger table). `membership_invites` and `session_contexts` store current authorization state, not events.
-8. **PWA.** `flutter build web --pwa-strategy offline-first`; `index.html` no-cache, assets immutable; Pages SPA fallback covers `/contexts`, `/invite/accept`, `/set-password`; register web URLs in Supabase Auth URL config. Manual invite links are bearer credentials: never log/store plaintext, only give to authorized inviters for private handoff. First gestor bootstrap is operator-only, never a public signup page.
+8. **PWA.** After `flutter build web --pwa-strategy offline-first`, run `node scripts/generate-shell-worker.mjs build/web` before any publication: Flutter's generated worker alone does not cache the shell. The custom worker caches public build artifacts only, never private/Auth/API responses or bearer URLs; see `stack/12-pwa-reliability.md`. Entry points use no-cache; unfingerprinted assets revalidate; Pages SPA fallback covers `/contexts`, `/invite/accept`, `/set-password`; register web URLs in Supabase Auth URL config. Manual invite links are bearer credentials: never log/store plaintext, only give to authorized inviters for private handoff. First gestor bootstrap is operator-only, never a public signup page.
 9. **MFA (when added).** TOTP only (free). Gate gestor writes with restrictive `aal2` policy; empresa/funcionario opt-in.
 10. **Content access has three independent gates.** `courses.status = 'released'` is the platform-wide switch; `courses.all_companies` includes future companies or `assignments.released` defines the allowlist; `assignments.company_enabled` is the company's own pause preference (default true, including when no assignment row exists). Managers use guarded metadata/mutation RPCs, never lesson reads. Course/module/lesson reads and progress writes require all three gates. Pauses preserve progress and company preferences; audience changes never reset `company_enabled`. Existing catalogs retain their explicit assignments when migrating; new trails default to all companies.
 
@@ -53,6 +53,9 @@ bash scripts/db.sh reset
 bash scripts/db.sh check
 bash scripts/db.sh test
 flutter build web --release --pwa-strategy offline-first --dart-define-from-file=config/staging.public.json
+node scripts/generate-shell-worker.mjs build/web
+node --test scripts/pwa/*.test.mjs
+# Operator-approved deployment only:
 CLOUDFLARE_ACCOUNT_ID=785b73d97c037eb906aae65de518cad6 npx wrangler pages deploy build/web --project-name=educador --branch=main
 ```
 
