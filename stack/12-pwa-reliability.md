@@ -10,9 +10,10 @@ node scripts/generate-shell-worker.mjs build/web
 node --test scripts/pwa/*.test.mjs
 ```
 
-The CI/deploy owner must add the Node generation command **after every web build,
-before uploading artifacts or publishing `build/web`**. Node standard library only;
-no npm install needed. This change does not edit CI or deploy anything. Plain Flutter
+CI, manual Pages deployment, and the README manual recipe run the Node generation
+command **after every web build, before uploading artifacts or publishing `build/web`**.
+Node standard library only; no npm install needed. Workflow changes do not dispatch
+or deploy anything. Plain Flutter
 output is still an online app, but its generated worker unregisters itself and does
 not satisfy the offline contract. Never run another Flutter build between generation
 and publication. Flutter's deprecated `--pwa-strategy` flag alone is insufficient.

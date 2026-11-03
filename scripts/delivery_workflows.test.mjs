@@ -29,6 +29,23 @@ test('CI validates app and all function suites without deployment credentials', 
   assert.match(text, /flutter-version: '3\.47\.5'/);
 });
 
+test('every web build generates and tests the shell before publication', () => {
+  for (const name of ['ci', 'deploy-pages']) {
+    const text = workflow(name);
+    const build = text.indexOf('flutter build web --release');
+    const generate = text.indexOf('node scripts/generate-shell-worker.mjs build/web', build);
+    const tests = text.indexOf('node --test scripts/pwa/*.test.mjs', generate);
+    assert.ok(build >= 0 && generate > build && tests > generate, name);
+    assert.equal((text.match(/flutter build web/g) ?? []).length, 1, name);
+    assert.ok(text.indexOf('actions/setup-node@') < build, name);
+    if (name === 'deploy-pages') {
+      assert.ok(text.indexOf('pages deploy build/web') > tests);
+    }
+  }
+  const readme = readFileSync(new URL('../README.md', import.meta.url), 'utf8');
+  assert.match(readme, /flutter build web[^`]+node scripts\/generate-shell-worker\.mjs build\/web\nnode --test scripts\/pwa\/\*\.test\.mjs\nCLOUDFLARE_ACCOUNT_ID/);
+});
+
 test('operations use only scoped credentials and fixed deployment target', () => {
   const pages = workflow('deploy-pages');
   assert.match(pages, /secrets\.CLOUDFLARE_API_TOKEN/);
