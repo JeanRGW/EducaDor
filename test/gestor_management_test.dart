@@ -627,6 +627,11 @@ void main() {
       companies: repo,
     );
     await tester.enterText(_field('Nome da empresa'), 'Empresa editada');
+    await tester.scrollUntilVisible(
+      find.text('Salvar dados da empresa'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
     await _tap(tester, find.text('Salvar dados da empresa'));
     expect(repo.saved!['name'], 'Empresa editada');
     expect(repo.saved!['address'], 'Rua A');
@@ -663,6 +668,11 @@ void main() {
       companies: repo,
     );
     await tester.enterText(_field('Nome da empresa'), 'Rascunho');
+    await tester.scrollUntilVisible(
+      find.text('Salvar dados da empresa'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
     await _tap(tester, find.text('Salvar dados da empresa'));
     expect(repo.saved, isNull);
     await tester.ensureVisible(_field('Nome da empresa'));
