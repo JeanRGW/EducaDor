@@ -26,6 +26,7 @@ class CompanyRepository {
   CompanyRepository({SupabaseClient? client}) : _injectedClient = client;
 
   Company _company(Map<String, dynamic> row) => Company(
+    codePrefix: row['code_prefix'] as String? ?? 'EDU',
     id: row['id'] as String,
     name: row['name'] as String,
     cnpj: row['cnpj'] as String? ?? '',
@@ -118,6 +119,7 @@ class CompanyRepository {
     return rows
         .map(
           (row) => Company(
+            codePrefix: row['code_prefix'] as String? ?? 'EDU',
             id: row['id'] as String,
             name: row['name'] as String,
             cnpj: row['cnpj'] as String? ?? '',

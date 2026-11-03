@@ -77,6 +77,7 @@ class _CompanyEditorState extends ConsumerState<_CompanyEditor> {
   static const _labels = {
     'name': 'Nome da empresa',
     'cnpj': 'CNPJ',
+    'code_prefix': 'Prefixo dos certificados',
     'responsible': 'Pessoa responsável',
     'email': 'E-mail de contato',
     'phone': 'Telefone',
@@ -94,6 +95,7 @@ class _CompanyEditorState extends ConsumerState<_CompanyEditor> {
     _fields = {
       'name': c.name,
       'cnpj': c.cnpj,
+      'code_prefix': c.codePrefix,
       'responsible': c.responsibleName,
       'email': c.email,
       'phone': c.phone,
@@ -124,12 +126,16 @@ class _CompanyEditorState extends ConsumerState<_CompanyEditor> {
     if (_busy || !_form.currentState!.validate()) return;
     setState(() => _busy = true);
     try {
+      final fields = _fields.map(
+        (key, value) => MapEntry(key, value.text.trim()),
+      );
+      // Preserve historical values when only other company metadata changes.
+      if (_fields['code_prefix']!.text == widget.company.codePrefix) {
+        fields.remove('code_prefix');
+      }
       await ref
           .read(companyRepositoryProvider)
-          .update(
-            widget.company.id,
-            _fields.map((key, value) => MapEntry(key, value.text.trim())),
-          );
+          .update(widget.company.id, fields);
       if (mounted) showManagementMessage(context, 'Dados da empresa salvos.');
       await _refreshData();
     } catch (error) {
@@ -196,7 +202,13 @@ class _CompanyEditorState extends ConsumerState<_CompanyEditor> {
         : key == 'phone'
         ? TextInputType.phone
         : null,
-    validator: key == 'email'
+    validator: key == 'code_prefix'
+        ? (value) =>
+              value == widget.company.codePrefix ||
+                  RegExp(r'^[A-Z0-9]{1,12}$').hasMatch(value!.trim())
+              ? null
+              : 'Use de 1 a 12 letras maiúsculas ou números.'
+        : key == 'email'
         ? (value) =>
               value!.trim().isNotEmpty &&
                   !RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(value.trim())
@@ -276,6 +288,13 @@ class _CompanyEditorState extends ConsumerState<_CompanyEditor> {
           const SizedBox(height: 24),
           _field('name'),
           _field('cnpj'),
+          _field('code_prefix'),
+          const Text(
+            'Use de 1 a 12 letras maiúsculas (A–Z) ou números (0–9). '
+            'Exemplo: EDU-XXXXXX. A alteração vale apenas para novos certificados.',
+            style: AdminStyles.body,
+          ),
+          const SizedBox(height: 16),
           _field('responsible'),
           CompanyFieldRow(first: _field('email'), second: _field('phone')),
           _field('address'),

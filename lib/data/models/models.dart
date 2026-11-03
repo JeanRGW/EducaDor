@@ -90,6 +90,7 @@ class PendingInvitation {
 }
 
 class Company {
+  final String codePrefix;
   final String id;
   final String name;
   final String cnpj;
@@ -106,6 +107,7 @@ class Company {
   final String initials;
 
   const Company({
+    this.codePrefix = 'EDU',
     required this.id,
     required this.name,
     required this.cnpj,
