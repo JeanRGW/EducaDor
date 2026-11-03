@@ -112,25 +112,49 @@ class AcceptInviteScreen extends ConsumerStatefulWidget {
 
 class _AcceptInviteScreenState extends ConsumerState<AcceptInviteScreen> {
   bool _busy = false;
+  bool _accepted = false;
   String? _error;
+
+  @override
+  void didUpdateWidget(covariant AcceptInviteScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.token != widget.token) {
+      _accepted = false;
+      _error = null;
+    }
+  }
 
   Future<void> _accept() async {
     setState(() {
       _busy = true;
       _error = null;
     });
+    final token = widget.token;
     try {
-      await ref.read(invitationRepositoryProvider).accept(widget.token);
+      if (!_accepted) {
+        try {
+          await ref.read(invitationRepositoryProvider).accept(token);
+        } catch (_) {
+          if (mounted && widget.token == token) {
+            setState(() => _error =
+                'Convite inválido, expirado ou destinado a outro e-mail.');
+          }
+          return;
+        }
+        if (!mounted || widget.token != token) return;
+        setState(() => _accepted = true);
+      }
       final session = await ref.read(sessionProvider.notifier).reload();
-      if (!mounted) return;
+      if (!mounted || widget.token != token) return;
       context.go(
         session?.needsPassword == true ? '/set-password' : '/contexts',
       );
     } catch (_) {
-      if (mounted) {
+      if (mounted && widget.token == token) {
         setState(
           () => _error =
-              'Convite inválido, expirado ou destinado a outro e-mail.',
+              'Convite aceito. Não foi possível atualizar seus perfis. '
+              'Tente carregar novamente.',
         );
       }
     } finally {
@@ -176,7 +200,9 @@ class _AcceptInviteScreenState extends ConsumerState<AcceptInviteScreen> {
             )
           else
             PrimaryButton(
-              _busy ? 'Aceitando...' : 'Aceitar convite',
+              _accepted
+                  ? (_busy ? 'Carregando...' : 'Carregar perfis novamente')
+                  : (_busy ? 'Aceitando...' : 'Aceitar convite'),
               onPressed: _busy || widget.token.isEmpty ? null : _accept,
             ),
         ],
@@ -196,6 +222,8 @@ class _SetPasswordScreenState extends ConsumerState<SetPasswordScreen> {
   final _password = TextEditingController();
   final _confirm = TextEditingController();
   bool _busy = false;
+  bool _passwordUpdated = false;
+  String? _error;
 
   @override
   void dispose() {
@@ -205,7 +233,8 @@ class _SetPasswordScreenState extends ConsumerState<SetPasswordScreen> {
   }
 
   Future<void> _submit() async {
-    if (_password.text.length < 8 || _password.text != _confirm.text) {
+    if (!_passwordUpdated &&
+        (_password.text.length < 8 || _password.text != _confirm.text)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
@@ -215,20 +244,34 @@ class _SetPasswordScreenState extends ConsumerState<SetPasswordScreen> {
       );
       return;
     }
-    setState(() => _busy = true);
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
     try {
-      await ref.read(authRepositoryProvider).updatePassword(_password.text);
+      if (!_passwordUpdated) {
+        try {
+          await ref.read(authRepositoryProvider).updatePassword(_password.text);
+        } catch (_) {
+          if (mounted) {
+            setState(() => _error =
+                'Não foi possível confirmar a conclusão. A senha pode já ter '
+                'sido alterada. Tente novamente com a senha desejada.');
+          }
+          return;
+        }
+        if (!mounted) return;
+        setState(() => _passwordUpdated = true);
+        _password.clear();
+        _confirm.clear();
+      }
       final session = await ref.read(sessionProvider.notifier).reload();
       if (mounted) context.go(session?.homePath ?? '/login');
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Não foi possível atualizar a senha. Tente novamente.',
-            ),
-          ),
-        );
+        setState(() => _error =
+            'Senha salva. Não foi possível atualizar seus perfis. '
+            'Tente carregar novamente.');
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -254,18 +297,24 @@ class _SetPasswordScreenState extends ConsumerState<SetPasswordScreen> {
         const SizedBox(height: 20),
         TextField(
           controller: _password,
+          enabled: !_busy && !_passwordUpdated,
           obscureText: true,
           decoration: const InputDecoration(labelText: 'Nova senha'),
         ),
         const SizedBox(height: 14),
         TextField(
           controller: _confirm,
+          enabled: !_busy && !_passwordUpdated,
           obscureText: true,
           decoration: const InputDecoration(labelText: 'Confirmar senha'),
         ),
         const SizedBox(height: 24),
+        if (_error != null)
+          Text(_error!, style: const TextStyle(color: AppColors.danger)),
         PrimaryButton(
-          _busy ? 'Salvando...' : 'Salvar senha',
+          _passwordUpdated
+              ? (_busy ? 'Carregando...' : 'Carregar perfis novamente')
+              : (_busy ? 'Salvando...' : 'Salvar senha'),
           onPressed: _busy ? null : _submit,
         ),
       ],

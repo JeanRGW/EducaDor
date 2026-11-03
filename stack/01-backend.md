@@ -27,7 +27,7 @@ courses(id uuid pk, title text, kind text, cover_key text, description text,
   status text, all_companies bool default true, created_by uuid, created_at timestamptz default now());
 modules(id uuid pk, course_id uuid references courses on delete cascade, title text, position int);
 lessons(id uuid pk, module_id uuid references modules on delete cascade, title text,
-  kind check (kind in ('video','audio','pdf','quiz','reading')),
+  kind check (kind in ('video','audio','pdf','quiz','reading','animation')),
   video_provider text default 'youtube' check (video_provider = 'youtube'),
   video_id text, file_key text, points int not null default 10,
   quiz_json jsonb, position int); -- points: per-task value set by gestor, no universal rule
@@ -107,23 +107,25 @@ company from the active empresa context. The internal audience helper is not
 callable by clients. `employee_can_access_course` checks the active employee
 context and all gates, and is shared by read/progress RLS policies.
 
-The live `Adicionar Trilha` form uses `publish_video_trail` to atomically create
-the course, module, YouTube lesson, cover key, responsible professional and
-audience. `p_cover_key` accepts only `covers/<id>.webp` keys minted by
-`storage-upload-url`; `p_responsible_id` must reference a platform gestor
-(`created_by` still records the publisher). PDF/audio uploads and quiz
-authoring remain separate roadmap work; the form publishes video only and the
-non-video type tiles are disabled. Failed cover uploads keep the draft on
-screen instead of publishing without the cover.
+The live `Adicionar Trilha` form uses `create_content_course` to create a paused
+course, then opens the course-first editor. Metadata, responsible professional,
+cover and audience are edited independently; modules and typed lessons are added
+afterwards. `publish_video_trail` remains a legacy RPC, not the current form's
+implementation. PDF/audio, reading, quiz and visual lesson authoring/playback are
+implemented; see [Content workflow](03-content.md). Failed cover uploads retain
+the editor state instead of silently publishing without a cover.
 
 Employee Home/Modules and course outlines use `EmployeeLearningRepository`,
 guarded RPCs and RLS-protected course reads instead of mock courses.
 Blocked direct course URLs show an unavailable state. Employee playback/progress,
 certificate issuance, redemption and screen parity are implemented in
 `supabase/schemas/public/functions/`; see [Employee features](06-employee-features.md)
-for metric definitions, guards, video-only scope and deployment order.
+for metric definitions, guards, release boundaries and deployment order.
 
 ## Reports (SQL, export client-side)
+
+CSV export below describes the planned client-side architecture; export controls
+remain deferred in the current release, not a completed Flutter workflow.
 
 Guarded views/RPC read via PostgREST, CSV export in Flutter. No BigQuery, no counter collections: `completion_by_company`, `completion_by_dept`, `engagement_monthly`, `popular_content`, `employee_completion(p_company uuid)`, `ranking(p_company uuid)` (company-scoped derived balances grouped per user, `LIMIT 20`). Managers see only their company's completion through guarded reports, not lesson contents.
 
@@ -147,8 +149,8 @@ counters, polling or external services are introduced.
   employee/lesson opportunities; missing denominators stay null. Highlights
   consider all employees and use deterministic percentage/name/ID ordering.
 * Certificate totals count retained issued records in that company, including
-  former employees; pauses do not erase certificates. Issuing certificates is
-  separate roadmap work, so a company without issued rows correctly shows zero.
+  former employees; pauses do not erase certificates. Issuance is implemented by
+  the employee flow; a company without issued rows correctly shows zero.
 * Participation zero-fills the trailing six São Paulo calendar months and counts
   distinct current employee identities with a latest progress update in each
   month, through now. It is not an immutable engagement history: later lesson
@@ -227,8 +229,8 @@ selector does not re-query or filter the current company-completion section.
 
 Dashboard, Companies and Reports include loading, empty, retry and refresh
 states. Gestor content routes reuse the real catalog and YouTube publisher
-without mock fallbacks. CSV export, MFA, notifications and
-non-video authoring remain deferred. Test the queries with
+without mock fallbacks. CSV export, MFA and notifications
+remain deferred. Non-video authoring is implemented. Test the queries with
 `supabase/tests/gestor_data.sql` on an isolated database; never apply fixtures or
 new migrations to shared/staging databases without operator approval.
 
@@ -282,8 +284,9 @@ revocation, own-profile editing, and course metadata/lesson editing. Verify with
   as completion of newly substituted content. Renaming a module affects all its
   lessons. Previously credited responsible gestors remain valid when unchanged
   after grant revocation; new responsible selections require a current grant.
-  Adding/deleting/reordering lessons, non-video body editing and drafts remain
-  deferred.
+  Adding/deleting/reordering lessons and non-video body editing are implemented;
+  drafts remain deferred. See [Content workflow](03-content.md) for deletion and
+  point-balance consequences.
 
 Deployment order: apply the migration after operator approval, deploy the updated
 `accept-invite` Edge Function, then ship Flutter. Do not deploy the function
@@ -291,6 +294,9 @@ before its server-only RPC exists. No staging migration or deployment is implici
 in these source changes.
 
 ## Edge Functions (Deno, 500k/mo free)
+
+The deployed/source baseline contains the two invitation functions, two storage
+functions and `issue-certificate`. `push-on-assign` below is planned, not present.
 
 `invite-member` / `accept-invite` (manual link, verified recipient, service-role isolated in Functions) · `storage-upload-url` / `storage-download-url` (S3 SigV4 presign against the Storage endpoint) · `issue-certificate` (app-invoked after final lesson, idempotency key includes company + progress row; code `{prefix}-{6-char}`, `UNIQUE` + retry) · `push-on-assign` (FCM send, invoked by the app – no DB triggers anywhere). `custom_access_token_hook` remains installed as a passthrough so previously configured projects continue to issue JWTs.
 
@@ -302,12 +308,21 @@ Edge Functions use the S3 SDK (SigV4) against `https://<ref>.storage.supabase.co
 
 Upload: `POST /functions/v1/storage-upload-url {prefix, contentType, size}` → `{key, putUrl (15min)}` → Flutter PUTs directly → saves `file_key`/`cover_key`/`image_keys`. Covers use `prefix: 'covers'` + `contentType: 'image/webp'`; private lesson media use `prefix: 'lessons'` and PDF/MP3/GIF/PNG/JPEG/WebP MIME types. All uploads require the active gestor context. Read: `POST /functions/v1/storage-download-url {lessonId}` → `{urls: {key: signedUrl}}`, signing only that lesson's stored keys after caller-JWT RLS authorization. Reject missing JWT, unavailable lesson access, `size>50MB`, or invalid MIME/prefix (no `mp4` – video is YouTube-only). Server secrets: `STORAGE_S3_ENDPOINT, STORAGE_S3_REGION, STORAGE_S3_ACCESS_KEY_ID, STORAGE_S3_SECRET_ACCESS_KEY, STORAGE_BUCKET_PRIVATE, STORAGE_BUCKET_PUBLIC`.
 
-Flutter: covers → WebP 1200px max dimension, <200KB client-side (quality/downscale loop); chunked upload >5MB; cache `getUrl` per session; paginate `.range(0,49)`; public reads straight from the public bucket URL (cached egress), never through PostgREST. Files share the 1GB storage + 5GB egress quotas – keep them small, video stays on YouTube.
+Flutter: covers → WebP 1200px max dimension, <200KB client-side (quality/downscale loop); uploads currently buffer a file and use one PUT. Chunked upload above 5MB is a planned gap, not current behavior. Cache signed URLs per session/context; paginate `.range(0,49)`; public reads go straight to the public bucket URL (cached egress), never through PostgREST. Files share the 1GB storage + 5GB egress quotas – keep them small, video stays on YouTube.
 
 ## Video
+
+The locked stack has no approved paid-provider fallback. Corporate networks must
+whitelist YouTube; references below to paid alternatives are not authorization
+to provision or migrate to those services.
 
 YouTube Unlisted only (`youtube_player_flutter`, store `video_id`); no Storage video – the 1GB quota forbids it. `AddTrailScreen` video type = YouTube URL/ID field, no file upload. Save `position_sec` for resume. Completion = client-reported ≥90% watched + quiz pass → `issue-certificate`. Accepted MVP risk: clients can forge completion and quiz answers ship inside `quiz_json` (client-graded); server-side recompute deferred. Corporate networks must whitelist `youtube.com`; blocked networks escalate to paid Stream/Bunny (see `02-ship.md` fallbacks).
 
 ## Push (FCM Spark, messaging only – no Firestore/Storage/Hosting)
+
+Planned architecture, not release availability: no push function, Firebase client
+or token lifecycle is implemented at the audit baseline. Assignment changes are
+made by RPCs and certificates are issued server-side; the caller/recipient event
+contract must be resolved before implementing the app-invoked send below.
 
 Flutter `firebase_messaging getToken()` → upsert `fcm_tokens`. Direct send per stored token (no topics in v1). No DB triggers: after the app inserts `assignments`/`certificates` it invokes `push-on-assign` directly (idempotency key = row PK; missed pushes acceptable – notifications are optional, no resend UI in v1). Function sends via FCM HTTP v1 (service-account JSON in Supabase secrets). Unlimited $0; skip BigQuery analytics for MVP.
