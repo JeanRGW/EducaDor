@@ -46,7 +46,9 @@ begin
     insert into public.lessons(module_id,title,kind,position) select p_module,trim(p_title),p_kind,coalesce(max(position),0)+1
       from public.lessons where module_id=p_module returning id into result;
   else result := p_lesson; end if;
-  update public.lessons set title=trim(p_title), video_id=case when p_kind='video' then p_data->>'video_id' end,
+  update public.lessons set title=trim(p_title),
+    points=case when p_data ? 'points' then (p_data->>'points')::int else points end,
+    video_id=case when p_kind='video' then p_data->>'video_id' end,
     file_key=case when p_kind in ('audio','pdf','animation') then k end,
     body=coalesce(p_data->>'body',''),
     quiz_json=case when p_kind='quiz' then p_data->'questions' end,
