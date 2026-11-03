@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/router.dart';
+import 'offline_banner.dart';
 import 'theme.dart';
 
 class EducaDorApp extends ConsumerWidget {
@@ -15,6 +16,8 @@ class EducaDorApp extends ConsumerWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       routerConfig: router,
+      builder: (context, child) =>
+          OfflineBanner(child: child ?? const SizedBox.shrink()),
     );
   }
 }

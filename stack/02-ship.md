@@ -2,9 +2,19 @@
 
 ## PWA hosting (Cloudflare Pages, `app.educador.rgw.app`)
 
-* Staging public build inputs live in `config/staging.public.json`. Build with `flutter build web --release --pwa-strategy offline-first --dart-define-from-file=config/staging.public.json`; deploy `build/web` with `CLOUDFLARE_ACCOUNT_ID=785b73d97c037eb906aae65de518cad6 npx wrangler pages deploy build/web --project-name=educador --branch=main`. Add `VAPID_PUBLIC_KEY` only when web push is implemented.
-* SPA fallback `/* → /index.html` (routes in `lib/core/router.dart` must survive refresh). Headers: `index.html` no-cache, `assets/*` immutable 1y.
-* `app.educador.rgw.app` CNAME → `educador-ayp.pages.dev` in the `rgw.app` Cloudflare zone. Public covers served from the public Storage bucket (cached egress). Supabase Auth Site URL: `https://app.educador.rgw.app/`, with invite/password callbacks plus trusted localhost/preview URLs allowed. Publishable key in the bundle is safe with RLS; service-role never in the app. Offline-shell caching and a global banner are planned gaps at the audit baseline: the Flutter flag alone does not prove caching. Current reads use per-screen errors/retry; private/Auth/API responses must never be cached by an offline worker.
+* Staging public build inputs live in `config/staging.public.json`. Every publishable build must generate the custom static-shell worker after Flutter; the Flutter flag alone does not provide offline caching. Manual recipe (deployment requires operator approval):
+
+  ```bash
+  flutter build web --release --pwa-strategy offline-first --dart-define-from-file=config/staging.public.json
+  node scripts/generate-shell-worker.mjs build/web
+  node --test scripts/pwa/*.test.mjs
+  # Operator-approved deployment only:
+  CLOUDFLARE_ACCOUNT_ID=785b73d97c037eb906aae65de518cad6 npx wrangler pages deploy build/web --project-name=educador --branch=main
+  ```
+
+  Add `VAPID_PUBLIC_KEY` only when web push is implemented.
+* SPA fallback `/* → /index.html` (routes in `lib/core/router.dart` must survive refresh). Entry points use no-cache; unfingerprinted `assets/*` and CanvasKit revalidate rather than immutable one-year caching. Security headers include a report-only CSP pending real-flow browser validation.
+* `app.educador.rgw.app` CNAME → `educador-ayp.pages.dev` in the `rgw.app` Cloudflare zone. Public covers served from the public Storage bucket (cached egress). Supabase Auth Site URL: `https://app.educador.rgw.app/`, with invite/password callbacks plus trusted localhost/preview URLs allowed. Publishable key in the bundle is safe with RLS; service-role never in the app. Offline support is static shell only via the required build-generated custom worker, with a browser `navigator.onLine`/events banner (not an inference from server/Auth errors). Current reads still use per-screen errors/retry; private/Auth/API responses, signed files and bearer URL responses are never cached. Navigation uses the sanitized static index; no offline course data, media or write queue is implemented. See `12-pwa-reliability.md` for lifecycle, browser evidence and limitations.
 
 * Web push: VAPID keypair (public key in build, private in function secrets) + `firebase-messaging-sw.js` in `build/web`; tokens use the same `fcm_tokens` upsert.
 

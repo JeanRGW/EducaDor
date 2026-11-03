@@ -60,12 +60,20 @@ your machine; emulator IDs are local and may differ between developers.
 
 ## Manual staging deploy
 
+Deployment requires explicit operator approval; generating the artifact does not authorize publication.
+
 ```bash
 flutter build web --release --pwa-strategy offline-first \
   --dart-define-from-file=config/staging.public.json
+node scripts/generate-shell-worker.mjs build/web
+node --test scripts/pwa/*.test.mjs
 CLOUDFLARE_ACCOUNT_ID=785b73d97c037eb906aae65de518cad6 \
   npx wrangler pages deploy build/web --project-name=educador --branch=main
 ```
+
+Requires Node.js 24. Generate the static-shell worker after every Flutter build,
+before publishing; Flutter's generated worker alone does not provide offline caching.
+See [PWA reliability](stack/12-pwa-reliability.md) for the cache boundary and limitations.
 
 Log in with `npx wrangler login --device` first if needed. The `web/_redirects`
 rule serves direct `/invite/accept`, `/contexts` and `/set-password` paths.
