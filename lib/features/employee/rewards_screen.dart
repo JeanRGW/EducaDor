@@ -349,59 +349,71 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                       EmployeeResult(
                         result: ranking,
                         retry: () => ref.invalidate(employeeRankingProvider),
-                        builder: (rows) => Column(
-                          children: [
-                            for (var i = 0; i < rows.length; i++)
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 8),
-                                child: AppCard(
-                                  key: ValueKey('rank-${rows[i].userId}'),
-                                  color: rows[i].userId == scope.userId
-                                      ? AppColors.successBgSoft
-                                      : null,
-                                  borderRadius: 8,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 8,
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Text(
-                                        '${i + 1}.',
-                                        style: AdminStyles.body.copyWith(
-                                          color: AppColors.textPrimary,
-                                          fontWeight:
-                                              rows[i].userId == scope.userId
-                                              ? FontWeight.w700
-                                              : FontWeight.w400,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Expanded(
-                                        child: Text(
-                                          '${rows[i].name}${rows[i].department.isEmpty ? '' : ' (${rows[i].department})'}${rows[i].userId == scope.userId ? ' · você' : ''}',
-                                          style: AdminStyles.body.copyWith(
-                                            color: AppColors.textPrimary,
-                                            fontWeight:
-                                                rows[i].userId == scope.userId
-                                                ? FontWeight.w700
-                                                : FontWeight.w400,
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        '${_points(rows[i].points)} pts',
-                                        style: AdminStyles.fieldLabel.copyWith(
-                                          color: AppColors.successDarkGreen,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                        builder: (rows) => rows.isEmpty
+                            ? const AppCard(
+                                child: Text(
+                                  'Ainda não há participantes no ranking da empresa.',
                                 ),
+                              )
+                            : Column(
+                                children: [
+                                  for (var i = 0; i < rows.length; i++)
+                                    Padding(
+                                      padding: const EdgeInsets.only(bottom: 8),
+                                      child: AppCard(
+                                        key: ValueKey('rank-${rows[i].userId}'),
+                                        color: rows[i].userId == scope.userId
+                                            ? AppColors.successBgSoft
+                                            : null,
+                                        borderRadius: 8,
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 8,
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Text(
+                                              '${i + 1}.',
+                                              style: AdminStyles.body.copyWith(
+                                                color: AppColors.textPrimary,
+                                                fontWeight:
+                                                    rows[i].userId ==
+                                                        scope.userId
+                                                    ? FontWeight.w700
+                                                    : FontWeight.w400,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Expanded(
+                                              child: Text(
+                                                '${rows[i].name}${rows[i].department.isEmpty ? '' : ' (${rows[i].department})'}${rows[i].userId == scope.userId ? ' · você' : ''}',
+                                                style: AdminStyles.body
+                                                    .copyWith(
+                                                      color:
+                                                          AppColors.textPrimary,
+                                                      fontWeight:
+                                                          rows[i].userId ==
+                                                              scope.userId
+                                                          ? FontWeight.w700
+                                                          : FontWeight.w400,
+                                                    ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              '${_points(rows[i].points)} pts',
+                                              style: AdminStyles.fieldLabel
+                                                  .copyWith(
+                                                    color: AppColors
+                                                        .successDarkGreen,
+                                                  ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                ],
                               ),
-                          ],
-                        ),
                       ),
                     ],
                   ),

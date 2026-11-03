@@ -36,6 +36,8 @@ class _ProfessionalPickerState extends ConsumerState<_ProfessionalPicker> {
   List<ProfessionalOption>? _people;
   bool _loading = false;
   bool _error = false;
+  bool _hasMore = false;
+  int _offset = 0;
   String _search = '';
   Timer? _debounce;
   int _request = 0;
@@ -53,7 +55,12 @@ class _ProfessionalPickerState extends ConsumerState<_ProfessionalPicker> {
     super.dispose();
   }
 
-  Future<void> _load() async {
+  Future<void> _load({bool more = false}) async {
+    _debounce?.cancel();
+    if (!more) {
+      _offset = 0;
+      _people = null;
+    }
     final request = ++_request;
     setState(() {
       _loading = true;
@@ -62,9 +69,13 @@ class _ProfessionalPickerState extends ConsumerState<_ProfessionalPicker> {
     try {
       final rows = await ref
           .read(peopleRepositoryProvider)
-          .platformProfessionals(search: _search);
+          .platformProfessionals(search: _search, offset: _offset);
       if (!mounted || request != _request) return;
-      setState(() => _people = rows);
+      setState(() {
+        _people = [...?_people, ...rows];
+        _offset += rows.length;
+        _hasMore = rows.length == 50;
+      });
     } catch (_) {
       if (mounted && request == _request) setState(() => _error = true);
     } finally {
@@ -77,6 +88,13 @@ class _ProfessionalPickerState extends ConsumerState<_ProfessionalPicker> {
   void _searchChanged(String value) {
     _search = value;
     _request++;
+    setState(() {
+      _people = null;
+      _offset = 0;
+      _hasMore = false;
+      _error = false;
+      _loading = true;
+    });
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 300), () => _load());
   }
@@ -146,7 +164,7 @@ class _ProfessionalPickerState extends ConsumerState<_ProfessionalPicker> {
                       ),
                   if (_error)
                     TextButton(
-                      onPressed: () => _load(),
+                      onPressed: () => _load(more: _offset > 0),
                       child: const Text(
                         'Não foi possível carregar. Tentar novamente',
                       ),
@@ -157,6 +175,11 @@ class _ProfessionalPickerState extends ConsumerState<_ProfessionalPicker> {
                       dense: true,
                       title: Text(person.name, style: AdminStyles.body),
                       value: person.id,
+                    ),
+                  if (_hasMore && !_error)
+                    TextButton(
+                      onPressed: _loading ? null : () => _load(more: true),
+                      child: Text(_loading ? 'Carregando...' : 'Carregar mais'),
                     ),
                   if (!_loading && !_error && _people?.isEmpty == true)
                     const Padding(

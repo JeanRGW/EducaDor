@@ -65,7 +65,9 @@ CREATE POLICY "progress_valid_update" ON "public"."lesson_progress"
   TO "authenticated"
   WITH CHECK (public.employee_progress_valid(lesson_id, status));
 
-GRANT DELETE, INSERT, SELECT, UPDATE ON TABLE "public"."lesson_progress" TO "authenticated";
+REVOKE INSERT, UPDATE ON TABLE "public"."lesson_progress" FROM "authenticated";
+
+GRANT DELETE, SELECT ON TABLE "public"."lesson_progress" TO "authenticated";
 
 GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."lesson_progress" TO "service_role";
 

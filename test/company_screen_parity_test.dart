@@ -217,6 +217,8 @@ class _Invites extends InvitationRepository {
   ({String? company, String? department, String? jobTitle})? request;
   @override
   Future<List<PendingInvitation>> pending({
+    String search = '',
+    int offset = 0,
     Role? role,
     String? companyId,
   }) async => [];
@@ -237,7 +239,34 @@ class _Invites extends InvitationRepository {
 
 class _People extends PeopleRepository {
   @override
-  Future<List<User>> companyManagers(String companyId) async => [_user];
+  Future<List<User>> companyManagers(
+    String companyId, {
+    String search = '',
+    int offset = 0,
+  }) async => [_user];
+}
+
+class _PagedPeople extends _People {
+  final calls = <(String, int)>[];
+  bool fail = false;
+  @override
+  Future<List<User>> companyManagers(
+    String companyId, {
+    String search = '',
+    int offset = 0,
+  }) async {
+    calls.add((search, offset));
+    if (fail) throw StateError('offline');
+    return List.generate(
+      offset == 0 && search.isEmpty ? 50 : 1,
+      (i) => User(
+        id: '${offset + i}',
+        fullName: 'Manager ${offset + i}',
+        email: 'manager${offset + i}@test.invalid',
+        initials: 'M',
+      ),
+    );
+  }
 }
 
 class _Content extends ContentRepository {
@@ -275,6 +304,7 @@ Future<ProviderContainer> _show(
   _Reports? reports,
   _Companies? companies,
   _Invites? invites,
+  _People? people,
   CompanyDataRepository? companyData,
 }) async {
   await tester.pumpWidget(const SizedBox());
@@ -293,7 +323,7 @@ Future<ProviderContainer> _show(
       ),
       companyRepositoryProvider.overrideWithValue(companies ?? _Companies()),
       invitationRepositoryProvider.overrideWithValue(invites ?? _Invites()),
-      peopleRepositoryProvider.overrideWithValue(_People()),
+      peopleRepositoryProvider.overrideWithValue(people ?? _People()),
       contentRepositoryProvider.overrideWithValue(_Content()),
     ],
   );
@@ -356,6 +386,52 @@ Future<void> _scrollTo(
 }
 
 void main() {
+  testWidgets(
+    'manager directory pages, retries and resets search without polling',
+    (tester) async {
+      final people = _PagedPeople();
+      await _show(tester, const CompanyManagersScreen(), people: people);
+      await tester.dragUntilVisible(
+        find.text('Carregar mais gestores'),
+        find.byType(ListView),
+        const Offset(0, -500),
+      );
+      people.fail = true;
+      await tester.tap(find.text('Carregar mais gestores'));
+      await tester.pumpAndSettle();
+      expect(people.calls.last, ('', 50));
+      people.fail = false;
+      await tester.dragUntilVisible(
+        find.text('Tentar novamente'),
+        find.byType(ListView),
+        const Offset(0, 500),
+      );
+      await tester.tap(find.text('Tentar novamente'));
+      await tester.pumpAndSettle();
+      expect(people.calls.last, ('', 50));
+      await tester.dragUntilVisible(
+        find.text('Manager 50'),
+        find.byType(ListView),
+        const Offset(0, -500),
+      );
+      final search = find.byWidgetPredicate(
+        (w) => w is TextField && w.decoration?.hintText == 'Pesquisar gestores',
+      );
+      await tester.dragUntilVisible(
+        search,
+        find.byType(ListView),
+        const Offset(0, 500),
+      );
+      await tester.enterText(search, '%_');
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pumpAndSettle();
+      expect(people.calls.last, ('%_', 0));
+      final count = people.calls.length;
+      await tester.pump(const Duration(seconds: 10));
+      expect(people.calls.length, count);
+    },
+  );
+
   TestWidgetsFlutterBinding.ensureInitialized();
   setUpAll(() async {
     for (final font in {
@@ -495,7 +571,19 @@ void main() {
     'employees keep prototype cards, honest unknowns and working search',
     (tester) async {
       await _show(tester, const EmployeesScreen());
-      expect(tester.getSize(find.byType(TextField)).height, closeTo(36, 2));
+      expect(
+        tester
+            .getSize(
+              find.byWidgetPredicate(
+                (w) =>
+                    w is TextField &&
+                    w.decoration?.hintText ==
+                        'Pesquise por nome, departamento...',
+              ),
+            )
+            .height,
+        closeTo(36, 2),
+      );
       expect(find.text('Todos os funcionários (3)'), findsOneWidget);
       expect(find.textContaining('Ativos'), findsNothing);
       expect(find.text('ATIVO'), findsNothing);
@@ -518,12 +606,26 @@ void main() {
       );
       expect(tester.widget<ProgressBar>(progress).color, AppColors.primary);
       expect(find.text('Nenhuma atividade registrada'), findsWidgets);
-      await tester.enterText(find.byType(TextField), 'RH');
+      await tester.enterText(
+        find.byWidgetPredicate(
+          (w) =>
+              w is TextField &&
+              w.decoration?.hintText == 'Pesquise por nome, departamento...',
+        ),
+        'RH',
+      );
       await tester.pump(const Duration(milliseconds: 350));
       await tester.pumpAndSettle();
       expect(find.text('Roberto Silva'), findsOneWidget);
       expect(find.text('Pessoa 1'), findsNothing);
-      await tester.enterText(find.byType(TextField), 'Pessoa 2');
+      await tester.enterText(
+        find.byWidgetPredicate(
+          (w) =>
+              w is TextField &&
+              w.decoration?.hintText == 'Pesquise por nome, departamento...',
+        ),
+        'Pessoa 2',
+      );
       await tester.pump(const Duration(milliseconds: 350));
       await tester.pumpAndSettle();
       expect(find.text('Sem dados'), findsOneWidget);
@@ -699,6 +801,7 @@ void main() {
         tester,
         const EmployeesScreen(),
         employees: employees,
+        invites: _Invites(),
       );
       expect(find.text('Roberto Silva'), findsOneWidget);
       (container.read(sessionProvider.notifier) as _Session).switchTo(_second);
@@ -799,7 +902,14 @@ void main() {
       final employees = _Employees()
         ..rows = [for (var i = 0; i < 52; i++) _employee(i)];
       await _show(tester, const EmployeesScreen(), employees: employees);
-      await tester.enterText(find.byType(TextField), 'Pessoa 51');
+      await tester.enterText(
+        find.byWidgetPredicate(
+          (w) =>
+              w is TextField &&
+              w.decoration?.hintText == 'Pesquise por nome, departamento...',
+        ),
+        'Pessoa 51',
+      );
       await tester.pump(const Duration(milliseconds: 350));
       await tester.pumpAndSettle();
       expect(
@@ -897,6 +1007,7 @@ void main() {
         tester,
         const EmployeesScreen(),
         employees: employees,
+        invites: _Invites(),
       );
       await _scrollTo(tester, find.text('Carregar mais funcionários'));
       await tester.tap(find.text('Carregar mais funcionários'));
@@ -912,8 +1023,23 @@ void main() {
       );
       addTearDown(subscription.close);
 
-      await _scrollTo(tester, find.byType(TextField), delta: -180);
-      await tester.enterText(find.byType(TextField), 'Pessoa 51');
+      await _scrollTo(
+        tester,
+        find.byWidgetPredicate(
+          (w) =>
+              w is TextField &&
+              w.decoration?.hintText == 'Pesquise por nome, departamento...',
+        ),
+        delta: -180,
+      );
+      await tester.enterText(
+        find.byWidgetPredicate(
+          (w) =>
+              w is TextField &&
+              w.decoration?.hintText == 'Pesquise por nome, departamento...',
+        ),
+        'Pessoa 51',
+      );
       await tester.pump(const Duration(milliseconds: 350));
       await tester.pumpAndSettle();
       expect(employees.queries.last, (
@@ -943,12 +1069,28 @@ void main() {
         tester,
         const EmployeesScreen(),
         employees: employees,
+        invites: _Invites(),
       );
       await _scrollTo(tester, find.text('Carregar mais funcionários'));
       await tester.tap(find.text('Carregar mais funcionários'));
       await tester.pumpAndSettle();
-      await _scrollTo(tester, find.byType(TextField), delta: -180);
-      await tester.enterText(find.byType(TextField), 'Pessoa 51');
+      await _scrollTo(
+        tester,
+        find.byWidgetPredicate(
+          (w) =>
+              w is TextField &&
+              w.decoration?.hintText == 'Pesquise por nome, departamento...',
+        ),
+        delta: -180,
+      );
+      await tester.enterText(
+        find.byWidgetPredicate(
+          (w) =>
+              w is TextField &&
+              w.decoration?.hintText == 'Pesquise por nome, departamento...',
+        ),
+        'Pessoa 51',
+      );
       (container.read(sessionProvider.notifier) as _Session).switchTo(_second);
       await tester.pumpAndSettle();
       await tester.pump(const Duration(milliseconds: 350));
@@ -959,7 +1101,10 @@ void main() {
       ));
       expect(find.text('Roberto Silva'), findsNothing);
       expect(
-        tester.widget<EditableText>(find.byType(EditableText)).controller.text,
+        tester
+            .widget<EditableText>(find.byType(EditableText).first)
+            .controller
+            .text,
         '',
       );
     },
@@ -976,7 +1121,14 @@ void main() {
     );
     final pending = Completer<List<Employee>>();
     employees.pending = pending;
-    await tester.enterText(find.byType(TextField), 'Roberto');
+    await tester.enterText(
+      find.byWidgetPredicate(
+        (w) =>
+            w is TextField &&
+            w.decoration?.hintText == 'Pesquise por nome, departamento...',
+      ),
+      'Roberto',
+    );
     await tester.pump(const Duration(milliseconds: 350));
     await tester.pumpAndSettle();
     employees.pending = null;

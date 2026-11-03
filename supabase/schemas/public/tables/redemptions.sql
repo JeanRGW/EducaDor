@@ -18,7 +18,9 @@ CREATE POLICY "redemptions_select" ON "public"."redemptions"
   TO "authenticated"
   USING ((public.is_gestor() OR ((public.context_role() = 'funcionario'::text) AND (user_id = auth.uid()) AND (company_id = public.own_company_id()))));
 
-GRANT DELETE, INSERT, SELECT, UPDATE ON TABLE "public"."redemptions" TO "authenticated";
+REVOKE DELETE, INSERT, UPDATE ON TABLE "public"."redemptions" FROM "authenticated";
+
+GRANT SELECT ON TABLE "public"."redemptions" TO "authenticated";
 
 GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."redemptions" TO "service_role";
 

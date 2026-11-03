@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -26,7 +28,14 @@ class PendingInvitesSection extends ConsumerStatefulWidget {
 }
 
 class _PendingInvitesSectionState extends ConsumerState<PendingInvitesSection> {
-  late Future<List<PendingInvitation>> _pending;
+  List<PendingInvitation> _pending = [];
+  bool _loading = false;
+  bool _error = false;
+  bool _hasMore = false;
+  int _offset = 0;
+  int _request = 0;
+  String _search = '';
+  Timer? _debounce;
   PendingInvitation? _busyInvite;
 
   @override
@@ -35,10 +44,66 @@ class _PendingInvitesSectionState extends ConsumerState<PendingInvitesSection> {
     _load();
   }
 
-  void _load() {
-    _pending = ref
-        .read(invitationRepositoryProvider)
-        .pending(role: widget.role, companyId: widget.companyId);
+  @override
+  void didUpdateWidget(covariant PendingInvitesSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.role != widget.role ||
+        oldWidget.companyId != widget.companyId) {
+      _load();
+    }
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  void _searchChanged(String value) {
+    _search = value;
+    _request++;
+    _debounce?.cancel();
+    setState(() {
+      _pending = [];
+      _offset = 0;
+      _hasMore = false;
+      _loading = true;
+      _error = false;
+    });
+    _debounce = Timer(const Duration(milliseconds: 300), () => _load());
+  }
+
+  Future<void> _load({bool more = false}) async {
+    _debounce?.cancel();
+    final request = ++_request;
+    setState(() {
+      if (!more) {
+        _pending = [];
+        _offset = 0;
+      }
+      _loading = true;
+      _error = false;
+    });
+    try {
+      final rows = await ref
+          .read(invitationRepositoryProvider)
+          .pending(
+            role: widget.role,
+            companyId: widget.companyId,
+            search: _search,
+            offset: _offset,
+          );
+      if (!mounted || request != _request) return;
+      setState(() {
+        _pending = [..._pending, ...rows];
+        _offset += rows.length;
+        _hasMore = rows.length == 50;
+      });
+    } catch (_) {
+      if (mounted && request == _request) setState(() => _error = true);
+    } finally {
+      if (mounted && request == _request) setState(() => _loading = false);
+    }
   }
 
   Future<void> _regenerate(PendingInvitation invite) async {
@@ -70,10 +135,10 @@ class _PendingInvitesSectionState extends ConsumerState<PendingInvitesSection> {
           .regenerate(invite);
       if (!mounted) return;
       await showInviteLink(context, link);
-      if (mounted) setState(_load);
+      if (mounted) _load();
     } catch (_) {
       if (mounted) {
-        setState(_load);
+        _load();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Não foi possível gerar o link. Tente novamente.'),
@@ -86,52 +151,58 @@ class _PendingInvitesSectionState extends ConsumerState<PendingInvitesSection> {
   }
 
   @override
-  Widget build(BuildContext context) => FutureBuilder<List<PendingInvitation>>(
-    future: _pending,
-    builder: (context, snapshot) => Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SectionHeader('Convites pendentes'),
-        if (snapshot.hasError)
-          const Text('Não foi possível carregar os convites.'),
-        if (!snapshot.hasData && !snapshot.hasError)
-          const AppCard(
-            child: Row(
-              children: [
-                CircleAvatar(backgroundColor: AppColors.chipBg, radius: 20),
-                SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _InvitePlaceholder(width: 140, height: 16),
-                      SizedBox(height: 8),
-                      _InvitePlaceholder(width: 200, height: 12),
-                    ],
-                  ),
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const SectionHeader('Convites pendentes'),
+      SearchField('Pesquisar convites', onChanged: _searchChanged),
+      if (_error)
+        TextButton(
+          onPressed: () => _load(more: _offset > 0),
+          child: const Text(
+            'Não foi possível carregar os convites. Tentar novamente',
+          ),
+        ),
+      if (_loading && _pending.isEmpty)
+        const AppCard(
+          child: Row(
+            children: [
+              CircleAvatar(backgroundColor: AppColors.chipBg, radius: 20),
+              SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _InvitePlaceholder(width: 140, height: 16),
+                    SizedBox(height: 8),
+                    _InvitePlaceholder(width: 200, height: 12),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        if (snapshot.hasData && snapshot.data!.isEmpty)
-          const Text('Nenhum convite pendente.'),
-        for (final invite in snapshot.data ?? <PendingInvitation>[]) ...[
-          _PendingInviteCard(
-            invite: invite,
-            companyName: invite.companyId != null && widget.companyId == null
-                ? invite.companyName ??
-                      widget.companyNames[invite.companyId] ??
-                      'Empresa'
-                : null,
-            busy: _busyInvite == invite,
-            onRegenerate: _busyInvite == null
-                ? () => _regenerate(invite)
-                : null,
-          ),
-          const SizedBox(height: 10),
-        ],
+        ),
+      if (!_loading && !_error && _pending.isEmpty)
+        const Text('Nenhum convite pendente.'),
+      for (final invite in _pending) ...[
+        _PendingInviteCard(
+          invite: invite,
+          companyName: invite.companyId != null && widget.companyId == null
+              ? invite.companyName ??
+                    widget.companyNames[invite.companyId] ??
+                    'Empresa'
+              : null,
+          busy: _busyInvite == invite,
+          onRegenerate: _busyInvite == null ? () => _regenerate(invite) : null,
+        ),
+        const SizedBox(height: 10),
       ],
-    ),
+      if (_hasMore && !_error)
+        TextButton(
+          onPressed: _loading ? null : () => _load(more: true),
+          child: Text(_loading ? 'Carregando...' : 'Carregar mais convites'),
+        ),
+    ],
   );
 }
 

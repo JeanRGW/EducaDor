@@ -132,10 +132,13 @@ do $$ begin
 end $$;
 
 select select_context('funcionario', 'b0000000-0000-4000-8000-000000000001');
+-- Historical completion fixture; client writes now require the guarded RPC.
+reset role;
 insert into lesson_progress(user_id, company_id, lesson_id, status)
 values ('a0000000-0000-4000-8000-000000000001',
   'b0000000-0000-4000-8000-000000000001',
   'e0000000-0000-4000-8000-000000000001', 'completed');
+set local role authenticated;
 do $$ begin
   if (select count(*) from lesson_progress) <> 1 then
     raise exception 'Employee progress not visible in company A';

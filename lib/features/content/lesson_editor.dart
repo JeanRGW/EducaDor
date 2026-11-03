@@ -18,7 +18,7 @@ class LessonEditor extends ConsumerStatefulWidget {
 
 class _LessonEditorState extends ConsumerState<LessonEditor> {
   final _form = GlobalKey<FormState>();
-  late final TextEditingController _title, _body, _video, _interval;
+  late final TextEditingController _title, _body, _video, _interval, _points;
   late String _kind;
   String? _fileKey;
   List<String> _keys = [];
@@ -33,6 +33,7 @@ class _LessonEditorState extends ConsumerState<LessonEditor> {
     _body = TextEditingController(text: data['body'] as String?);
     _video = TextEditingController(text: data['video_id'] as String?);
     _interval = TextEditingController(text: '${data['frame_ms'] ?? 1000}');
+    _points = TextEditingController(text: '${data['points'] ?? 10}');
     _fileKey = data['file_key'] as String?;
     _keys = (data['image_keys'] as List<dynamic>? ?? [])
         .cast<String>()
@@ -45,7 +46,7 @@ class _LessonEditorState extends ConsumerState<LessonEditor> {
 
   @override
   void dispose() {
-    for (final c in [_title, _body, _video, _interval]) {
+    for (final c in [_title, _body, _video, _interval, _points]) {
       c.dispose();
     }
     for (final q in _questions) {
@@ -159,6 +160,7 @@ class _LessonEditorState extends ConsumerState<LessonEditor> {
             kind: _kind,
             id: widget.lesson?.id,
             data: {
+              'points': int.parse(_points.text.trim()),
               'video_id': youtubeVideoId(_video.text),
               'body': _body.text.trim(),
               'file_key': _fileKey,
@@ -203,6 +205,22 @@ class _LessonEditorState extends ConsumerState<LessonEditor> {
               controller: _title,
               requiredValue: true,
               enabled: !_busy,
+            ),
+            ManagementField(
+              label: 'Pontos da aula',
+              labelAbove: true,
+              controller: _points,
+              enabled: !_busy,
+              keyboardType: const TextInputType.numberWithOptions(signed: true),
+              validator: (value) {
+                final points = int.tryParse(value?.trim() ?? '');
+                // Match PostgreSQL's integer column; it has no positivity rule.
+                return points == null ||
+                        points < -2147483648 ||
+                        points > 2147483647
+                    ? 'Informe um número inteiro entre -2147483648 e 2147483647.'
+                    : null;
+              },
             ),
             DropdownButtonFormField<String>(
               initialValue: _kind,

@@ -23,7 +23,9 @@ CREATE POLICY "certificates_select" ON "public"."certificates"
     ((public.is_gestor() OR ((company_id = public.own_company_id()) AND ((public.context_role() = 'empresa'::text) OR ((public.context_role() = 'funcionario'::text) AND (user_id =
     auth.uid()))))));
 
-GRANT DELETE, INSERT, SELECT, UPDATE ON TABLE "public"."certificates" TO "authenticated";
+REVOKE DELETE, INSERT, UPDATE ON TABLE "public"."certificates" FROM "authenticated";
+
+GRANT SELECT ON TABLE "public"."certificates" TO "authenticated";
 
 GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."certificates" TO "service_role";
 

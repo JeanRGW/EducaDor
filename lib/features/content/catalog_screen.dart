@@ -471,6 +471,8 @@ class ManagedContentCard extends StatelessWidget {
                           width: platform ? 52 : null,
                           height: platform ? 48 : null,
                           child: Transform.scale(
+                            // Scale the paint, not the accessible touch target.
+                            transformHitTests: false,
                             scale: platform ? 0.55 : 1,
                             alignment: Alignment.centerLeft,
                             child: Switch(

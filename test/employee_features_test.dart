@@ -63,6 +63,7 @@ class _Learning extends EmployeeLearningRepository {
       >[];
   int count = 2, balance = 50, summaryReads = 0, issued = 0;
   bool fail = false, blocked = false, redeemFailure = false;
+  bool emptyRanking = false;
   final redeemed = <String>[];
   Completer<LearningPage<LearningItem>>? delayed;
   List<EmployeeLesson> lessonRows = const [
@@ -187,14 +188,16 @@ class _Learning extends EmployeeLearningRepository {
       ? const [RedeemableReward(id: 'gift', title: 'Caneca térmica', cost: 20)]
       : [];
   @override
-  Future<List<EmployeeRank>> ranking(String companyId) async => const [
-    EmployeeRank(
-      userId: 'ana',
-      name: 'Ana Silva',
-      department: 'Operações',
-      points: 50,
-    ),
-  ];
+  Future<List<EmployeeRank>> ranking(String companyId) async => emptyRanking
+      ? []
+      : const [
+          EmployeeRank(
+            userId: 'ana',
+            name: 'Ana Silva',
+            department: 'Operações',
+            points: 50,
+          ),
+        ];
   @override
   Future<void> redeem(String companyId, String rewardId) async {
     if (redeemFailure) throw StateError('unknown response');
@@ -342,6 +345,20 @@ Future<void> _visible(
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  testWidgets('empty company ranking has an explicit state', (tester) async {
+    await _show(
+      tester,
+      const RewardsScreen(),
+      learning: _Learning()..emptyRanking = true,
+    );
+    final empty = find.text(
+      'Ainda não há participantes no ranking da empresa.',
+    );
+    await _visible(tester, empty);
+    expect(empty, findsOneWidget);
+    expect(find.byKey(const ValueKey('rank-ana')), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
   testWidgets('balance count aligns with the banner right padding', (
     tester,
   ) async {
