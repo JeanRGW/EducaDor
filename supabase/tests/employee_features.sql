@@ -56,7 +56,7 @@ do $$ declare result jsonb; begin
  perform save_employee_progress(own_company_id(),'e7000000-0000-4000-8000-000000000002',15,false);
  if (select status from lesson_progress where lesson_id='e7000000-0000-4000-8000-000000000002') <> 'completed' then raise exception 'Resume downgraded completion'; end if;
  begin update lesson_progress set status='in_progress' where lesson_id='e7000000-0000-4000-8000-000000000002'; raise exception 'Direct downgrade accepted'; exception when insufficient_privilege then null; end;
- begin update lesson_progress set position_sec=-1 where lesson_id='e7000000-0000-4000-8000-000000000002'; raise exception 'Direct negative resume accepted'; exception when check_violation then null; end;
+ begin update lesson_progress set position_sec=-1 where lesson_id='e7000000-0000-4000-8000-000000000002'; raise exception 'Direct negative resume accepted'; exception when insufficient_privilege then null; end;
  if (employee_catalog(own_company_id(),'','video','in_progress')->>'total')::int <> 1 then raise exception 'Learning status filter incorrect'; end if;
  begin perform redeem_employee_reward('b7000000-0000-4000-8000-000000000002','f7000000-0000-4000-8000-000000000001'); raise exception 'Stale company redemption accepted'; exception when raise_exception then if sqlerrm <> 'Forbidden' then raise; end if; end;
 end $$;

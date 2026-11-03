@@ -80,9 +80,12 @@ do $$ begin
 end $$;
 
 select select_context('funcionario', 'bb000000-0000-4000-8000-000000000001');
+-- Historical completion fixture; client writes now require the guarded RPC.
+reset role;
 insert into lesson_progress(user_id, company_id, lesson_id, status) values
   ('aa000000-0000-4000-8000-000000000001', 'bb000000-0000-4000-8000-000000000001',
    'ee000000-0000-4000-8000-000000000002', 'completed');
+set local role authenticated;
 do $$ begin
   if (select count(*) from courses) <> 2 or (select count(*) from lessons) <> 2 then
     raise exception 'Employee cannot read eligible content';
@@ -107,14 +110,16 @@ do $$ begin
   end if;
 end $$;
 select select_context('funcionario', 'bb000000-0000-4000-8000-000000000001');
-do $$ declare affected int; begin
+do $$ begin
   if employee_can_access_course('cc000000-0000-4000-8000-000000000002') or
     (select count(*) from courses) <> 1 or (select count(*) from modules) <> 1 or
     (select count(*) from lessons) <> 1 then raise exception 'Company pause did not block content'; end if;
-  update lesson_progress set position_sec = 10
-    where lesson_id = 'ee000000-0000-4000-8000-000000000002';
-  get diagnostics affected = row_count;
-  if affected <> 0 then raise exception 'Paused progress was writable'; end if;
+  begin
+    update lesson_progress set position_sec = 10
+      where lesson_id = 'ee000000-0000-4000-8000-000000000002';
+    raise exception 'Paused progress was writable';
+  exception when insufficient_privilege then null;
+  end;
   if (select count(*) from lesson_progress) <> 1 then raise exception 'Pause deleted progress'; end if;
   begin
     insert into lesson_progress(user_id, company_id, lesson_id)
