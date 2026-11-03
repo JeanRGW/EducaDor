@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../app/theme.dart';
 import '../../data/models/models.dart';
@@ -12,6 +11,7 @@ import '../auth/onboarding_screens.dart';
 import '../content/catalog_screen.dart';
 import '../content/publish_video_screen.dart';
 import 'widgets.dart';
+import 'management_widgets.dart';
 
 export 'companies_screen.dart';
 export 'dashboard_screen.dart';
@@ -100,7 +100,7 @@ class _AddCompanyScreenState extends ConsumerState<AddCompanyScreen> {
           );
       if (!mounted) return;
       await showInviteLink(context, link);
-      if (mounted) context.pop();
+      if (mounted) leaveManagementPage(context, '/gestor/empresas');
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -127,7 +127,7 @@ class _AddCompanyScreenState extends ConsumerState<AddCompanyScreen> {
             size: 20,
             color: AppColors.successDarkGreen,
           ),
-          onPressed: () => context.pop(),
+          onPressed: () => leaveManagementPage(context, '/gestor/empresas'),
         ),
       ),
       body: ListView(

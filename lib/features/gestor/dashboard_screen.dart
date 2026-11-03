@@ -85,7 +85,11 @@ class GestorDashboardScreen extends ConsumerWidget {
                   color: AppColors.textPrimary,
                 ),
               ),
-              onPressed: () {},
+              onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Notificações ainda não está disponível.'),
+                ),
+              ),
             ),
           ],
         ),
