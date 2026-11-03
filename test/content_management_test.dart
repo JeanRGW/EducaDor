@@ -36,6 +36,7 @@ class _GestorSession extends SessionController {
 class _People extends PeopleRepository {
   @override
   Future<List<ProfessionalOption>> platformProfessionals({
+    int offset = 0,
     String search = '',
   }) async =>
       [

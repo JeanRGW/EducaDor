@@ -354,28 +354,14 @@ class PeopleRepository {
 
   Future<List<ProfessionalOption>> platformProfessionals({
     String search = '',
+    int offset = 0,
   }) async {
-    final client = _client;
-    if (client == null) return [];
-    final grants = await client
-        .from('platform_gestors')
-        .select('user_id')
-        .range(0, 99);
-    final ids = grants.map((row) => row['user_id'] as String).toList();
-    if (ids.isEmpty) return [];
-    var query = client
-        .from('profiles')
-        .select('id,full_name')
-        .inFilter('id', ids);
-    if (search.trim().isNotEmpty) {
-      final escaped = search
-          .trim()
-          .replaceAll(r'\', r'\\')
-          .replaceAll('%', r'\%')
-          .replaceAll('_', r'\_');
-      query = query.ilike('full_name', '%$escaped%');
-    }
-    final rows = await query.order('full_name').order('id').range(0, 49);
+    final rows =
+        await _peopleClient.rpc(
+              'platform_professionals_page',
+              params: {'p_search': search.trim(), 'p_offset': offset},
+            )
+            as List<dynamic>;
     return rows
         .map(
           (row) => ProfessionalOption(
@@ -386,23 +372,21 @@ class PeopleRepository {
         .toList();
   }
 
-  Future<List<User>> companyManagers(String companyId) async {
-    final client = _client;
-    if (client == null) return [MockData.empresaUser];
-    final rows = await client
-        .from('company_memberships')
-        .select('user_id')
-        .eq('company_id', companyId)
-        .eq('role', 'empresa')
-        .range(0, 49);
-    final ids = rows.map((row) => row['user_id'] as String).toList();
-    if (ids.isEmpty) return [];
-    final people = await client
-        .from('profiles')
-        .select('id,full_name,email')
-        .inFilter('id', ids)
-        .order('full_name')
-        .range(0, 49);
+  Future<List<User>> companyManagers(
+    String companyId, {
+    String search = '',
+    int offset = 0,
+  }) async {
+    final people =
+        await _peopleClient.rpc(
+              'company_managers_page',
+              params: {
+                'p_company': companyId,
+                'p_search': search.trim(),
+                'p_offset': offset,
+              },
+            )
+            as List<dynamic>;
     return people.map((row) {
       final name = row['full_name'] as String;
       return User(
@@ -1357,35 +1341,41 @@ class ProfileRepository {
 }
 
 class InvitationRepository {
+  final SupabaseClient? _injectedClient;
+  InvitationRepository({SupabaseClient? client}) : _injectedClient = client;
+
+  SupabaseClient get _invitationClient =>
+      _injectedClient ??
+      _client ??
+      (throw StateError('Configure o Supabase para carregar convites.'));
+
   Future<List<PendingInvitation>> pending({
     Role? role,
     String? companyId,
+    String search = '',
+    int offset = 0,
   }) async {
-    final client = _client;
-    if (client == null) return [];
     final rows =
-        await client.rpc(
-              'pending_invites_page',
-              params: {'p_role': role?.name, 'p_company': companyId},
+        await _invitationClient.rpc(
+              'directory_pending_invites',
+              params: {
+                'p_role': role?.name,
+                'p_company': companyId,
+                'p_search': search.trim(),
+                'p_offset': offset,
+              },
             )
             as List<dynamic>;
-    return rows
-        .map((row) {
-          final data = row as Map<String, dynamic>;
-          return PendingInvitation(
-            name: data['full_name'] as String?,
-            companyName: data['company_name'] as String?,
-            email: data['email'] as String,
-            role: Role.values.byName(data['role'] as String),
-            companyId: data['company_id'] as String?,
-          );
-        })
-        .where(
-          (invite) =>
-              (role == null || invite.role == role) &&
-              (companyId == null || invite.companyId == companyId),
-        )
-        .toList();
+    return rows.map((row) {
+      final data = row as Map<String, dynamic>;
+      return PendingInvitation(
+        name: data['full_name'] as String?,
+        companyName: data['company_name'] as String?,
+        email: data['email'] as String,
+        role: Role.values.byName(data['role'] as String),
+        companyId: data['company_id'] as String?,
+      );
+    }).toList();
   }
 
   Future<String> regenerate(PendingInvitation invite) async {
