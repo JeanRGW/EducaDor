@@ -1,0 +1,45 @@
+name: Deploy Pages (manual)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    environment: pages-production
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_ACCOUNT_ID: '785b73d97c037eb906aae65de518cad6'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24.21.0'
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          flutter-version: '3.47.5'
+          channel: stable
+      - name: Validate deployment credential
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo 'Missing CLOUDFLARE_API_TOKEN in pages-production environment.' >&2
+            exit 1
+          fi
+      - run: flutter pub get --enforce-lockfile
+      - run: flutter analyze --no-pub
+      - run: flutter test --no-pub
+      - run: flutter build web --release --no-pub --pwa-strategy offline-first --dart-define-from-file=config/staging.public.json
+      - name: Deploy reviewed main to Pages
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: npx --yes wrangler@4.157.0 pages deploy build/web --project-name=educador --branch=main
