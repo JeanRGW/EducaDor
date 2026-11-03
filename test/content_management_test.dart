@@ -448,7 +448,7 @@ void main() {
   );
 
   testWidgets(
-    'scaled platform switch only responds within its painted hit target',
+    'scaled platform switch keeps a real 48px target without toggling the row',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(390, 900));
       addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -456,24 +456,29 @@ void main() {
       await _showCatalog(tester, repo, platform: true);
 
       final toggle = find.byType(Switch);
-      final center = tester.getCenter(toggle);
-      final top = tester.getTopLeft(toggle);
-      final bottom = tester.getBottomRight(toggle);
+      final target = find
+          .ancestor(of: toggle, matching: find.byType(SizedBox))
+          .first;
+      final rect = tester.getRect(target);
+      expect(rect.width, greaterThanOrEqualTo(48));
+      expect(rect.height, greaterThanOrEqualTo(48));
+      var writes = 0;
       for (final point in [
-        Offset(bottom.dx + 8, center.dy),
-        Offset(center.dx, top.dy - 4),
-        Offset(center.dx, bottom.dy + 4),
+        rect.topLeft + const Offset(2, 2),
+        rect.topRight + const Offset(-2, 2),
+        rect.bottomLeft + const Offset(2, -2),
+        rect.bottomRight - const Offset(2, 2),
+        rect.center,
       ]) {
         await tester.tapAt(point);
         await tester.pumpAndSettle();
-        expect(repo.platformWrites, 0);
-        expect(tester.widget<Switch>(toggle).value, isTrue);
+        expect(repo.platformWrites, ++writes);
+        expect(tester.widget<Switch>(toggle).value, writes.isEven);
+        expect(find.text('Editar'), findsOneWidget);
       }
-
-      await tester.tapAt(center);
+      await tester.tap(find.text('Pausado pela plataforma'));
       await tester.pumpAndSettle();
-      expect(repo.platformWrites, 1);
-      expect(tester.widget<Switch>(toggle).value, isFalse);
+      expect(repo.platformWrites, writes);
       expect(tester.takeException(), isNull);
     },
   );
