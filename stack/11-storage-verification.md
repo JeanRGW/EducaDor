@@ -19,14 +19,21 @@ Use frozen locks in checks; update both locks deliberately when upgrading.
 
 ## Local checks
 
-Run from the repository root with Deno 2.9.6 (or `npx --yes deno@2.9.6`):
+Run from the repository root with Deno 2.9.8 (the CI version). The initial
+storage checks also passed on Deno 2.9.6:
 
 ```bash
-deno check --frozen --config supabase/functions/storage-upload-url/deno.json supabase/functions/storage-upload-url/index.ts supabase/functions/storage-upload-url/storage_test.ts
+deno test supabase/functions/ --ignore=supabase/functions/storage-upload-url/signing_test.ts
+deno check --frozen --config supabase/functions/storage-upload-url/deno.json supabase/functions/storage-upload-url/index.ts supabase/functions/storage-upload-url/storage_test.ts supabase/functions/storage-upload-url/signing_test.ts
 deno check --frozen --config supabase/functions/storage-download-url/deno.json supabase/functions/storage-download-url/index.ts
-deno test --frozen --config supabase/functions/storage-upload-url/deno.json '--allow-env=AWS_*,SMITHY_*,HOME,USERPROFILE,HOMEPATH,HOMEDRIVE,_X_AMZN_TRACE_ID' --allow-sys=osRelease supabase/functions/storage-upload-url/storage_test.ts
+deno test --frozen --config supabase/functions/storage-upload-url/deno.json '--allow-env=AWS_*,SMITHY_*,HOME,USERPROFILE,HOMEPATH,HOMEDRIVE,_X_AMZN_TRACE_ID' --allow-sys=osRelease supabase/functions/storage-upload-url/signing_test.ts
 node --test supabase/tests/invite_member.test.mjs
 ```
+
+The general function suite (including storage HTTP/validator tests) runs without
+runtime permissions. Only `signing_test.ts` imports the AWS SDK and runs separately
+with the scoped frozen upload config. CI checks both locked entrypoints and a
+Node regression test asserts this separation and the exact SDK permission flags.
 
 Tests receive **no network, filesystem read, or subprocess permissions**.
 Environment access is limited to the listed AWS/Smithy namespaces and home/trace
