@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../app/theme.dart';
 import '../../data/repositories/employee_providers.dart';
 import '../../data/repositories/repositories.dart';
@@ -38,23 +39,30 @@ class _Course extends ConsumerStatefulWidget {
 class _CourseState extends ConsumerState<_Course> {
   int _offset = 0;
   bool _issuing = false;
+  bool _issued = false;
+  ({EmployeeScope scope, String courseId}) get _certificateQuery =>
+      (scope: widget.scope, courseId: widget.courseId);
   LessonQuery _query(int offset) =>
       (scope: widget.scope, courseId: widget.courseId, offset: offset);
   void _refresh() {
     ref.invalidate(employeeCourseProvider(widget.courseId));
     ref.invalidate(employeeLessonsProvider);
+    ref.invalidate(courseCertificateProvider(_certificateQuery));
     refreshLearning(ref);
     setState(() => _offset = 0);
   }
 
   Future<void> _issue() async {
-    final scope = ref.read(employeeScopeProvider);
+    if (_issuing || _issued) return;
+    final scope = widget.scope;
+    if (ref.read(employeeScopeProvider) != scope) return;
     setState(() => _issuing = true);
     try {
       await ref
           .read(employeeLearningRepositoryProvider)
           .issueCertificate(scope.companyId, widget.courseId);
       if (mounted && ref.read(employeeScopeProvider) == scope) {
+        setState(() => _issued = true);
         refreshLearning(ref);
         employeeMessage(
           context,
@@ -62,7 +70,7 @@ class _CourseState extends ConsumerState<_Course> {
         );
       }
     } catch (_) {
-      if (mounted) {
+      if (mounted && ref.read(employeeScopeProvider) == scope) {
         employeeMessage(
           context,
           'Não foi possível emitir. Conclua todas as aulas e tente novamente.',
@@ -97,6 +105,9 @@ class _CourseState extends ConsumerState<_Course> {
         total > 0 &&
         total == lessons.length &&
         lessons.every((lesson) => lesson.completed);
+    final certificate = complete && !_issued
+        ? ref.watch(courseCertificateProvider(_certificateQuery))
+        : null;
     final next = lessons
         .where((lesson) => lesson.playable && !lesson.completed)
         .firstOrNull;
@@ -327,12 +338,31 @@ class _CourseState extends ConsumerState<_Course> {
                           child: const Text('Continuar curso'),
                         ),
                       if (complete)
-                        FilledButton(
-                          onPressed: _issuing ? null : _issue,
-                          child: Text(
-                            _issuing ? 'Emitindo...' : 'Emitir certificado',
+                        if (_issued || certificate?.asData?.value == true)
+                          const Text(
+                            'Certificado emitido. Disponível em Recompensas.',
+                          )
+                        else if (certificate?.hasError == true)
+                          DataErrorCard(
+                            message:
+                                'Não foi possível verificar o certificado.',
+                            retry: () => ref.invalidate(
+                              courseCertificateProvider(_certificateQuery),
+                            ),
+                          )
+                        else
+                          FilledButton(
+                            onPressed: _issuing || certificate?.asData == null
+                                ? null
+                                : _issue,
+                            child: Text(
+                              _issuing
+                                  ? 'Emitindo...'
+                                  : certificate?.asData == null
+                                  ? 'Verificando certificado...'
+                                  : 'Emitir certificado',
+                            ),
                           ),
-                        ),
                     ],
                   ),
                 ),

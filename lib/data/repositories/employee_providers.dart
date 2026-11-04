@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../models/models.dart';
 import '../session/session_controller.dart';
 import 'repositories.dart';
@@ -71,6 +72,21 @@ final employeeCertificatesProvider = FutureProvider.autoDispose
       return ref
           .watch(employeeLearningRepositoryProvider)
           .certificates(scope.companyId, offset: query.offset);
+    }, retry: _noRetry);
+final courseCertificateProvider = FutureProvider.autoDispose
+    .family<bool, ({EmployeeScope scope, String courseId})>((ref, query) async {
+      if (ref.watch(employeeScopeProvider) != query.scope) return false;
+      final exists = await ref
+          .watch(employeeLearningRepositoryProvider)
+          .hasCourseCertificate(
+            query.scope.userId,
+            query.scope.companyId,
+            query.courseId,
+          );
+      if (!ref.mounted || ref.read(employeeScopeProvider) != query.scope) {
+        return false;
+      }
+      return exists;
     }, retry: _noRetry);
 final employeeRewardsProvider = FutureProvider.autoDispose
     .family<List<RedeemableReward>, ScopedPage>((ref, query) {
