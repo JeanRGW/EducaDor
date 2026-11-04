@@ -442,6 +442,8 @@ void main() {
       final third = tester.getCenter(find.text('Pontos')).dx;
       expect(second - first, closeTo(third - second, 1));
       expect(find.text('Notificações'), findsOneWidget);
+      expect(find.text('Notificações não configuradas.'), findsOneWidget);
+      expect(find.text('Segurança e MFA'), findsOneWidget);
       expect(find.text('Português (Brasil)'), findsOneWidget);
       expect(find.text('Em breve'), findsNWidgets(2));
       expect(tester.widget<Switch>(find.byType(Switch)).onChanged, isNull);

@@ -14,6 +14,8 @@ select public.clear_context();
 do $$ begin if public.context_role() is not null then raise exception 'Unverified enrollment clear failed'; end if; end $$;
 select public.select_context('gestor',null);
 select public.update_own_profile('Before',null,null,null);
+select public.set_push_enabled(false);
+select public.register_fcm_token('mfa-test-token','web');
 reset role;
 update auth.mfa_factors set status='verified';
 set local role authenticated;
@@ -24,7 +26,10 @@ do $$ begin
   begin perform public.clear_context(); raise exception 'AAL1 clear bypass'; exception when insufficient_privilege then null; end;
   begin perform public.update_own_profile('Bypass',null,null,null); raise exception 'AAL1 profile bypass'; exception when insufficient_privilege then null; end;
   begin perform 1 from public.profiles; raise exception 'AAL1 profile read bypass'; exception when insufficient_privilege then null; end;
-  begin insert into public.fcm_tokens(user_id,token,platform) values(auth.uid(),'test','web'); raise exception 'AAL1 token bypass'; exception when insufficient_privilege then null; end;
+  begin perform 1 from public.notification_preferences; raise exception 'AAL1 preference read bypass'; exception when insufficient_privilege then null; end;
+  begin perform public.register_fcm_token('mfa-test-token','android'); raise exception 'AAL1 token registration bypass'; exception when insufficient_privilege then null; end;
+  begin perform public.set_push_enabled(true); raise exception 'AAL1 preference write bypass'; exception when insufficient_privilege then null; end;
+  begin perform public.unregister_fcm_token('mfa-test-token'); raise exception 'AAL1 unregister bypass'; exception when insufficient_privilege then null; end;
   if has_table_privilege('authenticated','auth.mfa_factors','select') then raise exception 'Auth factor table exposed'; end if;
 end $$;
 reset role;
@@ -38,8 +43,17 @@ select set_config('request.jwt.claims','{"sub":"a8000000-0000-4000-8000-00000000
 select public.require_mfa_if_enrolled();
 select public.select_context('gestor',null);
 select public.update_own_profile('After',null,null,null);
-do $$ begin if public.context_role() <> 'gestor' then raise exception 'AAL2 role unavailable'; end if; end $$;
+do $$ begin
+  if public.context_role() <> 'gestor' then raise exception 'AAL2 role unavailable'; end if;
+  if (select push_enabled from public.notification_preferences) is distinct from false then raise exception 'AAL2 preference unavailable'; end if;
+end $$;
+select public.register_fcm_token('mfa-test-token','android');
+select public.set_push_enabled(true);
 select public.clear_context();
+select public.unregister_fcm_token('mfa-test-token');
+reset role;
+do $$ begin if exists (select 1 from public.fcm_tokens where token='mfa-test-token') then raise exception 'AAL2 cleanup without context failed'; end if; end $$;
+set local role authenticated;
 do $$ begin if public.context_role() is not null then raise exception 'AAL2 clear failed'; end if; end $$;
 -- Verify the guard before deletion for each company role too.
 do $$ declare r text; begin
