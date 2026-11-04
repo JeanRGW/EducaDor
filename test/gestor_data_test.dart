@@ -95,11 +95,17 @@ class _Dashboard extends GestorRepository {
   }
 }
 
-Company _company(int index, {bool active = true}) => Company(
+Company _company(
+  int index, {
+  bool active = true,
+  String? name,
+  String? cnpj,
+  String? responsible,
+}) => Company(
   id: 'company-$index',
-  name: 'Empresa $index',
-  cnpj: '00.000.000/0001-00',
-  responsibleName: 'Responsável',
+  name: name ?? 'Empresa $index',
+  cnpj: cnpj ?? '00.000.000/0001-00',
+  responsibleName: responsible ?? 'Responsável',
   email: '',
   phone: '',
   address: '',
@@ -116,6 +122,7 @@ class _Companies extends CompanyRepository {
   final List<CompanyQuery> calls = [];
   bool fail = false;
   bool empty = false;
+  List<Company>? itemsOverride;
   @override
   Future<CompanyPage> page({
     String search = '',
@@ -124,13 +131,15 @@ class _Companies extends CompanyRepository {
   }) async {
     calls.add((search: search, active: active, offset: offset));
     if (fail) throw StateError('Offline');
-    final items = empty
-        ? <Company>[]
-        : search.isNotEmpty || active != null
-        ? [_company(999, active: active ?? true)]
-        : offset == 0
-        ? [for (var i = 0; i < 50; i++) _company(i)]
-        : [_company(50)];
+    final items =
+        itemsOverride ??
+        (empty
+            ? <Company>[]
+            : search.isNotEmpty || active != null
+            ? [_company(999, active: active ?? true)]
+            : offset == 0
+            ? [for (var i = 0; i < 50; i++) _company(i)]
+            : [_company(50)]);
     return CompanyPage(items: items, activeCount: 50, inactiveCount: 1);
   }
 }
@@ -310,6 +319,61 @@ void main() {
     expect(find.text('Inativa'), findsOneWidget);
   });
 
+  testWidgets(
+    'company cards omit empty metadata and retain long values on mobile',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(320, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      const longName =
+          'Empresa com nome extremamente longo para testar a apresentação em uma tela pequena';
+      const longResponsible =
+          'Pessoa responsável com nome extremamente longo para verificar a apresentação';
+      final repo = _Companies()
+        ..itemsOverride = [
+          _company(1, cnpj: '', responsible: ''),
+          _company(2, cnpj: '   ', responsible: '\t '),
+          _company(
+            3,
+            name: longName,
+            cnpj: '12.345.678/0001-90',
+            responsible: longResponsible,
+          ),
+        ];
+      await _show(tester, const CompaniesScreen(), companies: repo);
+      for (final name in ['Empresa 1', 'Empresa 2']) {
+        final card = find.ancestor(
+          of: find.text(name),
+          matching: find.byType(AppCard),
+        );
+        expect(
+          find.descendant(of: card, matching: find.textContaining('CNPJ:')),
+          findsNothing,
+        );
+        expect(
+          find.descendant(of: card, matching: find.text('Pessoa responsável')),
+          findsNothing,
+        );
+        expect(
+          find.descendant(of: card, matching: find.text('Funcionários')),
+          findsOneWidget,
+        );
+      }
+      await tester.scrollUntilVisible(
+        find.text(longName),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(find.text('CNPJ: 12.345.678/0001-90'), findsOneWidget);
+      expect(find.text(longResponsible), findsOneWidget);
+      expect(tester.getSize(find.text(longName)).height, greaterThan(20));
+      expect(
+        tester.getSize(find.text(longResponsible)).height,
+        greaterThan(20),
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('companies show no-data and retry failed requests', (
     tester,
   ) async {
@@ -437,6 +501,13 @@ void main() {
     );
     final export = tester.widget<IconButton>(find.byType(IconButton).first);
     expect(export.onPressed, isNull);
+    expect(find.text('Exportações disponíveis em breve.'), findsOneWidget);
+    final semantics = tester.ensureSemantics();
+    expect(
+      find.bySemanticsLabel('Exportações disponíveis em breve.'),
+      findsOneWidget,
+    );
+    semantics.dispose();
     expect(find.text('Nenhuma empresa cadastrada.'), findsOneWidget);
     expect(find.text('Nenhuma conclusão no período.'), findsOneWidget);
     final popularEmpty = find.text('Nenhuma conclusão no período.');
