@@ -10,21 +10,20 @@ Combined integration branch `feat/security-push-integration`, based on `main`
 | `docs/security-push-round` | `aad3e2d` | #17 |
 | `feat/optional-totp` | `d592a13` | #19 |
 | `feat/fcm-backend` | `768f46e` | #18 |
-| `feat/fcm-client` | `681d74c` | #20 |
+| `feat/fcm-client` | `f0f88a8` | #20 |
 
 The integration branch is a review vehicle, not a release. It is not merged into
 `main`, not deployed and it changes nothing hosted. Feature history repeats inside
 the merge until the source PRs land; that is expected and resolves once the
 dependencies merge in order. Source PRs remain independently reviewable.
 
-**Status: not ready.** Client source `79caeab` was merged and validated here, then
-`681d74c` was merged after the first independent client review. That head resolved
-the revoked-permission rotation listener, the blocked opt-out while permission is
-denied, and the duplicate web background display. A recheck of `681d74c` still
-found two blockers (see "Remaining client blockers"), so this branch stays draft.
-The full SQL/Node/Deno combined run below was repeated on `681d74c`; earlier
-Flutter/build/browser evidence is from `79caeab` and has not been rerun on the
-newer client.
+**Status: validated on the final client head, ready for review.** The source
+branches are complete and their own reviews are closed. Client `f0f88a8` was
+merged here with no conflicts, and the combined SQL, Node, Deno, Flutter, release
+build, shell worker, PWA and browser checks below all pass on that tree. This is
+still an integration review vehicle: it is not merged into `main`, not deployed and
+it changes nothing hosted. Dependencies are PRs #17, #18, #19 and #20; the
+integration fix commits are additional to those branches.
 
 ## Added integration fix
 
@@ -70,7 +69,8 @@ sheet. With Firebase configuration absent the tile reports the honest
 Isolated local project `EducaDorRound2` on `+6000` ports, own container; the shared
 `supabase_db_EducaDor` container and hardcoded `scripts/db.sh test` were not used.
 
-SQL, drift, Node and Deno below were rerun on the merged `681d74c` client head.
+SQL, drift, Node, Deno, Flutter, build, worker and browser checks below were all
+rerun on the merged `f0f88a8` client head.
 
 - `supabase db start`, `bash scripts/db.sh reset` from migrations: all 17
   migrations apply, including the new guard.
@@ -83,26 +83,30 @@ SQL, drift, Node and Deno below were rerun on the merged `681d74c` client head.
   `content_access.sql` and `schema_contract.sql`.
 - Release gate, audience, company enablement and certificate-creation coverage come
   from `push_delivery.sql` on the merged schema.
-- `node --test supabase/tests/invite_member.test.mjs scripts/pwa/*.test.mjs` pass.
-- `deno test supabase/functions/push-on-assign/push_test.ts` (installed Deno 2.9.6)
-  passes; `deno check` passes for `push-on-assign`, `issue-certificate`,
-  `invite-member` and `accept-invite` entry points.
+- `node --test supabase/tests/invite_member.test.mjs` (20 tests) and
+  `node --test scripts/pwa/*.test.mjs` (10 tests) pass.
+- Deno 2.9.6, matching the database workflow pin and the storage/SDK coverage:
+  `deno test supabase/functions/ --ignore=supabase/functions/storage-upload-url/signing_test.ts`
+  passes 12 tests; the offline signing test runs separately with its documented
+  env/sys allowlist and passes 1 test. `deno check --frozen --config ...` passes for
+  the storage upload/download entry points plus their tests, and `deno check`
+  passes for `push-on-assign`, `issue-certificate`, `invite-member` and
+  `accept-invite`.
 - Verified-caller review: `_shared/invites.ts#caller()` calls the caller-context
   `require_mfa_if_enrolled` RPC before returning the service-role client. The real
   entry points (`push-on-assign`, `issue-certificate`, `invite-member`,
   `accept-invite`, `_shared/storage_runtime.ts`) all call `caller()`; the mocked
   sender test does not stand in for that inspection.
-- Flutter under the shared lock with `--concurrency=2` was run on the earlier
-  `79caeab` merge: `flutter analyze`, full `flutter test` (288 tests), release web
-  build with `--dart-define-from-file`, shell worker generation, and the 10 PWA
-  worker tests passed. Widget tests also assert the configuration-off tile text and
-  that the push switch is disabled. Not rerun on `681d74c`.
-- Browser smoke was run on the earlier `79caeab` release build, served locally, no
-  hosted mutation and no Firebase configuration: welcome and login render,
-  `/account/security` and `/mfa` redirect to `/login` for an unauthenticated
-  visitor, the shell worker registers, the only cache is the public static shell and
-  it contains no auth, API, token or private route entries, and no Firebase/FCM
-  network requests occur. Not rerun on `681d74c`.
+- Flutter under the shared lock with `--concurrency=2`: `flutter analyze`, full
+  `flutter test` (291 tests), release web build with `--dart-define-from-file`, and
+  shell worker generation pass; all 10 PWA worker tests pass, including the
+  SDK-notification-displays-once and earlier-safe-click-handler test. Widget tests
+  assert the configuration-off tile text and that the push switch is disabled.
+- Browser smoke on the final release build, served locally, no hosted mutation and
+  no Firebase configuration: welcome and login render, `/account/security` and
+  `/mfa` redirect to `/login` for an unauthenticated visitor, the shell worker
+  registers, the only cache is the public static shell (100 entries) with no
+  auth/API/token/private-route entries, and no Firebase/FCM network requests occur.
 
 ## Not covered / release gates
 
@@ -113,34 +117,29 @@ SQL, drift, Node and Deno below were rerun on the merged `681d74c` client head.
   Auth service remain operator verification.
 - The client branch's Android debug build was verified by its author and was not
   repeated here because the integration changes do not touch native code.
+- Token cleanup is best effort. A network failure or rejected credential during
+  cleanup can leave a registration row, and a failed provider-token deletion cannot
+  guarantee instant revocation of an already issued token. Real delivery, real
+  devices and those failure paths remain operator/device verification.
 
-## Remaining client blockers (PR #20 source, pending)
+## Client review history (closed)
 
-Client `681d74c` fixed the first review's three findings: pre-logout cleanup is now
-centralized in `SessionController.logout`, `PushLifecycle` captures owner-bound
-credentials per registration and rechecks preference and permission on rotation
-(cleaning up instead of staying subscribed), and the web worker only calls
-`showNotification` for data-only messages so notification payloads are displayed
-once. `681d74c` was merged and revalidated for SQL/Node/Deno here.
+Three source-review rounds ran in the client worktree, each fixed by its author and
+merged here:
 
-A read-only recheck of `681d74c` still found two blockers, being fixed in the source
-worktree:
+1. `79caeab` → `681d74c`: centralized pre-logout cleanup in `SessionController`,
+   owner-bound captured credentials, rotation listener rechecks preference and
+   permission and cleans up instead of staying subscribed, and duplicate web
+   background display removed (SDK display for notification payloads, custom display
+   only for data-only).
+2. `681d74c` → `f0f88a8`: same-owner cleanup refreshes the Auth credential and falls
+   back to the old owner's captured credential before unregistering, and the worker
+   registers its safe same-origin click handler before importing the Firebase SDK,
+   with a realistic SDK listener-order test.
+3. Read-only recheck of `f0f88a8` cleared both remaining findings; no confirmed
+   client blockers remain.
 
-1. **Captured JWT is not refreshed for the same owner.** Ordinary long-session
-   logout uses the JWT captured at registration, so a fresh Auth credential can be
-   available while cleanup still fails. Fix direction: refresh the credential for the
-   same owner before cleanup, falling back to the old owner's captured credential.
-   Best effort only: a network failure or rejected credential can still leave a
-   registration row, and a failed provider-token deletion cannot guarantee instant
-   revocation.
-2. **Worker click listener order.** The app click handler is registered after the
-   Firebase SDK imports, so the SDK's `stopImmediatePropagation` prevents the safe
-   root click handler from running. Fix direction: register the app handler before
-   the SDK import and cover the realistic listener order with a worker test.
+The integration readiness gate (`notificationContextKey`, MFA/password-pending and
+no-active-context suppression) is preserved in the merged tree.
 
-Revoked-permission handling and duplicate background display are cleared. The
-integration readiness gate (`notificationContextKey`, MFA/password-pending and
-no-active-context suppression) remains preserved in the merged tree. Full Flutter,
-release build/worker and browser checks have not been rerun on `681d74c`; do that
-after the corrected client head lands.
 
