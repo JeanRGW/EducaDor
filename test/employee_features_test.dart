@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:educador/app/theme.dart';
 import 'package:educador/app/app.dart';
 import 'package:educador/core/router.dart';
@@ -64,6 +65,11 @@ class _Learning extends EmployeeLearningRepository {
   int count = 2, balance = 50, summaryReads = 0, issued = 0;
   bool fail = false, blocked = false, redeemFailure = false;
   bool emptyRanking = false;
+  final certificateCompanies = <String>{'a', 'b'};
+  final certificateReads = <String>[];
+  Completer<LearningPage<EarnedCertificate>>? delayedCertificates;
+  Completer<void>? delayedIssue;
+  bool failIssue = false, failCertificateRead = false;
   final redeemed = <String>[];
   Completer<LearningPage<LearningItem>>? delayed;
   List<EmployeeLesson> lessonRows = const [
@@ -167,22 +173,31 @@ class _Learning extends EmployeeLearningRepository {
   Future<LearningPage<EarnedCertificate>> certificates(
     String companyId, {
     int offset = 0,
-  }) async => LearningPage(
-    total: 1,
-    items: offset == 0
-        ? [
-            EarnedCertificate(
-              id: 'cert',
-              code: 'AUD-123ABC',
-              courseId: 'course',
-              courseTitle: 'Segurança no trabalho',
-              companyName: 'Empresa $companyId',
-              employeeName: 'Ana Silva',
-              issuedAt: DateTime(2026, 10, 1),
-            ),
-          ]
-        : [],
-  );
+  }) async {
+    certificateReads.add('$companyId:$offset');
+    if (failCertificateRead) throw StateError('offline');
+    if (companyId == 'a' && delayedCertificates != null) {
+      return delayedCertificates!.future;
+    }
+    final exists = certificateCompanies.contains(companyId);
+    return LearningPage(
+      total: exists ? 1 : 0,
+      items: exists && offset == 0
+          ? [
+              EarnedCertificate(
+                id: 'cert',
+                code: 'AUD-123ABC',
+                courseId: 'course',
+                courseTitle: 'Segurança no trabalho',
+                companyName: 'Empresa $companyId',
+                employeeName: 'Ana Silva',
+                issuedAt: DateTime(2026, 10, 1),
+              ),
+            ]
+          : [],
+    );
+  }
+
   @override
   Future<List<RedeemableReward>> rewards({int offset = 0}) async => offset == 0
       ? const [RedeemableReward(id: 'gift', title: 'Caneca térmica', cost: 20)]
@@ -208,6 +223,9 @@ class _Learning extends EmployeeLearningRepository {
   @override
   Future<void> issueCertificate(String companyId, String courseId) async {
     issued++;
+    if (delayedIssue != null) await delayedIssue!.future;
+    if (failIssue) throw StateError('offline');
+    certificateCompanies.add(companyId);
   }
 }
 
@@ -548,6 +566,7 @@ void main() {
     'completed course issues a certificate without replaying progress',
     (tester) async {
       final repo = _Learning()
+        ..certificateCompanies.clear()
         ..lessonRows = const [
           EmployeeLesson(
             id: 'first',
@@ -569,8 +588,150 @@ void main() {
       await tester.tap(find.text('Emitir certificado'));
       await tester.pumpAndSettle();
       expect(repo.issued, 1);
+      expect(
+        find.text('Certificado emitido. Disponível em Recompensas.'),
+        findsWidgets,
+      );
+      expect(find.text('Emitir certificado'), findsNothing);
     },
   );
+  testWidgets('existing certificate is not issued again', (tester) async {
+    final repo = _Learning()..lessonRows = [_Learning().lessonRows.first];
+    await _show(
+      tester,
+      const CourseDetailScreen(courseId: 'course'),
+      learning: repo,
+    );
+    await _visible(
+      tester,
+      find.text('Certificado emitido. Disponível em Recompensas.'),
+    );
+    expect(repo.certificateReads, ['a:0']);
+    expect(repo.issued, 0);
+    expect(find.text('Emitir certificado'), findsNothing);
+  });
+  testWidgets(
+    'pending issuance prevents repeated taps and failure permits retry',
+    (tester) async {
+      final repo = _Learning()
+        ..certificateCompanies.clear()
+        ..lessonRows = [_Learning().lessonRows.first]
+        ..delayedIssue = Completer<void>()
+        ..failIssue = true;
+      await _show(
+        tester,
+        const CourseDetailScreen(courseId: 'course'),
+        learning: repo,
+      );
+      await _visible(tester, find.text('Emitir certificado'));
+      await tester.tap(find.text('Emitir certificado'));
+      await tester.pump();
+      expect(
+        tester
+            .widget<FilledButton>(
+              find.widgetWithText(FilledButton, 'Emitindo...'),
+            )
+            .onPressed,
+        isNull,
+      );
+      expect(repo.issued, 1);
+      repo.delayedIssue!.complete();
+      await tester.pumpAndSettle();
+      expect(find.text('Emitir certificado'), findsOneWidget);
+      repo.failIssue = false;
+      repo.delayedIssue = null;
+      await tester.tap(find.text('Emitir certificado'));
+      await tester.pumpAndSettle();
+      expect(repo.issued, 2);
+      expect(find.text('Emitir certificado'), findsNothing);
+    },
+  );
+  testWidgets('re-entry reads the issued certificate again', (tester) async {
+    final repo = _Learning()
+      ..certificateCompanies.clear()
+      ..lessonRows = [_Learning().lessonRows.first];
+    await _show(
+      tester,
+      const CourseDetailScreen(courseId: 'course'),
+      learning: repo,
+    );
+    await _visible(tester, find.text('Emitir certificado'));
+    await tester.tap(find.text('Emitir certificado'));
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(const SizedBox());
+    await tester.pumpAndSettle();
+    await _show(
+      tester,
+      const CourseDetailScreen(courseId: 'course'),
+      learning: repo,
+    );
+    await _visible(
+      tester,
+      find.text('Certificado emitido. Disponível em Recompensas.'),
+    );
+    expect(repo.certificateReads, ['a:0', 'a:0']);
+    expect(repo.issued, 1);
+  });
+  testWidgets('certificate lookup failure blocks issuance until retry', (
+    tester,
+  ) async {
+    final repo = _Learning()
+      ..certificateCompanies.clear()
+      ..lessonRows = [_Learning().lessonRows.first]
+      ..failCertificateRead = true;
+    await _show(
+      tester,
+      const CourseDetailScreen(courseId: 'course'),
+      learning: repo,
+    );
+    await _visible(
+      tester,
+      find.text('Não foi possível verificar o certificado.'),
+    );
+    expect(find.text('Emitir certificado'), findsNothing);
+    expect(repo.issued, 0);
+    repo.failCertificateRead = false;
+    await tester.tap(find.text('Tentar novamente'));
+    await tester.pumpAndSettle();
+    expect(find.text('Emitir certificado'), findsOneWidget);
+    expect(repo.certificateReads, ['a:0', 'a:0']);
+  });
+  testWidgets('stale certificate lookup cannot cross company contexts', (
+    tester,
+  ) async {
+    final repo = _Learning()
+      ..certificateCompanies.remove('b')
+      ..lessonRows = [_Learning().lessonRows.first]
+      ..delayedCertificates = Completer<LearningPage<EarnedCertificate>>();
+    final container = await _show(
+      tester,
+      const CourseDetailScreen(courseId: 'course'),
+      learning: repo,
+    );
+    (container.read(sessionProvider.notifier) as _Session).switchCompany();
+    await tester.pumpAndSettle();
+    await _visible(tester, find.text('Emitir certificado'));
+    repo.delayedCertificates!.complete(
+      LearningPage(
+        total: 1,
+        items: [
+          EarnedCertificate(
+            id: 'old',
+            code: 'old',
+            courseId: 'course',
+            courseTitle: 'old',
+            companyName: 'A',
+            employeeName: 'Ana',
+            issuedAt: DateTime(2026),
+          ),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Emitir certificado'), findsOneWidget);
+    expect(repo.certificateReads, containsAll(['a:0', 'b:0']));
+    expect(repo.issued, 0);
+  });
   testWidgets(
     'Rewards uses actual balance, confirms redemption and downloads actual certificate',
     (tester) async {
