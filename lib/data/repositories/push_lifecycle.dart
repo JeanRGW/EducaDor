@@ -24,6 +24,10 @@ abstract interface class PushTransport {
   Stream<String> get rotations;
 }
 
+abstract interface class PushStoreFactory {
+  PushStore? capture(String userId);
+}
+
 abstract interface class PushStore {
   Future<bool> enabled(String userId);
   Future<void> setEnabled(bool value);
@@ -42,7 +46,8 @@ class PushLifecycle {
     required this.onStatus,
   });
   final PushTransport transport;
-  final PushStore store;
+  final PushStoreFactory store;
+  PushStore? _ownerStore;
   final String platform;
   final bool configured;
   final bool platformSupported;
@@ -50,6 +55,7 @@ class PushLifecycle {
   String? _user;
   bool _contextAvailable = false;
   String? _token;
+  PushStore? _tokenStore;
   StreamSubscription<String>? _rotation;
   Future<void> _tail = Future.value();
   int _epoch = 0;
@@ -70,10 +76,12 @@ class PushLifecycle {
     await _rotation?.cancel();
     _rotation = null;
     final token = _token;
+    final owner = _tokenStore;
     _token = null;
-    if (token != null) {
+    _tokenStore = null;
+    if (token != null && owner != null) {
       try {
-        await store.unregister(token);
+        await owner.unregister(token);
       } catch (_) {}
     }
     try {
@@ -85,6 +93,7 @@ class PushLifecycle {
     final epoch = ++_epoch;
     final old = _user;
     _user = user;
+    _ownerStore = user == null || !_ready ? null : store.capture(user);
     _contextAvailable = contextAvailable;
     return _enqueue(() async {
       if (old != null && old != user) await _clear();
@@ -124,8 +133,14 @@ class PushLifecycle {
 
   Future<void> _sync(int epoch, String user) async {
     _status(PushStatus.loading);
+    final owner = store.capture(user);
+    if (owner == null) {
+      _status(PushStatus.error);
+      return;
+    }
+    _ownerStore = owner;
     try {
-      if (!await store.enabled(user)) {
+      if (!await owner.enabled(user)) {
         if (_current(epoch)) {
           await _clear();
           if (_current(epoch)) _status(PushStatus.disabled);
@@ -140,6 +155,8 @@ class PushLifecycle {
       final permission = await transport.permission();
       if (!_current(epoch)) return;
       if (permission != PushPermission.granted) {
+        await _clear();
+        if (!_current(epoch)) return;
         _status(
           permission == PushPermission.denied
               ? PushStatus.denied
@@ -154,6 +171,8 @@ class PushLifecycle {
   }
 
   Future<void> _register(int epoch, [String? rotated]) async {
+    final owner = _ownerStore;
+    if (owner == null) throw StateError('No authenticated owner');
     final token = rotated ?? await transport.token();
     if (!_current(epoch)) return;
     if (token == null || token.isEmpty) {
@@ -161,12 +180,25 @@ class PushLifecycle {
       return;
     }
     if (_token != null && _token != token) {
-      await store.unregister(_token!);
+      await _tokenStore?.unregister(_token!);
       _token = null;
+      _tokenStore = null;
       if (!_current(epoch)) return;
     }
-    await store.register(token, platform);
+    // Remember the owning credential before the request: a network failure can
+    // occur after the server has committed the registration.
     _token = token;
+    _tokenStore = owner;
+    if (!_current(epoch)) {
+      await _clear();
+      return;
+    }
+    try {
+      await owner.register(token, platform);
+    } catch (_) {
+      await _clear();
+      rethrow;
+    }
     if (!_current(epoch)) {
       await _clear();
       return;
@@ -179,6 +211,26 @@ class PushLifecycle {
             return;
           }
           try {
+            final owner = _ownerStore;
+            if (owner == null || !await owner.enabled(_user!)) {
+              await _clear();
+              if (_current(eventEpoch)) _status(PushStatus.disabled);
+              return;
+            }
+            if (!_current(eventEpoch)) return;
+            final permission = await transport.permission();
+            if (!_current(eventEpoch)) return;
+            if (permission != PushPermission.granted) {
+              await _clear();
+              if (_current(eventEpoch)) {
+                _status(
+                  permission == PushPermission.denied
+                      ? PushStatus.denied
+                      : PushStatus.permission,
+                );
+              }
+              return;
+            }
             await _register(eventEpoch, token);
           } catch (_) {
             if (_current(eventEpoch)) _status(PushStatus.error);
@@ -210,7 +262,10 @@ class PushLifecycle {
           );
           return;
         }
-        await store.setEnabled(true);
+        final owner = store.capture(_user!);
+        if (owner == null) throw StateError('No authenticated owner');
+        _ownerStore = owner;
+        await owner.setEnabled(true);
         if (_current(epoch)) await _register(epoch);
       } catch (_) {
         if (_current(epoch)) _status(PushStatus.error);
@@ -225,7 +280,9 @@ class PushLifecycle {
       if (!_current(epoch)) return;
       _status(PushStatus.loading);
       try {
-        await store.setEnabled(false);
+        final owner = store.capture(_user!);
+        if (owner == null) throw StateError('No authenticated owner');
+        await owner.setEnabled(false);
         await _clear();
         if (_current(epoch)) _status(PushStatus.disabled);
       } catch (_) {

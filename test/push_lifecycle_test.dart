@@ -34,7 +34,15 @@ class FakeTransport implements PushTransport {
   Stream<String> get rotations => controller.stream;
 }
 
-class FakeStore implements PushStore {
+class FakeStore implements PushStore, PushStoreFactory {
+  String caller = 'a';
+  final owners = <String, String>{};
+  @override
+  PushStore capture(String userId) {
+    if (caller != userId) throw StateError('identity mismatch');
+    return FakeOwnerStore(this, caller);
+  }
+
   bool preference = true;
   bool fail = false;
   final log = <String>[];
@@ -62,6 +70,33 @@ class FakeStore implements PushStore {
   @override
   Future<void> unregister(String token) async {
     log.add('unregister:$token');
+  }
+}
+
+class FakeOwnerStore implements PushStore {
+  FakeOwnerStore(this.backend, this.owner);
+  final FakeStore backend;
+  final String owner;
+  @override
+  Future<bool> enabled(String userId) {
+    if (userId != owner) throw StateError('wrong owner');
+    return backend.enabled(userId);
+  }
+
+  @override
+  Future<void> setEnabled(bool value) => backend.setEnabled(value);
+  @override
+  Future<void> register(String token, String platform) async {
+    await backend.register(token, platform);
+    backend.owners[token] = owner;
+  }
+
+  @override
+  Future<void> unregister(String token) async {
+    if (backend.owners[token] == owner) {
+      backend.owners.remove(token);
+      await backend.unregister(token);
+    }
   }
 }
 
@@ -169,10 +204,13 @@ void main() {
       while (!store.log.contains('register:token-a')) {
         await Future<void>.delayed(Duration.zero);
       }
+      store.caller = 'b';
       final swap = lifecycle.switchUser('b');
       store.pending!.complete();
       await first;
       await swap;
+      expect(store.owners['token-a'], 'b');
+      expect(transport.deletes, greaterThan(0));
       expect(
         store.log.indexOf('unregister:token-a'),
         lessThan(store.log.lastIndexOf('register:token-a')),
@@ -181,6 +219,36 @@ void main() {
       expect(store.log.last, 'unregister:token-a');
     },
   );
+  test(
+    'revoked permission clears registration and prevents rotation; opt-out remains possible',
+    () async {
+      await lifecycle.switchUser('a');
+      transport.current = PushPermission.denied;
+      await lifecycle.refresh();
+      expect(statuses.last, PushStatus.denied);
+      expect(store.owners, isEmpty);
+      final registrations = store.log
+          .where((e) => e.startsWith('register:'))
+          .length;
+      transport.controller.add('rotated');
+      await Future<void>.delayed(Duration.zero);
+      expect(
+        store.log.where((e) => e.startsWith('register:')).length,
+        registrations,
+      );
+      await lifecycle.disable();
+      expect(store.preference, false);
+    },
+  );
+  test('rotation rechecks account preference and permission', () async {
+    await lifecycle.switchUser('a');
+    store.preference = false;
+    transport.controller.add('rotated');
+    await Future<void>.delayed(Duration.zero);
+    expect(statuses.last, PushStatus.disabled);
+    expect(store.owners, isEmpty);
+    expect(store.log, isNot(contains('register:rotated')));
+  });
   test('errors surface without claiming enabled and allow retry', () async {
     store.fail = true;
     await lifecycle.switchUser('a');

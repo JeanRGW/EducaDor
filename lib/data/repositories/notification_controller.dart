@@ -150,7 +150,7 @@ class NotificationController extends Notifier<PushStatus> {
     final transport = FirebasePushTransport(events);
     _lifecycle = PushLifecycle(
       transport: transport,
-      store: _LazyStore(),
+      store: _OwnerStoreFactory(),
       platform: kIsWeb ? 'web' : 'android',
       configured:
           notificationConfigured &&
@@ -194,18 +194,16 @@ class NotificationController extends Notifier<PushStatus> {
   Future<void> beforeLogout() => _lifecycle.beforeLogout();
 }
 
-class _LazyStore implements PushStore {
-  NotificationRepository get _repository =>
-      NotificationRepository(Supabase.instance.client);
+class _OwnerStoreFactory implements PushStoreFactory {
   @override
-  Future<bool> enabled(String userId) => _repository.enabled(userId);
-  @override
-  Future<void> register(String token, String platform) =>
-      _repository.register(token, platform);
-  @override
-  Future<void> unregister(String token) => _repository.unregister(token);
-  @override
-  Future<void> setEnabled(bool value) => _repository.setEnabled(value);
+  PushStore? capture(String userId) {
+    final session = Supabase.instance.client.auth.currentSession;
+    if (session == null || session.user.id != userId) return null;
+    final jwt = session.accessToken;
+    return NotificationRepository(
+      SupabaseClient(_supabaseUrl, _supabaseKey, accessToken: () async => jwt),
+    );
+  }
 }
 
 final notificationControllerProvider =
