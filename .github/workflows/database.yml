@@ -33,6 +33,13 @@ jobs:
         run: bash scripts/db.sh test
       - name: Test invitation handler
         run: node --test supabase/tests/invite_member.test.mjs
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.9.6
+      - name: Test push sender without permissions
+        run: deno test supabase/functions/push-on-assign/push_test.ts
+      - name: Typecheck push function
+        run: deno check supabase/functions/push-on-assign/index.ts
       - name: Stop local database
         if: always()
         run: npx --yes supabase@2.122.0 stop --no-backup

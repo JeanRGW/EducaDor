@@ -1,12 +1,15 @@
 CREATE OR REPLACE FUNCTION public.clear_context()
   RETURNS void
-  LANGUAGE sql
+  LANGUAGE plpgsql
   SECURITY DEFINER
   SET search_path TO ''
   AS $function$
+begin
+  perform public.require_mfa_if_enrolled();
   delete from public.session_contexts
   where user_id = (select auth.uid())
-    and session_id = nullif(auth.jwt()->>'session_id', '')::uuid
+    and session_id = nullif(auth.jwt()->>'session_id', '')::uuid;
+end
 $function$;
 
 GRANT EXECUTE ON FUNCTION "public"."clear_context"() TO "authenticated";

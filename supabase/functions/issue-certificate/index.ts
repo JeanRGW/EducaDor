@@ -18,7 +18,7 @@ Deno.serve(async (req) => {
       if (error.message === 'Course incomplete') return respond(req, { error: 'Course incomplete' }, 409);
       return respond(req, { error: 'Certificate unavailable' }, error.message === 'Forbidden' ? 403 : 409);
     }
-    return respond(req, { id: data });
+    return respond(req, data);
   } catch {
     return respond(req, { error: 'Invalid request' }, 400);
   }

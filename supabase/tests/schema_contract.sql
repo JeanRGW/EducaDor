@@ -3,7 +3,7 @@ begin;
 do $$
 declare obj record; privilege text;
 begin
-  if (select count(*) from pg_tables where schemaname='public') <> 15 then
+  if (select count(*) from pg_tables where schemaname='public') <> 16 then
     raise exception 'Unexpected application table set';
   end if;
   for obj in select tablename, rowsecurity from pg_tables where schemaname='public' loop

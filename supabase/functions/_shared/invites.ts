@@ -49,6 +49,9 @@ export async function caller(req: Request): Promise<{
     auth: { autoRefreshToken: false, persistSession: false },
     global: { headers: { Authorization: `Bearer ${jwt}` } },
   });
+  // Verify MFA against current server-side factor state, not stale JWT claims alone.
+  const { error: mfaError } = await client.rpc('require_mfa_if_enrolled');
+  if (mfaError) return null;
   return { id: data.user.id, email: data.user.email.toLowerCase(), client };
 }
 

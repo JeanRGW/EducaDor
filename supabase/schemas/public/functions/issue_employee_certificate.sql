@@ -4,7 +4,7 @@ CREATE OR REPLACE FUNCTION public.issue_employee_certificate (
   p_company uuid,
   p_course  uuid
 )
-  RETURNS uuid
+  RETURNS jsonb
   LANGUAGE plpgsql
   SECURITY DEFINER
   SET search_path TO ''
@@ -24,14 +24,14 @@ begin
       left join public.lesson_progress lp on lp.lesson_id = l.id and lp.user_id = p_user and lp.company_id = p_company
       where m.course_id = p_course and lp.status is distinct from 'completed') then raise exception 'Course incomplete'; end if;
   select id into result from public.certificates where user_id = p_user and company_id = p_company and course_id = p_course;
-  if found then return result; end if;
+  if found then return jsonb_build_object('id', result, 'created', false); end if;
   select co.code_prefix into prefix from public.companies co where co.id = p_company;
   for attempt in 1..10 loop
     code_value := prefix || '-';
     for digit in 1..6 loop code_value := code_value || substr('0123456789ABCDEFGHJKMNPQRSTVWXYZ',1+floor(random()*32)::int,1); end loop;
     begin
       insert into public.certificates(user_id,company_id,course_id,code) values(p_user,p_company,p_course,code_value) returning id into result;
-      return result;
+      return jsonb_build_object('id', result, 'created', true);
     exception when unique_violation then null;
     end;
   end loop;

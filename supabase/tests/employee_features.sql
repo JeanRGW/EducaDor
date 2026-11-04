@@ -78,9 +78,11 @@ do $$ declare result jsonb; begin
 end $$;
 reset role;
 set local role service_role;
-do $$ declare first_id uuid; second_id uuid; begin
- first_id := issue_employee_certificate('a7000000-0000-4000-8000-000000000001','ff700000-0000-4000-8000-000000000001','b7000000-0000-4000-8000-000000000001','c7000000-0000-4000-8000-000000000001');
- second_id := issue_employee_certificate('a7000000-0000-4000-8000-000000000001','ff700000-0000-4000-8000-000000000001','b7000000-0000-4000-8000-000000000001','c7000000-0000-4000-8000-000000000001');
+do $$ declare first_result jsonb; second_result jsonb; first_id uuid; second_id uuid; begin
+ first_result := issue_employee_certificate('a7000000-0000-4000-8000-000000000001','ff700000-0000-4000-8000-000000000001','b7000000-0000-4000-8000-000000000001','c7000000-0000-4000-8000-000000000001');
+ second_result := issue_employee_certificate('a7000000-0000-4000-8000-000000000001','ff700000-0000-4000-8000-000000000001','b7000000-0000-4000-8000-000000000001','c7000000-0000-4000-8000-000000000001');
+ first_id := (first_result->>'id')::uuid; second_id := (second_result->>'id')::uuid;
+ if (first_result->>'created')::boolean is not true or (second_result->>'created')::boolean is not false then raise exception 'Certificate creation flag incorrect'; end if;
  if first_id<>second_id or (select code from certificates where id=first_id) !~ '^AUD-[0-9A-HJKMNP-TV-Z]{6}$' then raise exception 'Issuer not idempotent/code invalid'; end if;
 end $$;
 reset role;

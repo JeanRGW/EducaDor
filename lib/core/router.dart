@@ -20,6 +20,7 @@ import '../features/gestor/managers_screen.dart';
 import '../features/gestor/profile_edit_screen.dart';
 import '../features/gestor/platform_settings_screen.dart';
 import '../features/content/course_edit_screen.dart';
+import '../features/security/screens.dart';
 
 const _authRoutes = ['/splash', '/welcome', '/login', '/recover'];
 
@@ -39,6 +40,7 @@ String? _inviteRedirect(String? candidate) {
 final routerProvider = Provider<GoRouter>((ref) {
   GoRouter.optionURLReflectsImperativeAPIs = true;
   String? pendingLocation;
+  String? pendingInvite;
   ref.listen(sessionProvider, (_, _) => sessionRefresh.refresh());
   final router = GoRouter(
     initialLocation: '/splash',
@@ -74,16 +76,34 @@ final routerProvider = Provider<GoRouter>((ref) {
         }
         return '/login';
       }
+      if (session.needsMfa) {
+        if (loc == '/invite/accept') {
+          pendingInvite = _inviteRedirect(state.uri.toString());
+        }
+        if (loc == '/login') {
+          pendingInvite =
+              _inviteRedirect(state.uri.queryParameters['redirect']) ??
+              pendingInvite;
+        }
+        return loc == '/mfa' ? null : '/mfa';
+      }
+      if (loc == '/mfa') {
+        final invite = pendingInvite;
+        if (invite != null) return invite;
+        return session.needsPassword ? '/set-password' : session.homePath;
+      }
       if (loc == '/login') {
         final invite = _inviteRedirect(state.uri.queryParameters['redirect']);
         if (invite != null) return invite;
       }
       if (loc == '/invite/accept') return null;
+      pendingInvite = null;
       if (session.needsPassword) {
         return loc == '/set-password' ? null : '/set-password';
       }
       if (loc == '/set-password' || loc == '/contexts') return null;
       if (session.active == null) return '/contexts';
+      if (loc == '/account/security') return null;
       if (pendingLocation case final destination?) {
         if (destination.startsWith('/${session.role!.name}/')) {
           pendingLocation = null;
@@ -97,6 +117,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
+      GoRoute(path: '/mfa', builder: (_, _) => const MfaChallengeScreen()),
+      GoRoute(
+        path: '/account/security',
+        builder: (_, _) => const SecuritySettingsScreen(),
+      ),
       // ---- Auth ----
       GoRoute(path: '/splash', builder: (_, _) => const SplashScreen()),
       GoRoute(path: '/welcome', builder: (_, _) => const WelcomeScreen()),

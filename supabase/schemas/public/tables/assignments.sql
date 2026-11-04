@@ -3,6 +3,8 @@ CREATE TABLE "public"."assignments" (
   "company_id"      uuid    NOT NULL,
   "released"        boolean NOT NULL DEFAULT true,
   "company_enabled" boolean NOT NULL DEFAULT true,
+  "push_pending_at" timestamp with time zone,
+  "push_claimed_at" timestamp with time zone,
   CONSTRAINT "assignments_pkey" PRIMARY KEY (course_id, company_id),
   CONSTRAINT "assignments_company_id_fkey" FOREIGN KEY (company_id) REFERENCES public.companies(id) ON DELETE CASCADE,
   CONSTRAINT "assignments_course_id_fkey" FOREIGN KEY (course_id) REFERENCES public.courses(id) ON DELETE CASCADE
@@ -22,7 +24,9 @@ CREATE POLICY "assignments_write" ON "public"."assignments"
   USING (public.is_gestor())
   WITH CHECK (public.is_gestor());
 
-GRANT DELETE, INSERT, SELECT, UPDATE ON TABLE "public"."assignments" TO "authenticated";
+GRANT DELETE, SELECT ON TABLE "public"."assignments" TO "authenticated";
+GRANT INSERT (course_id, company_id, released, company_enabled),
+  UPDATE (course_id, company_id, released, company_enabled) ON TABLE "public"."assignments" TO "authenticated";
 
 GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."assignments" TO "service_role";
 

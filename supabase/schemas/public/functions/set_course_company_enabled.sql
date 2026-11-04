@@ -19,7 +19,10 @@ begin
   end if;
   insert into public.assignments(course_id, company_id, released, company_enabled)
     values (p_course, cid, false, p_enabled)
-    on conflict (course_id, company_id) do update set company_enabled = excluded.company_enabled;
+    on conflict (course_id, company_id) do update set company_enabled = excluded.company_enabled,
+      push_pending_at = case when excluded.company_enabled and not public.assignments.company_enabled
+        and (select status = 'released' from public.courses where id = p_course)
+        then now() when not excluded.company_enabled then null else public.assignments.push_pending_at end;
 end $function$;
 
 GRANT EXECUTE ON FUNCTION "public"."set_course_company_enabled"(uuid, boolean) TO "authenticated";
