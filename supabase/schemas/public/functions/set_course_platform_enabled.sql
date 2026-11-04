@@ -10,7 +10,9 @@ CREATE OR REPLACE FUNCTION public.set_course_platform_enabled (
 begin
   if not coalesce(public.is_gestor(), false) then raise exception 'Forbidden'; end if;
   if p_enabled is null then raise exception 'Invalid state'; end if;
-  update public.courses set status = case when p_enabled then 'released' else 'paused' end
+  update public.courses set status = case when p_enabled then 'released' else 'paused' end,
+    push_pending_at = case when p_enabled and status <> 'released' then now()
+      when not p_enabled then null else push_pending_at end
     where id = p_course;
   if not found then raise exception 'Course unavailable'; end if;
 end $function$;

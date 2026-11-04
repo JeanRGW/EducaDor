@@ -32,7 +32,7 @@ begin
   end if;
   insert into public.courses(title, kind, description, status, created_by,
     all_companies, cover_key, responsible_id)
-    values (trim(p_title), 'course', coalesce(p_description, ''), 'released',
+    values (trim(p_title), 'course', coalesce(p_description, ''), 'paused',
       auth.uid(), true, p_cover_key, p_responsible_id)
     returning id into course_id;
   perform public.set_course_audience(course_id, p_all_companies, p_company_ids);
@@ -40,6 +40,7 @@ begin
     values (course_id, trim(p_module_title), 1) returning id into module_id;
   insert into public.lessons(module_id, title, kind, video_provider, video_id, position)
     values (module_id, trim(p_title), 'video', 'youtube', p_video_id, 1);
+  perform public.set_course_platform_enabled(course_id, true);
   return course_id;
 end $function$;
 

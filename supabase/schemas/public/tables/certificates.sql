@@ -5,6 +5,7 @@ CREATE TABLE "public"."certificates" (
   "code"       text                     NOT NULL,
   "issued_at"  timestamp with time zone NOT NULL DEFAULT now(),
   "company_id" uuid                     NOT NULL,
+  "push_claimed_at" timestamp with time zone,
   CONSTRAINT "certificates_code_key" UNIQUE (code),
   CONSTRAINT "certificates_pkey" PRIMARY KEY (id),
   CONSTRAINT "certificates_user_id_company_id_course_id_key" UNIQUE (user_id, company_id, course_id),
