@@ -10,18 +10,21 @@ Combined integration branch `feat/security-push-integration`, based on `main`
 | `docs/security-push-round` | `aad3e2d` | #17 |
 | `feat/optional-totp` | `d592a13` | #19 |
 | `feat/fcm-backend` | `768f46e` | #18 |
-| `feat/fcm-client` | `79caeab` | #20 |
+| `feat/fcm-client` | `681d74c` | #20 |
 
 The integration branch is a review vehicle, not a release. It is not merged into
 `main`, not deployed and it changes nothing hosted. Feature history repeats inside
 the merge until the source PRs land; that is expected and resolves once the
 dependencies merge in order. Source PRs remain independently reviewable.
 
-**Status: not ready.** An independent review of the client source found three
-critical lifecycle/worker defects after the checks below were recorded (see
-"Known client blockers"). The passing results are pre-fix evidence only; the
-corrected client head must be merged here and every check rerun before this branch
-can be considered integration-complete.
+**Status: not ready.** Client source `79caeab` was merged and validated here, then
+`681d74c` was merged after the first independent client review. That head resolved
+the revoked-permission rotation listener, the blocked opt-out while permission is
+denied, and the duplicate web background display. A recheck of `681d74c` still
+found two blockers (see "Remaining client blockers"), so this branch stays draft.
+The full SQL/Node/Deno combined run below was repeated on `681d74c`; earlier
+Flutter/build/browser evidence is from `79caeab` and has not been rerun on the
+newer client.
 
 ## Added integration fix
 
@@ -67,6 +70,8 @@ sheet. With Firebase configuration absent the tile reports the honest
 Isolated local project `EducaDorRound2` on `+6000` ports, own container; the shared
 `supabase_db_EducaDor` container and hardcoded `scripts/db.sh test` were not used.
 
+SQL, drift, Node and Deno below were rerun on the merged `681d74c` client head.
+
 - `supabase db start`, `bash scripts/db.sh reset` from migrations: all 17
   migrations apply, including the new guard.
 - `bash scripts/db.sh check`: `No schema changes found` (declarative/migration
@@ -87,15 +92,17 @@ Isolated local project `EducaDorRound2` on `+6000` ports, own container; the sha
   entry points (`push-on-assign`, `issue-certificate`, `invite-member`,
   `accept-invite`, `_shared/storage_runtime.ts`) all call `caller()`; the mocked
   sender test does not stand in for that inspection.
-- Flutter under the shared lock with `--concurrency=2`: `flutter analyze`, full
-  `flutter test` (288 tests), release web build with `--dart-define-from-file`,
-  shell worker generation, and the 10 PWA worker tests pass. Widget tests also
-  assert the configuration-off tile text and that the push switch is disabled.
-- Browser smoke on the release build, served locally, no hosted mutation and no
-  Firebase configuration: welcome and login render, `/account/security` and `/mfa`
-  redirect to `/login` for an unauthenticated visitor, the shell worker registers,
-  the only cache is the public static shell and it contains no auth, API, token or
-  private route entries, and no Firebase/FCM network requests occur.
+- Flutter under the shared lock with `--concurrency=2` was run on the earlier
+  `79caeab` merge: `flutter analyze`, full `flutter test` (288 tests), release web
+  build with `--dart-define-from-file`, shell worker generation, and the 10 PWA
+  worker tests passed. Widget tests also assert the configuration-off tile text and
+  that the push switch is disabled. Not rerun on `681d74c`.
+- Browser smoke was run on the earlier `79caeab` release build, served locally, no
+  hosted mutation and no Firebase configuration: welcome and login render,
+  `/account/security` and `/mfa` redirect to `/login` for an unauthenticated
+  visitor, the shell worker registers, the only cache is the public static shell and
+  it contains no auth, API, token or private route entries, and no Firebase/FCM
+  network requests occur. Not rerun on `681d74c`.
 
 ## Not covered / release gates
 
@@ -107,35 +114,33 @@ Isolated local project `EducaDorRound2` on `+6000` ports, own container; the sha
 - The client branch's Android debug build was verified by its author and was not
   repeated here because the integration changes do not touch native code.
 
-## Known client blockers (PR #20 source, pending)
+## Remaining client blockers (PR #20 source, pending)
 
-An independent read-only review found three critical defects in the current
-`feat/fcm-client` head (`79caeab`) after this integration was validated. They are
-being fixed in that source worktree; this branch must not be treated as ready until
-the fixed source is merged here and all checks are rerun.
+Client `681d74c` fixed the first review's three findings: pre-logout cleanup is now
+centralized in `SessionController.logout`, `PushLifecycle` captures owner-bound
+credentials per registration and rechecks preference and permission on rotation
+(cleaning up instead of staying subscribed), and the web worker only calls
+`showNotification` for data-only messages so notification payloads are displayed
+once. `681d74c` was merged and revalidated for SQL/Node/Deno here.
 
-1. **Stale-owner token cleanup.** After an Auth swap or logout, the client cleanup
-   only knows the current identity, so the previous owner's registration can remain.
-   Fix direction: centralize pre-token cleanup in session logout for every path
-   (including the direct context-selection logout), and make external Auth swaps and
-   stale in-flight registrations identity-aware (captured registration identity/JWT,
-   with local messaging token revocation as fallback). Never use an arbitrary
-   service-role identity.
-2. **Revoked permission and preference.** The token-rotation listener stays active
-   after notification permission is revoked, and a denied permission currently
-   prevents reaching the account opt-out setting. Rotation callbacks must recheck
-   permission and the enabled preference, cancel rotation and unregister the prior
-   token when it is revoked, and settings must remain reachable when permission is
-   denied.
-3. **Duplicate background notifications.** Web background delivery displays twice
-   because the Firebase SDK auto-displays the notification payload while the custom
-   worker also calls `showNotification`. Fix direction: rely on SDK display for
-   notification payloads and only use the custom display path for data-only
-   messages, keeping safe same-origin click handling.
+A read-only recheck of `681d74c` still found two blockers, being fixed in the source
+worktree:
 
-The integration fix above (`notificationContextKey`, session readiness) must be
-preserved when the corrected client head lands. Validation evidence in this document
-describes the pre-fix source and does not cover these defects; rerun the full SQL,
-Node/Deno, Flutter, build/worker and browser checks after merging the corrected
-source.
+1. **Captured JWT is not refreshed for the same owner.** Ordinary long-session
+   logout uses the JWT captured at registration, so a fresh Auth credential can be
+   available while cleanup still fails. Fix direction: refresh the credential for the
+   same owner before cleanup, falling back to the old owner's captured credential.
+   Best effort only: a network failure or rejected credential can still leave a
+   registration row, and a failed provider-token deletion cannot guarantee instant
+   revocation.
+2. **Worker click listener order.** The app click handler is registered after the
+   Firebase SDK imports, so the SDK's `stopImmediatePropagation` prevents the safe
+   root click handler from running. Fix direction: register the app handler before
+   the SDK import and cover the realistic listener order with a worker test.
+
+Revoked-permission handling and duplicate background display are cleared. The
+integration readiness gate (`notificationContextKey`, MFA/password-pending and
+no-active-context suppression) remains preserved in the merged tree. Full Flutter,
+release build/worker and browser checks have not been rerun on `681d74c`; do that
+after the corrected client head lands.
 
