@@ -10,6 +10,7 @@ CREATE OR REPLACE FUNCTION public.update_own_profile (
   SET search_path TO ''
   AS $function$
 begin
+  perform public.require_mfa_if_enrolled();
   if auth.uid() is null then raise exception 'Forbidden'; end if;
   if p_name is null or length(trim(p_name)) not between 1 and 200 or
     length(coalesce(p_phone, '')) > 50 or length(coalesce(p_address, '')) > 500 or

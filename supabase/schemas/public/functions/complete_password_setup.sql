@@ -5,6 +5,7 @@ CREATE OR REPLACE FUNCTION public.complete_password_setup ()
   SET search_path TO ''
   AS $function$
 begin
+  perform public.require_mfa_if_enrolled();
   if auth.uid() is null then raise exception 'Forbidden'; end if;
   -- Match Auth's HasPassword semantics; this is onboarding state, not reauthentication.
   perform 1 from auth.users where id = auth.uid()
