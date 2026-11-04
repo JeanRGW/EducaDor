@@ -1357,7 +1357,7 @@ class AuthRepository {
     return result.totp.map((factor) => factor.id).toList();
   }
 
-  Future<({String id, String secret, String qr})> enrollTotp() async {
+  Future<({String id, String secret, String qr, String uri})> enrollTotp() async {
     final existing = await _authClient.auth.mfa.listFactors();
     for (final factor in existing.all) {
       if (factor.factorType == FactorType.totp &&
@@ -1367,7 +1367,7 @@ class AuthRepository {
     }
     final result = await _authClient.auth.mfa.enroll(issuer: 'EducaDor');
     final totp = result.totp!;
-    return (id: result.id, secret: totp.secret, qr: totp.qrCode);
+    return (id: result.id, secret: totp.secret, qr: totp.qrCode, uri: totp.uri);
   }
 
   Future<void> verifyTotp(String id, String code) async {
