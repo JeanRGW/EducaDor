@@ -10,6 +10,7 @@ import '../../data/session/session_controller.dart';
 import '../../shared/widgets/app_icons.dart';
 import '../../shared/widgets/charts.dart';
 import '../../shared/widgets/common.dart';
+import '../notifications/notification_settings_sheet.dart';
 import 'widgets.dart';
 
 class GestorDashboardScreen extends ConsumerWidget {
@@ -85,11 +86,7 @@ class GestorDashboardScreen extends ConsumerWidget {
                   color: AppColors.textPrimary,
                 ),
               ),
-              onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Notificações ainda não está disponível.'),
-                ),
-              ),
+              onPressed: () => showNotificationSettings(context),
             ),
           ],
         ),

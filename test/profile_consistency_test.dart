@@ -202,10 +202,9 @@ void main() {
           expect(tester.getSize(settings).width, lessThanOrEqualTo(688));
           for (final (label, icon, status) in [
             ('Editar dados pessoais', AppIcons.manageAccount, null),
-            ('Notificações', AppIcons.bell, 'Em breve'),
             ('Idioma', AppIcons.globe, 'Português (Brasil)'),
             ('Modo escuro', AppIcons.moon, 'Em breve'),
-            ('Segurança e MFA', AppIcons.security, 'Em breve'),
+            ('Segurança e MFA', AppIcons.security, null),
             ('Suporte e ajuda', AppIcons.help, 'Em breve'),
             ('Trocar perfil', AppIcons.profile, null),
           ]) {

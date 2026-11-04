@@ -443,8 +443,8 @@ void main() {
       expect(second - first, closeTo(third - second, 1));
       expect(find.text('Notificações'), findsOneWidget);
       expect(find.text('Português (Brasil)'), findsOneWidget);
-      expect(find.text('Em breve'), findsNWidgets(4));
-      expect(find.byType(Switch), findsNothing);
+      expect(find.text('Em breve'), findsNWidgets(2));
+      expect(tester.widget<Switch>(find.byType(Switch)).onChanged, isNull);
     },
   );
   setUpAll(() async {
@@ -614,7 +614,7 @@ void main() {
       await _show(tester, const EmployeeProfileScreen());
       expect(find.text('Operações'), findsOneWidget);
       expect(find.text('50'), findsOneWidget);
-      expect(find.byType(Switch), findsNothing);
+      expect(tester.widget<Switch>(find.byType(Switch)).onChanged, isNull);
       expect(find.text('English'), findsNothing);
       expect(find.text('Trocar perfil'), findsOneWidget);
     },
