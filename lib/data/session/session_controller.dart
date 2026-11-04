@@ -25,7 +25,8 @@ class SessionController extends AsyncNotifier<AppSession?> {
               state = const AsyncData(null);
               sessionRefresh.refresh();
             } else if (event.event == AuthChangeEvent.signedIn ||
-                event.event == AuthChangeEvent.tokenRefreshed) {
+                event.event == AuthChangeEvent.tokenRefreshed ||
+                event.event == AuthChangeEvent.mfaChallengeVerified) {
               unawaited(_sync());
             }
           });
@@ -76,6 +77,7 @@ class SessionController extends AsyncNotifier<AppSession?> {
             ? null
             : session.active,
         needsPassword: session.needsPassword,
+        needsMfa: session.needsMfa,
       ),
     );
     sessionRefresh.refresh();
@@ -91,6 +93,7 @@ class SessionController extends AsyncNotifier<AppSession?> {
         contexts: session.contexts,
         active: context,
         needsPassword: session.needsPassword,
+        needsMfa: session.needsMfa,
       ),
     );
     sessionRefresh.refresh();

@@ -55,12 +55,14 @@ class AppSession {
   final List<AccessContext> contexts;
   final AccessContext? active;
   final bool needsPassword;
+  final bool needsMfa;
 
   const AppSession({
     required this.user,
     required this.contexts,
     this.active,
     this.needsPassword = false,
+    this.needsMfa = false,
   });
 
   Role? get role => active?.role;

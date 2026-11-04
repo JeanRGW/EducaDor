@@ -1229,6 +1229,26 @@ class AuthRepository {
     final client = _injectedClient ?? _client;
     final authUser = client?.auth.currentUser;
     if (client == null || authUser == null) return null;
+    final freshUser = (await client.auth.getUser()).user;
+    if (freshUser == null) return null;
+    final enrolled =
+        freshUser.factors?.any(
+          (factor) => factor.status == FactorStatus.verified,
+        ) ??
+        false;
+    final aal = client.auth.mfa.getAuthenticatorAssuranceLevel().currentLevel;
+    if (enrolled && aal != AuthenticatorAssuranceLevels.aal2) {
+      return AppSession(
+        user: User(
+          id: authUser.id,
+          fullName: '',
+          email: authUser.email ?? '',
+          initials: '',
+        ),
+        contexts: const [],
+        needsMfa: true,
+      );
+    }
     final profile = await client
         .from('profiles')
         .select('id,full_name,email,needs_password')
@@ -1277,6 +1297,35 @@ class AuthRepository {
       active: active,
       needsPassword: profile['needs_password'] as bool? ?? false,
     );
+  }
+
+  Future<List<String>> totpFactors() async {
+    final result = await _authClient.auth.mfa.listFactors();
+    return result.totp.map((factor) => factor.id).toList();
+  }
+
+  Future<({String id, String secret, String qr})> enrollTotp() async {
+    final existing = await _authClient.auth.mfa.listFactors();
+    for (final factor in existing.all) {
+      if (factor.factorType == FactorType.totp &&
+          factor.status == FactorStatus.unverified) {
+        await _authClient.auth.mfa.unenroll(factor.id);
+      }
+    }
+    final result = await _authClient.auth.mfa.enroll(issuer: 'EducaDor');
+    final totp = result.totp!;
+    return (id: result.id, secret: totp.secret, qr: totp.qrCode);
+  }
+
+  Future<void> verifyTotp(String id, String code) async {
+    await _authClient.auth.mfa.challengeAndVerify(
+      factorId: id,
+      code: code.trim(),
+    );
+  }
+
+  Future<void> removeTotp(String id) async {
+    await _authClient.auth.mfa.unenroll(id);
   }
 
   Future<void> selectContext(AccessContext context) async {

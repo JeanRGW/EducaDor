@@ -1,11 +1,13 @@
 CREATE OR REPLACE FUNCTION public.context_role()
   RETURNS text
-  LANGUAGE sql
+  LANGUAGE plpgsql
   STABLE
   SECURITY DEFINER
   SET search_path TO ''
   AS $function$
-  select sc.role from public.session_contexts sc
+begin
+  perform public.require_mfa_if_enrolled();
+  return (select sc.role from public.session_contexts sc
   where sc.user_id = (select auth.uid())
     and sc.session_id = nullif(auth.jwt()->>'session_id', '')::uuid
     and (
@@ -17,7 +19,8 @@ CREATE OR REPLACE FUNCTION public.context_role()
         where cm.user_id = sc.user_id and cm.company_id = sc.company_id
           and cm.role = sc.role))
     )
-  limit 1
+  limit 1);
+end
 $function$;
 
 GRANT EXECUTE ON FUNCTION "public"."context_role"() TO "authenticated";

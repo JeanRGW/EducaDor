@@ -9,6 +9,7 @@ CREATE OR REPLACE FUNCTION public.select_context (
   AS $function$
 declare sid uuid := nullif(auth.jwt()->>'session_id', '')::uuid;
 begin
+  perform public.require_mfa_if_enrolled();
   if auth.uid() is null or sid is null then raise exception 'Authentication required'; end if;
   if not exists (select 1 from public.available_contexts() ac
     where ac.role = p_role and ac.company_id is not distinct from p_company_id) then
