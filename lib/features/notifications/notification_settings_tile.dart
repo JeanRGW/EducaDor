@@ -27,12 +27,13 @@ class NotificationSettingsTile extends ConsumerWidget {
         status == PushStatus.enabled ||
         status == PushStatus.disabled ||
         status == PushStatus.permission ||
+        status == PushStatus.denied ||
         status == PushStatus.error;
     return Card(
       child: SwitchListTile(
         title: const Text('Notificações'),
         subtitle: Text(description),
-        value: status == PushStatus.enabled,
+        value: status == PushStatus.enabled || status == PushStatus.denied,
         onChanged: !canChange
             ? null
             : (value) {

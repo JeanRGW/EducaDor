@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/models.dart';
 import '../repositories/repositories.dart';
+import '../repositories/notification_controller.dart';
 
 final sessionRefresh = SessionRefreshNotifier();
 
@@ -97,6 +98,11 @@ class SessionController extends AsyncNotifier<AppSession?> {
   }
 
   Future<void> logout() async {
+    try {
+      await ref.read(notificationControllerProvider.notifier).beforeLogout();
+    } catch (_) {
+      // Push cleanup must not prevent sign-out.
+    }
     await ref.read(authRepositoryProvider).signOut();
     state = const AsyncData(null);
     sessionRefresh.refresh();

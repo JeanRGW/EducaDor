@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/theme.dart';
 import '../../data/session/session_controller.dart';
-import '../../data/repositories/notification_controller.dart';
 import '../../features/notifications/notification_settings_tile.dart';
 import 'admin_styles.dart';
 import 'app_icons.dart';
@@ -207,7 +206,6 @@ class _ProfileAccountSettingsState
   Future<void> _logout() async {
     setState(() => _signingOut = true);
     try {
-      await ref.read(notificationControllerProvider.notifier).beforeLogout();
       await ref.read(sessionProvider.notifier).logout();
       if (mounted) context.go('/welcome');
     } catch (_) {
