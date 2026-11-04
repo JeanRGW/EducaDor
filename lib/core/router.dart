@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../data/models/models.dart';
 import '../data/session/session_controller.dart';
 import '../shared/widgets/shell.dart';
+import '../shared/widgets/route_error_screen.dart';
 
 import '../features/auth/screens.dart';
 import '../features/auth/onboarding_screens.dart';
@@ -46,6 +47,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     initialLocation: '/splash',
     refreshListenable: sessionRefresh,
     debugLogDiagnostics: false,
+    errorBuilder: (_, _) => const RouteErrorScreen(),
     redirect: (context, state) {
       final sessionState = ref.read(sessionProvider);
       final loc = state.matchedLocation;
