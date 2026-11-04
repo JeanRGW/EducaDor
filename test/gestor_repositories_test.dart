@@ -69,6 +69,8 @@ void main() {
                   'name': 'Santa Maria',
                   'active': false,
                   'employee_count': 7,
+                  'cnpj': null,
+                  'responsible': null,
                   'created_at': '2026-09-01T03:00:00Z',
                 },
               ],
@@ -87,6 +89,8 @@ void main() {
       ).page(search: ' %_ ', active: false, offset: 50);
       expect(page.items.single.employeeCount, 7);
       expect(page.items.single.initials, 'SM');
+      expect(page.items.single.cnpj, isEmpty);
+      expect(page.items.single.responsibleName, isEmpty);
       expect(page.activeCount, 10);
       expect(page.inactiveCount, 3);
     },

@@ -228,15 +228,16 @@ class _CompanyCard extends StatelessWidget {
             ),
           ],
         ),
-        Text(
-          'CNPJ: ${company.cnpj}',
-          style: const TextStyle(
-            fontFamily: AppFonts.inter,
-            fontSize: 11,
-            color: AppColors.textMuted,
-            height: 1.4,
+        if (company.cnpj.trim().isNotEmpty)
+          Text(
+            'CNPJ: ${company.cnpj.trim()}',
+            style: const TextStyle(
+              fontFamily: AppFonts.inter,
+              fontSize: 11,
+              color: AppColors.textMuted,
+              height: 1.4,
+            ),
           ),
-        ),
         const Divider(height: 20),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -245,25 +246,27 @@ class _CompanyCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Pessoa responsável',
-                    style: TextStyle(
-                      fontFamily: AppFonts.inter,
-                      fontSize: 11,
-                      color: AppColors.textMuted,
-                      height: 1.4,
+                  if (company.responsibleName.trim().isNotEmpty) ...[
+                    const Text(
+                      'Pessoa responsável',
+                      style: TextStyle(
+                        fontFamily: AppFonts.inter,
+                        fontSize: 11,
+                        color: AppColors.textMuted,
+                        height: 1.4,
+                      ),
                     ),
-                  ),
-                  Text(
-                    company.responsibleName,
-                    style: const TextStyle(
-                      fontFamily: AppFonts.inter,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w400,
-                      color: Color(0xFF475569),
-                      height: 1.4,
+                    Text(
+                      company.responsibleName.trim(),
+                      style: const TextStyle(
+                        fontFamily: AppFonts.inter,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w400,
+                        color: Color(0xFF475569),
+                        height: 1.4,
+                      ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),

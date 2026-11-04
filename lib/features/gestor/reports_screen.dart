@@ -168,6 +168,10 @@ class _GestorReportsScreenState extends ConsumerState<GestorReportsScreen> {
                   ),
                 ),
               ),
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 12, 16, 0),
+                child: Text('Exportações disponíveis em breve.'),
+              ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                 child: Column(
