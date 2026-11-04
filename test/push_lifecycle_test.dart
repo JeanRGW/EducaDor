@@ -35,11 +35,13 @@ class FakeTransport implements PushTransport {
 
 class FakeStore implements PushStore, PushStoreFactory {
   String caller = 'a';
+  String credential = 'jwt-a';
+  final validCredentials = <String>{'jwt-a'};
   final owners = <String, String>{};
   @override
-  PushStore capture(String userId) {
-    if (caller != userId) throw StateError('identity mismatch');
-    return FakeOwnerStore(this, caller);
+  PushStore? capture(String userId) {
+    if (caller != userId) return null;
+    return FakeOwnerStore(this, caller, credential);
   }
 
   bool preference = true;
@@ -73,9 +75,10 @@ class FakeStore implements PushStore, PushStoreFactory {
 }
 
 class FakeOwnerStore implements PushStore {
-  FakeOwnerStore(this.backend, this.owner);
+  FakeOwnerStore(this.backend, this.owner, this.credential);
   final FakeStore backend;
   final String owner;
+  final String credential;
   @override
   Future<bool> enabled(String userId) {
     if (userId != owner) throw StateError('wrong owner');
@@ -92,6 +95,9 @@ class FakeOwnerStore implements PushStore {
 
   @override
   Future<void> unregister(String token) async {
+    if (!backend.validCredentials.contains(credential)) {
+      throw StateError('expired credential');
+    }
     if (backend.owners[token] == owner) {
       backend.owners.remove(token);
       await backend.unregister(token);
@@ -193,6 +199,18 @@ void main() {
       transport.value = 'token-c';
       await lifecycle.refresh();
       expect(store.log, contains('register:token-c'));
+    },
+  );
+  test(
+    'logout refreshes expired captured credential for the same owner',
+    () async {
+      await lifecycle.switchUser('a');
+      store.validCredentials.remove('jwt-a');
+      store.credential = 'jwt-a-refreshed';
+      store.validCredentials.add(store.credential);
+      await lifecycle.beforeLogout();
+      expect(store.owners, isEmpty);
+      expect(store.log, contains('unregister:token-a'));
     },
   );
   test(

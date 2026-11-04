@@ -56,6 +56,7 @@ class PushLifecycle {
   bool _contextAvailable = false;
   String? _token;
   PushStore? _tokenStore;
+  String? _tokenOwner;
   StreamSubscription<String>? _rotation;
   Future<void> _tail = Future.value();
   int _epoch = 0;
@@ -76,9 +77,15 @@ class PushLifecycle {
     await _rotation?.cancel();
     _rotation = null;
     final token = _token;
-    final owner = _tokenStore;
+    final tokenOwner = _tokenOwner;
+    // Capture only if Auth still belongs to the token owner; otherwise retain
+    // the original credential for an external account switch or sign-out.
+    final owner = tokenOwner == null
+        ? _tokenStore
+        : store.capture(tokenOwner) ?? _tokenStore;
     _token = null;
     _tokenStore = null;
+    _tokenOwner = null;
     if (token != null && owner != null) {
       try {
         await owner.unregister(token);
@@ -172,7 +179,10 @@ class PushLifecycle {
 
   Future<void> _register(int epoch, [String? rotated]) async {
     final owner = _ownerStore;
-    if (owner == null) throw StateError('No authenticated owner');
+    final ownerId = _user;
+    if (owner == null || ownerId == null) {
+      throw StateError('No authenticated owner');
+    }
     final token = rotated ?? await transport.token();
     if (!_current(epoch)) return;
     if (token == null || token.isEmpty) {
@@ -180,15 +190,21 @@ class PushLifecycle {
       return;
     }
     if (_token != null && _token != token) {
-      await _tokenStore?.unregister(_token!);
+      final ownerId = _tokenOwner;
+      final previousOwner = ownerId == null
+          ? _tokenStore
+          : store.capture(ownerId) ?? _tokenStore;
+      await previousOwner?.unregister(_token!);
       _token = null;
       _tokenStore = null;
+      _tokenOwner = null;
       if (!_current(epoch)) return;
     }
     // Remember the owning credential before the request: a network failure can
     // occur after the server has committed the registration.
     _token = token;
     _tokenStore = owner;
+    _tokenOwner = ownerId;
     if (!_current(epoch)) {
       await _clear();
       return;
