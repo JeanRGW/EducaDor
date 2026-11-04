@@ -17,10 +17,37 @@ insert into fcm_tokens(user_id,token) values ('a9000000-0000-4000-8000-000000000
 set local role authenticated;
 select set_config('request.jwt.claims','{"sub":"a9000000-0000-4000-8000-000000000001","session_id":"f9000000-0000-4000-8000-000000000001"}',true);
 select select_context('gestor',null);
+reset role;
+set local role service_role;
+do $$ declare r jsonb; begin
+ r := claim_push_recipients('a9000000-0000-4000-8000-000000000001','f9000000-0000-4000-8000-000000000001','course_available','c9000000-0000-4000-8000-000000000001',null,null);
+ if not (r->>'suppressed')::boolean then raise exception 'Platform paused accepted'; end if;
+end $$;
+reset role;
+set local role authenticated;
+do $$ declare c_all uuid; c_private uuid; c_first uuid; result jsonb; begin
+ c_all := publish_video_trail('All','desc','Module','abcdefghijk',true);
+ c_private := publish_video_trail('Private','desc','Module','abcdefghijk',false,array['b9000000-0000-4000-8000-000000000001'::uuid]);
+ c_first := create_content_course('First');
+ perform set_course_audience(c_first,false,array['b9000000-0000-4000-8000-000000000001'::uuid]);
+ perform set_course_platform_enabled(c_first,true);
+ -- Service-only claim is tested after leaving the client role.
+ perform set_config('test.push_all',c_all::text,true);
+ perform set_config('test.push_private',c_private::text,true);
+ perform set_config('test.push_first',c_first::text,true);
+end $$;
 select set_course_platform_enabled('c9000000-0000-4000-8000-000000000001',true);
 reset role;
 set local role service_role;
-do $$ declare result jsonb; begin
+do $$ declare result jsonb; c uuid; setting text; begin
+ result := claim_push_recipients('a9000000-0000-4000-8000-000000000001','f9000000-0000-4000-8000-000000000001','course_available','c9000000-0000-4000-8000-000000000001','b9000000-0000-4000-8000-000000000002',null);
+ if not (result->>'suppressed')::boolean then raise exception 'Unassigned audience accepted'; end if;
+ foreach setting in array array['test.push_all','test.push_private','test.push_first'] loop
+  c := current_setting(setting)::uuid;
+  result := claim_push_recipients('a9000000-0000-4000-8000-000000000001','f9000000-0000-4000-8000-000000000001','course_available',c,null,null);
+  if (result->>'suppressed')::boolean or jsonb_array_length(result->'tokens') <> (case when setting='test.push_all' then 2 else 1 end) then raise exception 'Initial publication incorrect % %',setting,result; end if;
+  if setting <> 'test.push_all' and result->'tokens'->0->>'token' <> 'a' then raise exception 'Wrong company notified'; end if;
+ end loop;
  result := claim_push_recipients('a9000000-0000-4000-8000-000000000001','f9000000-0000-4000-8000-000000000001','course_available','c9000000-0000-4000-8000-000000000001',null,null);
  if jsonb_array_length(result->'tokens') <> 1 or result->'tokens'->0->>'token' <> 'a' then raise exception 'Audience gates failed %',result; end if;
  result := claim_push_recipients('a9000000-0000-4000-8000-000000000001','f9000000-0000-4000-8000-000000000001','course_available','c9000000-0000-4000-8000-000000000001',null,null);
@@ -31,6 +58,14 @@ set local role authenticated;
 select set_config('request.jwt.claims','{"sub":"a9000000-0000-4000-8000-000000000004","session_id":"f9000000-0000-4000-8000-000000000004"}',true);
 select select_context('empresa','b9000000-0000-4000-8000-000000000001');
 select set_course_company_enabled('c9000000-0000-4000-8000-000000000001',false);
+reset role;
+set local role service_role;
+do $$ declare r jsonb; begin
+ r := claim_push_recipients('a9000000-0000-4000-8000-000000000004','f9000000-0000-4000-8000-000000000004','course_available','c9000000-0000-4000-8000-000000000001','b9000000-0000-4000-8000-000000000001',null);
+ if not (r->>'suppressed')::boolean then raise exception 'Company paused accepted'; end if;
+end $$;
+reset role;
+set local role authenticated;
 select set_course_company_enabled('c9000000-0000-4000-8000-000000000001',true);
 reset role;
 set local role service_role;

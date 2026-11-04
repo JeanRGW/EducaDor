@@ -3,9 +3,11 @@
 ## Contract
 
 Authenticated clients call `register_fcm_token(p_token, p_platform)` with
-`android`, `ios`, or `web`. Registration transfers that token to the current
-identity without changing its preference; `unregister_fcm_token(p_token)` only
-removes the caller's token. `set_push_enabled(p_enabled)` sets the preference;
+`android`, `ios`, or `web`. Registration requires a valid active context and transfers
+that token to the current identity without changing its preference;
+`unregister_fcm_token(p_token)` removes only the caller's token and does not require
+an active context, so logout cleanup remains possible. Preference updates require
+an authenticated identity, not a selected context. `set_push_enabled(p_enabled)` sets the preference;
 read the caller's `notification_preferences` row (missing means enabled).
 Direct client token writes are disabled: migrate existing clients before rollout.
 Existing duplicate token owners are reconciled on re-registration.

@@ -1,8 +1,7 @@
 CREATE OR REPLACE FUNCTION public.register_fcm_token(p_token text, p_platform text)
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path TO '' AS $function$
 begin
-  perform public.context_role();
-  if auth.uid() is null then raise exception 'Forbidden'; end if;
+  if auth.uid() is null or public.context_role() is null then raise exception 'Forbidden'; end if;
   if p_token is null or length(p_token) not between 1 and 4096 or
     p_token <> trim(p_token) or p_platform not in ('android', 'ios', 'web') or p_platform is null then
     raise exception 'Invalid token';
