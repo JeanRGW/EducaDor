@@ -61,7 +61,7 @@ create policy progress_select on lesson_progress for select using (
       (context_role() = 'funcionario' and user_id = auth.uid()))));
 ```
 
-* MFA (when added): TOTP only. Restrictive `aal2` policy on gestor writes; empresa/funcionario opt-in.
+* Planned MFA: TOTP optional for all accounts, including gestores; enrolled accounts must challenge to `aal2` with server-side enforcement. No SMS or custom recovery bypass. Lost-factor recovery needs a documented operator procedure.
 
 ```sql
 -- content tables: only employees in assigned companies can read lessons;
@@ -164,7 +164,7 @@ counters, polling or external services are introduced.
 * Reports retain the guarded `completion_by_dept` view and current-completion
   wording. Leave status, regulatory thresholds, certificate-validity/renewal
   rules and unimplemented Profile workflows remain deferred; no arbitrary
-  business rules are inferred. Exports, notifications and MFA remain deferred.
+  business rules are inferred. Exports remain deferred; notifications and MFA are planned in the current round, not yet established as implemented or deployed.
 
 Verify `supabase/tests/company_data.sql` in an isolated database before an
 operator-approved staging migration. Apply the migration **before** the Flutter
@@ -229,7 +229,7 @@ selector does not re-query or filter the current company-completion section.
 
 Dashboard, Companies and Reports include loading, empty, retry and refresh
 states. Gestor content routes reuse the real catalog and YouTube publisher
-without mock fallbacks. CSV export, MFA and notifications
+without mock fallbacks. CSV export and, at that baseline, MFA and notifications
 remain deferred. Non-video authoring is implemented. Test the queries with
 `supabase/tests/gestor_data.sql` on an isolated database; never apply fixtures or
 new migrations to shared/staging databases without operator approval.
@@ -268,8 +268,8 @@ revocation, own-profile editing, and course metadata/lesson editing. Verify with
   saving, retry reload without duplicating the profile write. The form reuses the
   Gestor field labels above each input, the read-only access-email card, and the
   teal outlined date selector shared with the other management screens. Avatar,
-  Auth email changes, password settings, notification preferences and MFA remain
-  deferred.
+  Auth email changes and password settings remain deferred; notification
+  preferences and MFA are planned in the current round.
 * `/gestor/course/:id` edits title, description, cover and responsible, and lists
   lessons in stable module/lesson order with 50-row pages. Existing module/lesson
   titles and YouTube IDs can be edited. The "Liberar para" audience selector lives
@@ -320,9 +320,18 @@ YouTube Unlisted only (`youtube_player_flutter`, store `video_id`); no Storage v
 
 ## Push (FCM Spark, messaging only – no Firestore/Storage/Hosting)
 
-Planned architecture, not release availability: no push function, Firebase client
-or token lifecycle is implemented at the audit baseline. Assignment changes are
-made by RPCs and certificates are issued server-side; the caller/recipient event
-contract must be resolved before implementing the app-invoked send below.
+Planned for the current round, not a claim of implementation or release availability.
+After a successful course availability mutation or server-side certificate issuance,
+the app invokes `push-on-assign` with `course_available {course_id, company_id?}`
+or `certificate_issued {certificate_id}` respectively. The server authenticates
+and authorizes the caller and derives recipients from trusted data, including all
+three access gates for course availability; it accepts neither arbitrary users nor
+message text. Sends are bounded and best effort; a minimal current-state cooldown
+marker limits repeats, not a queue, event log or exactly-once guarantee.
 
-Flutter `firebase_messaging getToken()` → upsert `fcm_tokens`. Direct send per stored token (no topics in v1). No DB triggers: after the app inserts `assignments`/`certificates` it invokes `push-on-assign` directly (idempotency key = row PK; missed pushes acceptable – notifications are optional, no resend UI in v1). Function sends via FCM HTTP v1 (service-account JSON in Supabase secrets). Unlimited $0; skip BigQuery analytics for MVP.
+With explicit permission, Flutter registers and refreshes device tokens, handles
+foreground/background lifecycle and cleans up on account switch/sign-out; account
+preference controls delivery. FCM HTTP v1 uses a service-account secret only on the
+server. Web uses a public VAPID key in the client, not its private key in Supabase.
+No triggers, topics, inbox, reminders or resend UI. Missing configuration disables
+push safely. See [round plan](13-security-push-round.md) for validation and gates.

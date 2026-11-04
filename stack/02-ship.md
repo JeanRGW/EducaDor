@@ -16,7 +16,7 @@
 * SPA fallback `/* → /index.html` (routes in `lib/core/router.dart` must survive refresh). Entry points use no-cache; unfingerprinted `assets/*` and CanvasKit revalidate rather than immutable one-year caching. Security headers include a report-only CSP pending real-flow browser validation.
 * `app.educador.rgw.app` CNAME → `educador-ayp.pages.dev` in the `rgw.app` Cloudflare zone. Public covers served from the public Storage bucket (cached egress). Supabase Auth Site URL: `https://app.educador.rgw.app/`, with invite/password callbacks plus trusted localhost/preview URLs allowed. Publishable key in the bundle is safe with RLS; service-role never in the app. Offline support is static shell only via the required build-generated custom worker, with a browser `navigator.onLine`/events banner (not an inference from server/Auth errors). Current reads still use per-screen errors/retry; private/Auth/API responses, signed files and bearer URL responses are never cached. Navigation uses the sanitized static index; no offline course data, media or write queue is implemented. See `12-pwa-reliability.md` for lifecycle, browser evidence and limitations.
 
-* Web push: VAPID keypair (public key in build, private in function secrets) + `firebase-messaging-sw.js` in `build/web`; tokens use the same `fcm_tokens` upsert.
+* Planned web push uses Firebase public configuration and the web VAPID public key in the build; FCM HTTP v1 sends use the server-side service account, not a VAPID private key in Supabase. The messaging worker must coexist with the static-shell worker without caching private, Auth, API or bearer responses. See [round plan](13-security-push-round.md).
 
 ## CI
 
@@ -33,7 +33,7 @@ assigned workflow is not enabled infrastructure.
 | `backup.yml` | weekly cron | `pg_dump` → `educador-backups` bucket (keep newest 3, prune older in same run) |
 | `keepalive.yml` | daily cron | light authed query to reset Supabase 7-day pause timer |
 
-Public staging inputs (`SUPABASE_URL`, `SUPABASE_ANON_KEY` publishable key, `CLOUDFLARE_ACCOUNT_ID`) may be versioned; use environment-specific public values for other projects. True secrets (Actions, never in repo): `CLOUDFLARE_API_TOKEN, SUPABASE_DB_URL` (with password). Function secrets (Supabase dashboard): `VAPID_PRIVATE_KEY, FCM_SERVICE_ACCOUNT_JSON, STORAGE_S3_*`; the managed Supabase service-role key stays server-side. Future PR previews must use an explicitly approved staging target; preview automation is not implemented at this baseline.
+Public staging inputs (`SUPABASE_URL`, `SUPABASE_ANON_KEY` publishable key, `CLOUDFLARE_ACCOUNT_ID`) may be versioned; use environment-specific public values for other projects. True secrets (Actions, never in repo): `CLOUDFLARE_API_TOKEN, SUPABASE_DB_URL` (with password). Function secrets (Supabase dashboard): `FCM_SERVICE_ACCOUNT_JSON, STORAGE_S3_*`; the managed Supabase service-role key stays server-side. Future PR previews must use an explicitly approved staging target; preview automation is not implemented at this baseline.
 
 ## Build order
 
@@ -79,9 +79,11 @@ the 50MB object cap and three dumps can exceed the shared 1GB Storage allocation
 Compression/chunking needs checksums, encryption/key custody, a total budget and a
 tested restore path. DB dumps alone do not back up uploaded lesson objects.
 
-FCM requires operator-provided Firebase/VAPID configuration and an agreed
-assignment/certificate event contract. Planned architecture does not imply push
-delivery is available. Do not deploy functions or enable jobs from feature PRs.
+FCM requires operator-provided Firebase Spark project, service account, public web
+configuration/VAPID key, approved web origins and Android configuration, plus
+supported-device checks. These are release gates, not completed setup. The event
+contract and approval-gated migration → functions → PWA order are in
+[the round plan](13-security-push-round.md). Do not deploy from feature PRs.
 
 Corporate video access uses YouTube whitelisting. Paid video services and R2 are
 not approved fallbacks under the locked no-card stack. Quota warning/restriction
