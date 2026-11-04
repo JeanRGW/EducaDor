@@ -66,6 +66,34 @@ class _EmployeeSession extends SessionController {
 }
 
 void main() {
+  for (final exists in [true, false]) {
+    test(
+      'course certificate lookup is scoped and bounded, exists=$exists',
+      () async {
+        var calls = 0;
+        final repo = EmployeeLearningRepository(
+          client: _client((request) async {
+            calls++;
+            expect(request.method, 'GET');
+            expect(request.url.path, '/rest/v1/certificates');
+            expect(request.url.queryParameters, {
+              'select': 'id',
+              'user_id': 'eq.employee',
+              'company_id': 'eq.company',
+              'course_id': 'eq.course',
+              'limit': '1',
+            });
+            return http.Response(exists ? '[{"id":"certificate"}]' : '[]', 200);
+          }),
+        );
+        expect(
+          await repo.hasCourseCertificate('employee', 'company', 'course'),
+          exists,
+        );
+        expect(calls, 1);
+      },
+    );
+  }
   for (final created in [true, false, null]) {
     test(
       'certificate push only for authoritative created=$created and tolerates failure',
@@ -76,10 +104,7 @@ void main() {
             calls.add(request.url.path);
             if (request.url.path.endsWith('/issue-certificate')) {
               return http.Response(
-                jsonEncode({
-                  'id': 'certificate',
-                  'created': ?created,
-                }),
+                jsonEncode({'id': 'certificate', 'created': ?created}),
                 200,
               );
             }

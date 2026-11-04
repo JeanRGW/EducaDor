@@ -1123,6 +1123,22 @@ class EmployeeLearningRepository {
     );
   }
 
+  Future<bool> hasCourseCertificate(
+    String userId,
+    String companyId,
+    String courseId,
+  ) async {
+    final row = await _api
+        .from('certificates')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('company_id', companyId)
+        .eq('course_id', courseId)
+        .limit(1)
+        .maybeSingle();
+    return row != null;
+  }
+
   Future<LearningPage<EarnedCertificate>> certificates(
     String companyId, {
     int offset = 0,

@@ -67,7 +67,7 @@ class _Learning extends EmployeeLearningRepository {
   bool emptyRanking = false;
   final certificateCompanies = <String>{'a', 'b'};
   final certificateReads = <String>[];
-  Completer<LearningPage<EarnedCertificate>>? delayedCertificates;
+  Completer<bool>? delayedCertificates;
   Completer<void>? delayedIssue;
   bool failIssue = false, failCertificateRead = false;
   final redeemed = <String>[];
@@ -170,15 +170,24 @@ class _Learning extends EmployeeLearningRepository {
   }
 
   @override
-  Future<LearningPage<EarnedCertificate>> certificates(
-    String companyId, {
-    int offset = 0,
-  }) async {
-    certificateReads.add('$companyId:$offset');
+  Future<bool> hasCourseCertificate(
+    String userId,
+    String companyId,
+    String courseId,
+  ) async {
+    certificateReads.add('$userId:$companyId:$courseId');
     if (failCertificateRead) throw StateError('offline');
     if (companyId == 'a' && delayedCertificates != null) {
       return delayedCertificates!.future;
     }
+    return courseId == 'course' && certificateCompanies.contains(companyId);
+  }
+
+  @override
+  Future<LearningPage<EarnedCertificate>> certificates(
+    String companyId, {
+    int offset = 0,
+  }) async {
     final exists = certificateCompanies.contains(companyId);
     return LearningPage(
       total: exists ? 1 : 0,
@@ -606,7 +615,7 @@ void main() {
       tester,
       find.text('Certificado emitido. Disponível em Recompensas.'),
     );
-    expect(repo.certificateReads, ['a:0']);
+    expect(repo.certificateReads, ['ana:a:course']);
     expect(repo.issued, 0);
     expect(find.text('Emitir certificado'), findsNothing);
   });
@@ -669,7 +678,7 @@ void main() {
       tester,
       find.text('Certificado emitido. Disponível em Recompensas.'),
     );
-    expect(repo.certificateReads, ['a:0', 'a:0']);
+    expect(repo.certificateReads, ['ana:a:course', 'ana:a:course']);
     expect(repo.issued, 1);
   });
   testWidgets('certificate lookup failure blocks issuance until retry', (
@@ -694,7 +703,7 @@ void main() {
     await tester.tap(find.text('Tentar novamente'));
     await tester.pumpAndSettle();
     expect(find.text('Emitir certificado'), findsOneWidget);
-    expect(repo.certificateReads, ['a:0', 'a:0']);
+    expect(repo.certificateReads, ['ana:a:course', 'ana:a:course']);
   });
   testWidgets('stale certificate lookup cannot cross company contexts', (
     tester,
@@ -702,7 +711,7 @@ void main() {
     final repo = _Learning()
       ..certificateCompanies.remove('b')
       ..lessonRows = [_Learning().lessonRows.first]
-      ..delayedCertificates = Completer<LearningPage<EarnedCertificate>>();
+      ..delayedCertificates = Completer<bool>();
     final container = await _show(
       tester,
       const CourseDetailScreen(courseId: 'course'),
@@ -711,25 +720,13 @@ void main() {
     (container.read(sessionProvider.notifier) as _Session).switchCompany();
     await tester.pumpAndSettle();
     await _visible(tester, find.text('Emitir certificado'));
-    repo.delayedCertificates!.complete(
-      LearningPage(
-        total: 1,
-        items: [
-          EarnedCertificate(
-            id: 'old',
-            code: 'old',
-            courseId: 'course',
-            courseTitle: 'old',
-            companyName: 'A',
-            employeeName: 'Ana',
-            issuedAt: DateTime(2026),
-          ),
-        ],
-      ),
-    );
+    repo.delayedCertificates!.complete(true);
     await tester.pumpAndSettle();
     expect(find.text('Emitir certificado'), findsOneWidget);
-    expect(repo.certificateReads, containsAll(['a:0', 'b:0']));
+    expect(
+      repo.certificateReads,
+      containsAll(['ana:a:course', 'ana:b:course']),
+    );
     expect(repo.issued, 0);
   });
   testWidgets(
