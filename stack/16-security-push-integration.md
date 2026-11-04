@@ -17,6 +17,12 @@ The integration branch is a review vehicle, not a release. It is not merged into
 the merge until the source PRs land; that is expected and resolves once the
 dependencies merge in order. Source PRs remain independently reviewable.
 
+**Status: not ready.** An independent review of the client source found three
+critical lifecycle/worker defects after the checks below were recorded (see
+"Known client blockers"). The passing results are pre-fix evidence only; the
+corrected client head must be merged here and every check rerun before this branch
+can be considered integration-complete.
+
 ## Added integration fix
 
 Independent branches left one trust-boundary gap: the new
@@ -100,3 +106,36 @@ Isolated local project `EducaDorRound2` on `+6000` ports, own container; the sha
   Auth service remain operator verification.
 - The client branch's Android debug build was verified by its author and was not
   repeated here because the integration changes do not touch native code.
+
+## Known client blockers (PR #20 source, pending)
+
+An independent read-only review found three critical defects in the current
+`feat/fcm-client` head (`79caeab`) after this integration was validated. They are
+being fixed in that source worktree; this branch must not be treated as ready until
+the fixed source is merged here and all checks are rerun.
+
+1. **Stale-owner token cleanup.** After an Auth swap or logout, the client cleanup
+   only knows the current identity, so the previous owner's registration can remain.
+   Fix direction: centralize pre-token cleanup in session logout for every path
+   (including the direct context-selection logout), and make external Auth swaps and
+   stale in-flight registrations identity-aware (captured registration identity/JWT,
+   with local messaging token revocation as fallback). Never use an arbitrary
+   service-role identity.
+2. **Revoked permission and preference.** The token-rotation listener stays active
+   after notification permission is revoked, and a denied permission currently
+   prevents reaching the account opt-out setting. Rotation callbacks must recheck
+   permission and the enabled preference, cancel rotation and unregister the prior
+   token when it is revoked, and settings must remain reachable when permission is
+   denied.
+3. **Duplicate background notifications.** Web background delivery displays twice
+   because the Firebase SDK auto-displays the notification payload while the custom
+   worker also calls `showNotification`. Fix direction: rely on SDK display for
+   notification payloads and only use the custom display path for data-only
+   messages, keeping safe same-origin click handling.
+
+The integration fix above (`notificationContextKey`, session readiness) must be
+preserved when the corrected client head lands. Validation evidence in this document
+describes the pre-fix source and does not cover these defects; rerun the full SQL,
+Node/Deno, Flutter, build/worker and browser checks after merging the corrected
+source.
+
