@@ -106,9 +106,10 @@ retried. This records a redemption, not inventory/delivery fulfillment.
 
 ## Intentional boundaries
 
-Notifications/FCM, MFA, CSV/report exports,
-professional chat, support workflow, dark mode and additional languages remain
-deferred. The UI states availability rather than showing fake enabled settings.
+Notifications/FCM and optional TOTP MFA are planned in the current round, not
+claimed available until integrated and deployed; see [round plan](13-security-push-round.md).
+CSV/report exports, professional chat, support workflow, dark mode and additional
+languages remain deferred. The UI states availability rather than showing fake enabled settings.
 Level thresholds, true streaks and study-hour tracking have no agreed rules/data;
 their prototype values are not fabricated. Non-video authoring/playback and
 private file downloads are implemented; see [Content workflow](03-content.md).

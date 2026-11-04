@@ -25,10 +25,12 @@ headings. Local checks do not establish hosted configuration or device readiness
 - Review grants, old-client compatibility and the combined migration chain.
   Independently passing PRs are not an integration test.
 
-## Assigned independent workstreams
+## Previous release-gap batch
 
-These are assignments, **not completion claims**. PRs and test logs establish
-delivery; no implementation PR is implicitly merged or deployed.
+The previous ten-PR batch is merged into `main` at `62d6460`, but not deployed.
+The table below records historical assignments, not current work or deployment
+claims. Review merged PRs and test evidence for individual implementation details.
+The current parallel round is [security and push](13-security-push-round.md).
 
 | Branch | Intended result | Ownership / boundary |
 | --- | --- | --- |
@@ -66,16 +68,13 @@ Points avoids repository changes. Do not reformat the entire shared file.
 
 ## Explicit deferrals and undefined product rules
 
-Operator decision during this review: **keep deferred gates**. Finish the
-release-gap PR batch; do not bring deferred FCM/exports/avatars/MFA into scope
-without a subsequent decision. External setup and deployments remain separately
-approved even for implemented tooling.
+The prior decision to defer FCM and MFA has been superseded: both are in the
+[current round](13-security-push-round.md). Other deferred work stays out of scope.
+External setup and deployments remain separately approved even for implemented tooling.
 
 These are not silently counted as implemented or promoted to this release:
 
-- MFA/TOTP and `aal2`; verify the current Supabase plan rather than stale config
-  comments. Never introduce paid MFA/SMS under the locked stack.
-- Exports, credential settings, avatars, notification preferences, dark mode,
+- Exports, credential settings, avatars, dark mode,
   languages, chat/support, departments and automatic reminders.
 - Leave status, regulatory thresholds, certificate validity/renewal, levels,
   true streaks and study hours have no approved rules/data.
@@ -89,9 +88,8 @@ These are not silently counted as implemented or promoted to this release:
 - Corporate YouTube blocking requires whitelisting. R2/Stream/Bunny are not
   approved fallback provisioning under the zero-cost/no-card stack.
 
-FCM is contradictory across docs: the architecture plans it while the employee
-release explicitly defers it. Separate planned architecture from availability
-until scope and configuration are confirmed.
+FCM and MFA scope is now confirmed, but planning, implementation evidence and
+hosted availability remain separate. See the current round plan.
 
 ## Already implemented / documentation drift
 
