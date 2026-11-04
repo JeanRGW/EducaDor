@@ -141,5 +141,3 @@ merged here:
 
 The integration readiness gate (`notificationContextKey`, MFA/password-pending and
 no-active-context suppression) is preserved in the merged tree.
-
-
