@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/theme.dart';
 import '../../data/session/session_controller.dart';
+import '../../data/repositories/notification_controller.dart';
+import '../../features/notifications/notification_settings_tile.dart';
 import 'admin_styles.dart';
 import 'app_icons.dart';
 import 'common.dart';
@@ -205,6 +207,7 @@ class _ProfileAccountSettingsState
   Future<void> _logout() async {
     setState(() => _signingOut = true);
     try {
+      await ref.read(notificationControllerProvider.notifier).beforeLogout();
       await ref.read(sessionProvider.notifier).logout();
       if (mounted) context.go('/welcome');
     } catch (_) {
@@ -243,11 +246,7 @@ class _ProfileAccountSettingsState
             if (mounted) widget.onProfileEdited?.call();
           },
         ),
-        const ProfileMenuRow(
-          label: 'Notificações',
-          icon: AppIcons.bell,
-          status: 'Em breve',
-        ),
+        const NotificationSettingsTile(),
         const ProfileMenuRow(
           label: 'Idioma',
           icon: AppIcons.globe,
@@ -258,10 +257,10 @@ class _ProfileAccountSettingsState
           icon: AppIcons.moon,
           status: 'Em breve',
         ),
-        const ProfileMenuRow(
+        ProfileMenuRow(
           label: 'Segurança e MFA',
           icon: AppIcons.security,
-          status: 'Em breve',
+          onTap: () => context.push('/account/security'),
         ),
         const ProfileMenuRow(
           label: 'Suporte e ajuda',

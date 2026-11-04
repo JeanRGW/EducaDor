@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart' hide User;
 import '../mock/mock_data.dart';
 import '../models/models.dart';
 import 'certificate_document_repository.dart';
+import 'notification_repository.dart';
 
 const _supabaseUrl = String.fromEnvironment('SUPABASE_URL');
 const _supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
@@ -830,6 +831,7 @@ class ContentRepository {
       'set_course_platform_enabled',
       params: {'p_course': courseId, 'p_enabled': enabled},
     );
+    if (enabled) await sendCourseAvailable(_contentClient, courseId);
   }
 
   Future<void> setCompanyEnabled(String courseId, bool enabled) async {
@@ -837,6 +839,22 @@ class ContentRepository {
       'set_course_company_enabled',
       params: {'p_course': courseId, 'p_enabled': enabled},
     );
+    if (enabled) {
+      try {
+        final contexts =
+            await _contentClient.rpc('selected_context') as List<dynamic>;
+        final company = contexts.single['company_id'] as String?;
+        if (company != null) {
+          await sendCourseAvailable(
+            _contentClient,
+            courseId,
+            companyId: company,
+          );
+        }
+      } catch (_) {
+        // Notification delivery is best effort.
+      }
+    }
   }
 
   Future<ContentAudience> audience(String courseId) async {
@@ -854,6 +872,12 @@ class ContentRepository {
   }
 
   Future<void> setAudience(String courseId, ContentAudience audience) async {
+    ContentAudience? previous;
+    try {
+      previous = await this.audience(courseId);
+    } catch (_) {
+      // A notification preflight must not block the audience mutation.
+    }
     await _contentClient.rpc(
       'set_course_audience',
       params: {
@@ -862,6 +886,14 @@ class ContentRepository {
         'p_company_ids': audience.companyIds,
       },
     );
+    if (previous != null &&
+        !previous.allCompanies &&
+        (audience.allCompanies ||
+            audience.companyIds.any(
+              (id) => !previous!.companyIds.contains(id),
+            ))) {
+      await sendCourseAvailable(_contentClient, courseId);
+    }
   }
 
   Future<String> publishVideo({
@@ -872,21 +904,25 @@ class ContentRepository {
     required ContentAudience audience,
     String? coverKey,
     String? responsibleId,
-  }) async =>
-      await _contentClient.rpc(
-            'publish_video_trail',
-            params: {
-              'p_title': title.trim(),
-              'p_description': description.trim(),
-              'p_module_title': moduleTitle.trim(),
-              'p_video_id': videoId,
-              'p_all_companies': audience.allCompanies,
-              'p_company_ids': audience.companyIds,
-              'p_cover_key': coverKey,
-              'p_responsible_id': responsibleId,
-            },
-          )
-          as String;
+  }) async {
+    final id =
+        await _contentClient.rpc(
+              'publish_video_trail',
+              params: {
+                'p_title': title.trim(),
+                'p_description': description.trim(),
+                'p_module_title': moduleTitle.trim(),
+                'p_video_id': videoId,
+                'p_all_companies': audience.allCompanies,
+                'p_company_ids': audience.companyIds,
+                'p_cover_key': coverKey,
+                'p_responsible_id': responsibleId,
+              },
+            )
+            as String;
+    await sendCourseAvailable(_contentClient, id);
+    return id;
+  }
 
   Future<({String key, String putUrl})> requestCoverUpload({
     required int size,
@@ -1165,10 +1201,11 @@ class EmployeeLearningRepository {
 
   Future<void> issueCertificate(String companyId, String courseId) async {
     try {
-      await _api.functions.invoke(
+      final result = await _api.functions.invoke(
         'issue-certificate',
         body: {'companyId': companyId, 'courseId': courseId},
       );
+      await sendCertificateIssued(_api, result.data);
     } on FunctionException catch (error) {
       if (error.status == 409 &&
           error.details is Map &&

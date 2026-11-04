@@ -12,6 +12,7 @@ import '../../shared/widgets/app_icons.dart';
 import '../../shared/widgets/common.dart';
 import '../../shared/widgets/charts.dart';
 import '../gestor/widgets.dart' show DataSkeleton;
+import '../notifications/notification_settings_sheet.dart';
 import 'widgets.dart';
 
 class CompanyDashboardScreen extends ConsumerWidget {
@@ -63,8 +64,7 @@ class CompanyDashboardScreen extends ConsumerWidget {
               ),
               IconButton(
                 tooltip: 'Notificações',
-                onPressed: () =>
-                    showCompanyUnavailable(context, 'Notificações'),
+                onPressed: () => showNotificationSettings(context),
                 icon: const CircleAvatar(
                   radius: 18,
                   backgroundColor: AppColors.background,
