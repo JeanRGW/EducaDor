@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../models/models.dart';
 import '../session/session_controller.dart';
 import 'notification_repository.dart';
 import 'push_lifecycle.dart';
@@ -131,6 +132,14 @@ class FirebasePushTransport implements PushTransport {
   }
 }
 
+/// Token registration requires a completed session: an enrolled account still
+/// challenging MFA or setting its password has no server-authorized context.
+String? notificationContextKey(AppSession? session) {
+  if (session == null || session.needsMfa || session.needsPassword) return null;
+  final active = session.active;
+  return active == null ? null : '${active.role.name}:${active.companyId}';
+}
+
 class NotificationController extends Notifier<PushStatus> {
   final events = StreamController<bool>.broadcast();
   late final PushLifecycle _lifecycle;
@@ -155,10 +164,7 @@ class NotificationController extends Notifier<PushStatus> {
       if (next.isLoading || next.hasError) return;
       final session = next.value;
       final id = session?.user.id;
-      final active = session?.active;
-      final key = active == null
-          ? null
-          : '${active.role.name}:${active.companyId}';
+      final key = notificationContextKey(session);
       if (id != _user) {
         _user = id;
         _contextKey = key;

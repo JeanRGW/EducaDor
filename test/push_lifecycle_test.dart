@@ -1,9 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:educador/data/models/models.dart';
 import 'package:educador/data/repositories/push_lifecycle.dart';
 import 'package:educador/data/repositories/notification_controller.dart'
-    show validFirebaseConfig;
+    show notificationContextKey, validFirebaseConfig;
 
 class FakeTransport implements PushTransport {
   bool available = true;
@@ -187,6 +188,49 @@ void main() {
     store.fail = false;
     await lifecycle.refresh();
     expect(statuses.last, PushStatus.enabled);
+  });
+  test('MFA challenge or pending password suppresses registration', () {
+    const user = User(
+      id: 'id',
+      fullName: 'Ana',
+      email: 'a@example.test',
+      initials: 'A',
+    );
+    const access = AccessContext(role: Role.funcionario, companyName: 'C');
+    expect(notificationContextKey(null), isNull);
+    expect(
+      notificationContextKey(
+        const AppSession(user: user, contexts: [], needsMfa: true),
+      ),
+      isNull,
+    );
+    expect(
+      notificationContextKey(
+        const AppSession(user: user, contexts: [], needsPassword: true),
+      ),
+      isNull,
+    );
+    expect(
+      notificationContextKey(const AppSession(user: user, contexts: [])),
+      isNull,
+    );
+    expect(
+      notificationContextKey(
+        const AppSession(
+          user: user,
+          contexts: [access],
+          active: access,
+          needsMfa: true,
+        ),
+      ),
+      isNull,
+    );
+    expect(
+      notificationContextKey(
+        const AppSession(user: user, contexts: [access], active: access),
+      ),
+      'funcionario:null',
+    );
   });
   test('config validates platform-specific Firebase and VAPID shapes', () {
     final key = 'AIza${'a' * 35}';
