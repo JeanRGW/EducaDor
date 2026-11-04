@@ -18,10 +18,10 @@ roadmap gaps remain next-round work, not prerequisites invented for these PRs.
 
 | Branch / owner | Scope | Coordination |
 | --- | --- | --- |
-| `feat/optional-totp` | MFA auth, router and server guards; `stack/13-account-mfa.md` | Expose account settings integration to coordinator; protect enrolled users in every relevant server path |
+| `feat/optional-totp` | MFA auth, router, security screen and server guards; `stack/13-account-mfa.md` | Expose `/account/security` route for profile navigation; protect enrolled users in every relevant server path; no `SecuritySettingsTile` needed |
 | `feat/fcm-backend` | `push-on-assign`, SQL preferences/tokens and authorization; `stack/14-fcm-backend.md` | Publish typed event, preference and token contracts for client; no arbitrary recipient/message input |
-| `feat/fcm-client` | Firebase dependencies, initialization, worker/transport lifecycle and course/certificate hooks; `stack/15-fcm-client.md` | Coordinate backend contract and worker scope; safe with configuration absent |
-| Coordinator | Profile tiles, combined integration and review | Resolve shared-file conflicts and verify end-to-end contracts without claiming independently passing branches are integrated |
+| `feat/fcm-client` | Firebase dependencies, initialization, worker/transport lifecycle, course/certificate hooks and profile wiring; `stack/15-fcm-client.md` | Own `lib/shared/widgets/profile.dart` `ProfileAccountSettings`: insert `NotificationSettingsTile` and a simple security menu row navigating to `/account/security`; coordinate backend contract and worker scope; safe with configuration absent |
+| Coordinator | Combined integration and review | Resolve shared-file conflicts and verify end-to-end contracts without claiming independently passing branches are integrated |
 | `docs/security-push-round` | Architecture and this plan only | Document intent and evidence separately |
 
 Each agent uses its own persistent worktree, runs focused checks, commits a
