@@ -10,25 +10,31 @@
   Cache-Control: no-cache
 
 /flutter_bootstrap.js
-  Cache-Control: no-cache
+  Cache-Control: no-store
+  Cloudflare-CDN-Cache-Control: no-store
 
 /flutter.js
-  Cache-Control: no-cache
+  Cache-Control: no-store
+  Cloudflare-CDN-Cache-Control: no-store
 
 /main.dart.js
-  Cache-Control: no-cache
+  Cache-Control: no-store
+  Cloudflare-CDN-Cache-Control: no-store
 
 /main.dart.wasm
-  Cache-Control: no-cache
+  Cache-Control: no-store
+  Cloudflare-CDN-Cache-Control: no-store
 
 /main.dart.mjs
-  Cache-Control: no-cache
+  Cache-Control: no-store
+  Cloudflare-CDN-Cache-Control: no-store
 
 /version.json
   Cache-Control: no-cache
 
 /flutter_service_worker.js
-  Cache-Control: no-cache
+  Cache-Control: no-store
+  Cloudflare-CDN-Cache-Control: no-store
 
 /invite/*
   Cache-Control: no-store

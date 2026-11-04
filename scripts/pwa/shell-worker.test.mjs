@@ -7,7 +7,7 @@ import vm from 'node:vm';
 import {generate, isShellAsset} from '../generate-shell-worker.mjs';
 
 const template = await readFile(new URL('./shell-worker.js', import.meta.url), 'utf8');
-function worker() {
+function worker(assets = ['index.html', 'main.dart.js', 'assets/packages/youtube_player_iframe/assets/player.html']) {
   const handlers = {};
   const deleted = [];
   const writes = [];
@@ -25,7 +25,7 @@ function worker() {
     fetch: async request => {fetches.push(request); return {ok: true, type: 'basic'};},
   });
   vm.runInContext(template.replace('__VERSION__', '"v1"')
-    .replace('__ASSETS__', '["index.html","main.dart.js"]'), context);
+    .replace('__ASSETS__', JSON.stringify(assets)), context);
   return {context, handlers, deleted, writes, fetches, cached};
 }
 function route(w, url, options = {}) {
@@ -50,9 +50,9 @@ test('exact static allowlist; APIs, signed/query/fragment URLs, credentials and 
 
 test('every navigation including bearer links uses only sanitized index key', async () => {
   const w = worker();
-  w.cached.set('https://app.test/index.html', 'public index');
+  w.cached.set('https://app.test/', 'public index');
   for (const path of ['/contexts', '/invite/accept?token=fake', '/set-password#access_token=fake']) {
-    assert.equal(route(w, 'https://app.test' + path, {mode: 'navigate'}), 'https://app.test/index.html');
+    assert.equal(route(w, 'https://app.test' + path, {mode: 'navigate'}), 'https://app.test/');
     let response;
     w.handlers.fetch({request: {url: 'https://app.test' + path, method: 'GET',
       mode: 'navigate', headers: new Headers()}, respondWith: promise => {response = promise;}});
@@ -67,13 +67,58 @@ test('installation fetches only public manifest files without cookies, activatio
   let pending;
   w.handlers.install({waitUntil: promise => {pending = promise;}});
   await pending;
-  assert.deepEqual(w.writes, ['https://app.test/index.html', 'https://app.test/main.dart.js']);
+  assert.deepEqual(w.writes, ['https://app.test/', 'https://app.test/main.dart.js',
+    'https://app.test/assets/packages/youtube_player_iframe/assets/player']);
   assert.ok(w.fetches.every(request => request.credentials === 'omit' && request.redirect === 'error'));
   w.handlers.activate({waitUntil: promise => {pending = promise;}});
   await pending;
   assert.deepEqual(w.deleted, ['educador-static-shell-old', 'flutter-app-cache']);
   assert.ok(!template.includes('skipWaiting('));
   assert.ok(!template.includes('clients.claim('));
+});
+
+test('Pages canonical paths install and both player aliases resolve to one public entry', async () => {
+  const w = worker();
+  const player = 'https://app.test/assets/packages/youtube_player_iframe/assets/player';
+  w.context.fetch = async request => {
+    w.fetches.push(request);
+    // Pages redirects both .html URLs; redirect:error must refuse them.
+    if (request.url === 'https://app.test/index.html' || request.url === player + '.html') {
+      throw new TypeError('redirect refused');
+    }
+    assert.equal(request.redirect, 'error');
+    assert.equal(request.credentials, 'omit');
+    return {ok: true, type: 'basic', url: request.url};
+  };
+  let pending;
+  w.handlers.install({waitUntil: promise => {pending = promise;}});
+  await pending;
+  assert.equal(route(w, player + '.html'), player);
+  assert.equal(route(w, player), player);
+  assert.equal(route(w, player + '.html?token=fake'), null);
+  assert.equal(route(w, 'https://evil.test/assets/packages/youtube_player_iframe/assets/player.html'), null);
+  let response;
+  w.handlers.fetch({request: new Request(player + '.html'), respondWith: promise => {response = promise;}});
+  assert.equal((await response).url, player);
+  assert.equal(w.fetches.length, 3);
+  const absent = worker(['index.html', 'main.dart.js']);
+  assert.equal(route(absent, player), null);
+  assert.equal(route(absent, player + '.html'), null);
+});
+
+test('unexpected same-origin and cross-origin redirects fail installation', async () => {
+  for (const location of ['https://app.test/private', 'https://evil.test/asset']) {
+    const w = worker();
+    w.context.fetch = async request => {
+      assert.equal(request.redirect, 'error');
+      if (request.url.endsWith('/main.dart.js')) throw new TypeError(`redirect to ${location} refused`);
+      return {ok: true, type: 'basic'};
+    };
+    let pending;
+    w.handlers.install({waitUntil: promise => {pending = promise;}});
+    await assert.rejects(pending, /redirect to .* refused/);
+    assert.deepEqual(w.deleted, ['educador-static-shell-v1']);
+  }
 });
 
 test('failed install deletes incomplete cache and does not activate', async () => {
@@ -92,7 +137,7 @@ test('missing navigation entry fetches sanitized public index anonymously', asyn
     method: 'GET', mode: 'navigate', headers: new Headers()},
     respondWith: promise => {response = promise;}});
   await response;
-  assert.equal(w.fetches[0].url, 'https://app.test/index.html');
+  assert.equal(w.fetches[0].url, 'https://app.test/');
   assert.equal(w.fetches[0].credentials, 'omit');
   assert.equal(w.writes.length, 0);
 });
@@ -118,6 +163,12 @@ test('generator is deterministic and changes version for asset changes', async (
     assert.ok(!first.files.includes('private.json'));
     await writeFile(join(dir, 'assets/font.ttf'), 'new font');
     assert.notEqual((await generate(dir)).version, first.version);
+    const playerDir = join(dir, 'assets/packages/youtube_player_iframe/assets');
+    await mkdir(playerDir, {recursive: true});
+    await writeFile(join(playerDir, 'player.html'), 'player');
+    await writeFile(join(playerDir, 'player'), 'collision');
+    await assert.rejects(generate(dir), /Conflicting Pages canonical player assets/);
+    await rm(join(playerDir, 'player'));
     await writeFile(join(dir, 'flutter_bootstrap.js'),
       "_flutter.loader.load({serviceWorkerSettings: {serviceWorkerVersion: '1'}});");
     await assert.rejects(generate(dir), /web\/flutter_bootstrap\.js/);
