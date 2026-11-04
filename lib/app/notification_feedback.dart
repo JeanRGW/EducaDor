@@ -15,11 +15,13 @@ class NotificationFeedback extends ConsumerStatefulWidget {
       _NotificationFeedbackState();
 }
 
-class _NotificationFeedbackState extends ConsumerState<NotificationFeedback> {
+class _NotificationFeedbackState extends ConsumerState<NotificationFeedback>
+    with WidgetsBindingObserver {
   StreamSubscription<bool>? _subscription;
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _subscription = ref
         .read(notificationControllerProvider.notifier)
         .events
@@ -40,7 +42,15 @@ class _NotificationFeedbackState extends ConsumerState<NotificationFeedback> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(ref.read(notificationControllerProvider.notifier).refresh());
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _subscription?.cancel();
     super.dispose();
   }

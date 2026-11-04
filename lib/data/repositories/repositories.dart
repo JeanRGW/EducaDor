@@ -886,7 +886,8 @@ class ContentRepository {
         'p_company_ids': audience.companyIds,
       },
     );
-    if (previous != null && !previous.allCompanies &&
+    if (previous != null &&
+        !previous.allCompanies &&
         (audience.allCompanies ||
             audience.companyIds.any(
               (id) => !previous!.companyIds.contains(id),
@@ -1200,10 +1201,11 @@ class EmployeeLearningRepository {
 
   Future<void> issueCertificate(String companyId, String courseId) async {
     try {
-      await _api.functions.invoke(
+      final result = await _api.functions.invoke(
         'issue-certificate',
         body: {'companyId': companyId, 'courseId': courseId},
       );
+      await sendCertificateIssued(_api, result.data);
     } on FunctionException catch (error) {
       if (error.status == 409 &&
           error.details is Map &&

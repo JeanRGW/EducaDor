@@ -246,16 +246,11 @@ void main() {
     expect(repo.calls, 2);
   });
 
-  testWidgets('dashboard bell honestly reports notifications unavailable', (
-    tester,
-  ) async {
+  testWidgets('dashboard bell opens notification settings', (tester) async {
     await _show(tester, const GestorDashboardScreen(), dashboard: _Dashboard());
     await tester.tap(find.byTooltip('Notificações'));
     await tester.pumpAndSettle();
-    expect(
-      find.text('Notificações ainda não está disponível.'),
-      findsOneWidget,
-    );
+    expect(find.byType(SwitchListTile), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

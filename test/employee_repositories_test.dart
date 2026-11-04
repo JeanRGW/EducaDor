@@ -66,6 +66,36 @@ class _EmployeeSession extends SessionController {
 }
 
 void main() {
+  for (final created in [true, false, null]) {
+    test(
+      'certificate push only for authoritative created=$created and tolerates failure',
+      () async {
+        final calls = <String>[];
+        final repo = EmployeeLearningRepository(
+          client: _client((request) async {
+            calls.add(request.url.path);
+            if (request.url.path.endsWith('/issue-certificate')) {
+              return http.Response(
+                jsonEncode({
+                  'id': 'certificate',
+                  'created': ?created,
+                }),
+                200,
+              );
+            }
+            expect(request.url.path, '/functions/v1/push-on-assign');
+            expect(jsonDecode(request.body), {
+              'event': 'certificate_issued',
+              'certificate_id': 'certificate',
+            });
+            return http.Response('{"error":"unavailable"}', 503);
+          }),
+        );
+        await repo.issueCertificate('company', 'course');
+        expect(calls.length, created == true ? 2 : 1);
+      },
+    );
+  }
   test(
     'catalog sends scoped search/media/state before page and decodes percentages',
     () async {

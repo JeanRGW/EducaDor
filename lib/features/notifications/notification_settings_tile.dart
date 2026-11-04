@@ -13,6 +13,8 @@ class NotificationSettingsTile extends ConsumerWidget {
       PushStatus.unsupported => 'Não disponível neste dispositivo.',
       PushStatus.unconfigured => 'Notificações não configuradas.',
       PushStatus.signedOut => 'Entre para configurar notificações.',
+      PushStatus.contextRequired =>
+        'Selecione um perfil para configurar notificações.',
       PushStatus.loading => 'Atualizando...',
       PushStatus.disabled => 'Desativadas para esta conta.',
       PushStatus.permission => 'Ative para receber atualizações.',
