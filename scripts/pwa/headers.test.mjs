@@ -14,9 +14,13 @@ for (const line of headers.split('\n')) {
   }
 }
 
-test('unfingerprinted entry points always revalidate, credential routes never store', () => {
-  for (const path of ['/index.html', '/flutter_bootstrap.js', '/main.dart.js',
-    '/flutter_service_worker.js', '/version.json']) {
+test('mutable entry points request no storage; credential routes never store', () => {
+  for (const path of ['/flutter_bootstrap.js', '/flutter.js', '/main.dart.js',
+    '/main.dart.wasm', '/main.dart.mjs', '/flutter_service_worker.js']) {
+    assert.equal(rules.get(path).get('Cache-Control'), 'no-store', path);
+    assert.equal(rules.get(path).get('Cloudflare-CDN-Cache-Control'), 'no-store', path);
+  }
+  for (const path of ['/index.html', '/version.json']) {
     assert.equal(rules.get(path).get('Cache-Control'), 'no-cache', path);
   }
   assert.equal(rules.get('/invite/*').get('Cache-Control'), 'no-store');

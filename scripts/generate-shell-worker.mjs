@@ -28,6 +28,10 @@ export async function generate(directory) {
   for (const required of ['index.html', 'main.dart.js', 'flutter_bootstrap.js']) {
     if (!files.includes(required)) throw new Error(`Missing Flutter build artifact: ${required}`);
   }
+  if (files.includes('assets/packages/youtube_player_iframe/assets/player.html') &&
+      files.includes('assets/packages/youtube_player_iframe/assets/player')) {
+    throw new Error('Conflicting Pages canonical player assets');
+  }
   const bootstrap = await readFile(resolve(root, 'flutter_bootstrap.js'), 'utf8');
   if (/_flutter\.loader\.load\(\{\s*serviceWorkerSettings:/.test(bootstrap)) {
     throw new Error('Use web/flutter_bootstrap.js');

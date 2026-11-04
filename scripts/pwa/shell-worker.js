@@ -3,8 +3,15 @@ const CACHE_PREFIX = 'educador-static-shell-';
 const CACHE_NAME = CACHE_PREFIX + __VERSION__;
 const ASSETS = __ASSETS__;
 const BASE = new URL(self.registration.scope);
-const INDEX = new URL('index.html', BASE).href;
-const STATIC_URLS = new Set(ASSETS.map(path => new URL(path, BASE).href));
+// Pages redirects these two build files to canonical URLs. Fetch those directly;
+// never follow redirects, and only create aliases for files in the manifest.
+const canonicalPath = path => path === 'index.html' ? './' :
+  path === 'assets/packages/youtube_player_iframe/assets/player.html' ? path.slice(0, -5) : path;
+const INDEX = new URL('./', BASE).href;
+const STATIC_URLS = new Map(ASSETS.flatMap(path => {
+  const key = new URL(canonicalPath(path), BASE).href;
+  return [[new URL(path, BASE).href, key], [key, key]];
+}));
 
 function route(request) {
   const url = new URL(request.url);
@@ -15,7 +22,7 @@ function route(request) {
   // to a bearer URL. Fragments aren't exposed to workers by browsers.
   if (request.mode === 'navigate') return INDEX;
   if (url.search || url.hash || url.username || url.password) return null;
-  return STATIC_URLS.has(url.href) ? url.href : null;
+  return STATIC_URLS.get(url.href) ?? null;
 }
 
 self.addEventListener('install', event => {
@@ -23,7 +30,7 @@ self.addEventListener('install', event => {
     const cache = await caches.open(CACHE_NAME);
     try {
       for (const path of ASSETS) {
-        const url = new URL(path, BASE).href;
+        const url = new URL(canonicalPath(path), BASE).href;
         const response = await fetch(new Request(url, {
           credentials: 'omit', cache: 'reload', redirect: 'error',
         }));

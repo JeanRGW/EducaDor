@@ -29,7 +29,11 @@ The build generator hashes the worker implementation plus sorted public build
 filenames and bytes. It includes compiled JS/WASM, index, manifest, icons, local
 fonts and CanvasKit. Cache names contain that digest. Installation fetches only this
 manifest, anonymously (`credentials: omit`), refusing redirects and failed responses.
-Installation failure deletes the incomplete new cache and leaves the old worker.
+For Pages, it fetches the scope root instead of `index.html` and the extensionless
+YouTube iframe player instead of its `player.html` build artifact. Both original and
+canonical player URLs map to that single public cache entry only when the artifact is
+in the manifest. Other redirects still fail installation. Installation failure deletes
+the incomplete new cache and leaves the old worker.
 No runtime response is ever written to CacheStorage.
 
 Only exact same-origin manifest URLs without query/fragment, Authorization or Range
@@ -70,9 +74,14 @@ errors). Offline shell availability does not imply session restoration or API ac
 All routes default to revalidation (`no-cache`) with no-referrer, nosniff, HSTS (no
 includeSubDomains/preload), and disabled unused camera/microphone/geolocation/
 payment/USB capabilities. Invitation and set-password routes use `no-store`.
-Bootstrap, main, worker and version have explicit no-cache rules. Unfingerprinted
-Flutter assets/CanvasKit revalidate rather than the old immutable one-year rule,
-which could mix generations. CacheStorage separately pins build versions.
+Mutable bootstrap, Flutter loader, main JS/WASM and worker entrypoints request
+`no-store` for browsers and `Cloudflare-CDN-Cache-Control: no-store` for Cloudflare;
+version uses no-cache. Cloudflare cache or browser TTL rules can override origin
+headers, so verify the actual production responses after deployment. Cloudflare may
+consume its targeted header rather than forward it. Unfingerprinted Flutter
+assets/CanvasKit revalidate rather than the old immutable one-year rule, which could
+mix generations. The worker's explicitly managed CacheStorage separately pins public
+build versions.
 
 CSP is **report-only**, not enforced: it is an initial audit policy including
 Supabase HTTPS/WSS, YouTube frames/scripts, fonts and WASM. No report collector is
