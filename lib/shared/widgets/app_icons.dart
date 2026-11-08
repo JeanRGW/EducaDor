@@ -68,6 +68,7 @@ abstract class AppIcons {
   static const String compose = 'assets/icons/compose.svg';
   static const String briefcase = 'assets/icons/briefcase.svg';
   static const String key = 'assets/icons/key.svg';
+  static const String copy = 'assets/icons/copy.svg';
   static const String logo = 'assets/icons/logo.svg';
   static const String logoFull = 'assets/icons/logo_full.svg';
   static const String logoColor = 'assets/icons/logo_color.svg';

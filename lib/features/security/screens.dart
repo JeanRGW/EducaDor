@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app/theme.dart';
+import '../../core/authenticator_launcher.dart';
 import '../../data/repositories/repositories.dart';
 import '../../data/session/session_controller.dart';
+import '../../shared/widgets/admin_styles.dart';
+import '../../shared/widgets/app_icons.dart';
+import '../../shared/widgets/common.dart';
 
 class MfaChallengeScreen extends ConsumerStatefulWidget {
   const MfaChallengeScreen({super.key});
@@ -16,6 +22,7 @@ class _MfaChallengeScreenState extends ConsumerState<MfaChallengeScreen> {
   final code = TextEditingController();
   bool busy = false;
   String? error;
+
   @override
   void dispose() {
     code.dispose();
@@ -23,6 +30,11 @@ class _MfaChallengeScreenState extends ConsumerState<MfaChallengeScreen> {
   }
 
   Future<void> verify() async {
+    if (busy) return;
+    if (code.text.length != 6) {
+      setState(() => error = 'Digite os 6 dígitos do aplicativo autenticador.');
+      return;
+    }
     setState(() {
       busy = true;
       error = null;
@@ -46,53 +58,49 @@ class _MfaChallengeScreenState extends ConsumerState<MfaChallengeScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Verificação em duas etapas')),
-    body: Center(
-      child: SingleChildScrollView(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 440),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Text('Digite o código do seu aplicativo autenticador.'),
-                TextField(
-                  controller: code,
-                  keyboardType: TextInputType.number,
-                  autofillHints: const [AutofillHints.oneTimeCode],
-                  decoration: const InputDecoration(
-                    labelText: 'Código de autenticação',
-                  ),
-                ),
-                if (error != null)
-                  Text(
-                    error!,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
-                    ),
-                  ),
-                const SizedBox(height: 20),
-                FilledButton(
-                  onPressed: busy ? null : verify,
-                  child: const Text('Verificar'),
-                ),
-                TextButton(
-                  onPressed: busy
-                      ? null
-                      : () => ref.read(sessionProvider.notifier).logout(),
-                  child: const Text('Sair'),
-                ),
-                const Text(
-                  'Sem acesso ao autenticador? Entre em contato com o suporte da plataforma.',
-                ),
-              ],
+  Widget build(BuildContext context) => _SecurityLayout(
+    title: 'Verificação em duas etapas',
+    children: [
+      const _SecurityIntro(
+        title: 'Confirme que é você',
+        description:
+            'Abra seu aplicativo autenticador e digite o código para continuar.',
+      ),
+      const SizedBox(height: 24),
+      AppCard(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _CodeInput(
+              controller: code,
+              enabled: !busy,
+              onChanged: (_) => setState(() {}),
+              onSubmitted: (_) => verify(),
             ),
-          ),
+            if (error != null) _SecurityError(error!),
+            const SizedBox(height: 20),
+            PrimaryButton(
+              busy ? 'Verificando...' : 'Verificar',
+              color: AppColors.successDarkGreen,
+              onPressed: busy || code.text.length != 6 ? null : verify,
+            ),
+          ],
         ),
       ),
-    ),
+      const SizedBox(height: 16),
+      const Text(
+        'Sem acesso ao autenticador? Entre em contato com o suporte da plataforma.',
+        style: AdminStyles.body,
+      ),
+      const SizedBox(height: 8),
+      TextButton(
+        onPressed: busy
+            ? null
+            : () => ref.read(sessionProvider.notifier).logout(),
+        child: const Text('Sair'),
+      ),
+    ],
   );
 }
 
@@ -107,9 +115,11 @@ class _SecuritySettingsScreenState
     extends ConsumerState<SecuritySettingsScreen> {
   final code = TextEditingController();
   List<String>? factors;
-  ({String id, String secret, String qr})? enrollment;
+  ({String id, String secret, String qr, String uri})? enrollment;
   bool busy = false;
+  bool copied = false;
   String? error;
+
   @override
   void initState() {
     super.initState();
@@ -123,6 +133,7 @@ class _SecuritySettingsScreenState
   }
 
   Future<void> load() async {
+    if (mounted) setState(() => error = null);
     try {
       final result = await ref.read(authRepositoryProvider).totpFactors();
       if (mounted) setState(() => factors = result);
@@ -136,6 +147,7 @@ class _SecuritySettingsScreenState
   }
 
   Future<void> run(Future<void> Function() action) async {
+    if (busy) return;
     setState(() {
       busy = true;
       error = null;
@@ -154,178 +166,523 @@ class _SecuritySettingsScreenState
     }
   }
 
-  @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: const Text('Segurança da conta'),
-      leading: BackButton(
-        onPressed: () {
-          if (context.canPop()) {
-            context.pop();
-          } else {
-            context.go(
-              ref.read(sessionProvider).value?.homePath ?? '/contexts',
-            );
-          }
-        },
+  void notice(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> copyKey(String secret) async {
+    try {
+      await Clipboard.setData(ClipboardData(text: secret));
+      if (mounted) setState(() => copied = true);
+    } catch (_) {
+      notice(
+        'Não foi possível copiar. Selecione a chave para copiá-la manualmente.',
+      );
+    }
+  }
+
+  Future<void> openAuthenticator(String uri) async {
+    final opened = await ref.read(authenticatorLauncherProvider).open(uri);
+    if (!opened) {
+      notice(
+        'Não foi possível abrir um autenticador. Copie a chave ou escaneie o QR code.',
+      );
+    }
+  }
+
+  Future<void> cancelEnrollment(String id) => run(() async {
+    await ref.read(authRepositoryProvider).removeTotp(id);
+    if (mounted) {
+      setState(() {
+        enrollment = null;
+        copied = false;
+        code.clear();
+      });
+    }
+  });
+
+  Future<void> confirmEnrollment(String id) => run(() async {
+    await ref.read(authRepositoryProvider).verifyTotp(id, code.text);
+    if (mounted) {
+      setState(() {
+        enrollment = null;
+        copied = false;
+        code.clear();
+      });
+    }
+    await load();
+    await ref.read(sessionProvider.notifier).reload();
+  });
+
+  Future<void> disable(String id) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Desativar verificação?'),
+        content: const Text('Sua conta ficará protegida apenas pela senha.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Desativar'),
+          ),
+        ],
       ),
-    ),
-    body: Center(
-      child: SingleChildScrollView(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 520),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Text(
-                  'Verificação em duas etapas',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+    );
+    if (confirmed != true || !mounted) return;
+    await run(() async {
+      await ref.read(authRepositoryProvider).removeTotp(id);
+      await load();
+      await ref.read(sessionProvider.notifier).reload();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => _SecurityLayout(
+    title: 'Segurança da conta',
+    onBack: () {
+      if (context.canPop()) {
+        context.pop();
+      } else {
+        context.go(ref.read(sessionProvider).value?.homePath ?? '/contexts');
+      }
+    },
+    children: [
+      _SecurityIntro(
+        title: 'Verificação em duas etapas',
+        description:
+            'Adicione uma camada de proteção à sua conta com um aplicativo autenticador.',
+        status: enrollment != null
+            ? 'Em configuração'
+            : factors == null
+            ? null
+            : factors!.isEmpty
+            ? 'Desativada'
+            : 'Ativada',
+        enabled: factors?.isNotEmpty == true,
+      ),
+      const SizedBox(height: 24),
+      if (factors == null && error == null) const _SecurityLoading(),
+      if (factors != null && enrollment == null)
+        AppCard(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                factors!.isEmpty
+                    ? 'Proteja seu próximo acesso'
+                    : 'Autenticador conectado',
+                style: AdminStyles.formTitle,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                factors!.isEmpty
+                    ? 'Além da senha, você usará um código temporário do aplicativo ao entrar.'
+                    : 'Um código do aplicativo será solicitado ao entrar. Mantenha acesso ao seu autenticador.',
+                style: AdminStyles.body,
+              ),
+              const SizedBox(height: 20),
+              if (factors!.isEmpty)
+                PrimaryButton(
+                  busy ? 'Preparando...' : 'Ativar',
+                  color: AppColors.successDarkGreen,
+                  onPressed: busy
+                      ? null
+                      : () => run(() async {
+                          final result = await ref
+                              .read(authRepositoryProvider)
+                              .enrollTotp();
+                          if (mounted) {
+                            setState(() {
+                              enrollment = result;
+                              copied = false;
+                            });
+                          }
+                        }),
                 ),
-                const SizedBox(height: 12),
-                if (factors == null && error == null)
-                  const Center(child: CircularProgressIndicator()),
-                if (factors != null && enrollment == null) ...[
-                  Text(
-                    factors!.isEmpty
-                        ? 'Desativada. Proteja sua conta com um aplicativo autenticador.'
-                        : 'Ativada. Um código será solicitado ao entrar.',
+              for (final id in factors!)
+                OutlinedButton(
+                  onPressed: busy ? null : () => disable(id),
+                  child: const Text('Desativar autenticador'),
+                ),
+            ],
+          ),
+        ),
+      if (enrollment case final setup?) ...[
+        AppCard(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const _StepTitle(number: '1', title: 'Configure o autenticador'),
+              const SizedBox(height: 12),
+              const Text(
+                'Escaneie o QR code com seu aplicativo autenticador.',
+                style: AdminStyles.body,
+              ),
+              const SizedBox(height: 20),
+              Center(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: Border.all(color: AppColors.border),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  const SizedBox(height: 16),
-                  if (factors!.isEmpty)
-                    FilledButton(
-                      onPressed: busy
-                          ? null
-                          : () => run(() async {
-                              final result = await ref
-                                  .read(authRepositoryProvider)
-                                  .enrollTotp();
-                              if (mounted) setState(() => enrollment = result);
-                            }),
-                      child: const Text('Ativar'),
-                    ),
-                  for (final id in factors!)
-                    OutlinedButton(
-                      onPressed: busy
-                          ? null
-                          : () async {
-                              final confirmed = await showDialog<bool>(
-                                context: context,
-                                builder: (context) => AlertDialog(
-                                  title: const Text('Desativar verificação?'),
-                                  content: const Text(
-                                    'Sua conta ficará protegida apenas pela senha.',
-                                  ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () =>
-                                          Navigator.pop(context, false),
-                                      child: const Text('Cancelar'),
-                                    ),
-                                    FilledButton(
-                                      onPressed: () =>
-                                          Navigator.pop(context, true),
-                                      child: const Text('Desativar'),
-                                    ),
-                                  ],
-                                ),
-                              );
-                              if (confirmed == true) {
-                                await run(() async {
-                                  await ref
-                                      .read(authRepositoryProvider)
-                                      .removeTotp(id);
-                                  await load();
-                                  await ref
-                                      .read(sessionProvider.notifier)
-                                      .reload();
-                                });
-                              }
-                            },
-                      child: const Text('Desativar autenticador'),
-                    ),
-                ],
-                if (enrollment case final setup?) ...[
-                  const Text(
-                    'Escaneie o QR code no aplicativo autenticador ou insira a chave manualmente.',
-                  ),
-                  const SizedBox(height: 16),
-                  Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
                     child: Semantics(
                       label: 'QR code para configurar o autenticador',
                       child: SvgPicture.string(
                         setup.qr.replaceFirst('data:image/svg+xml;utf-8,', ''),
-                        width: 200,
-                        height: 200,
+                        width: 184,
+                        height: 184,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  const Text('Chave de configuração:'),
-                  SelectableText(setup.secret),
-                  TextField(
-                    controller: code,
-                    keyboardType: TextInputType.number,
-                    autofillHints: const [AutofillHints.oneTimeCode],
-                    decoration: const InputDecoration(
-                      labelText: 'Código de autenticação',
-                    ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              OutlinedButton.icon(
+                onPressed: busy ? null : () => openAuthenticator(setup.uri),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.successDarkGreen,
+                  minimumSize: const Size.fromHeight(48),
+                ),
+                icon: const SvgIcon(
+                  AppIcons.key,
+                  size: 18,
+                  color: AppColors.successDarkGreen,
+                ),
+                label: const Text('Abrir autenticador'),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Neste dispositivo, tente abrir o aplicativo diretamente. Se ele não abrir, use o QR code ou a chave abaixo.',
+                style: AdminStyles.emptyState,
+              ),
+              const Divider(height: 32),
+              const Text(
+                'Prefere configurar manualmente?',
+                style: AdminStyles.cardTitle,
+              ),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  border: Border.all(color: AppColors.border),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: SelectableText(
+                  setup.secret.replaceAllMapped(
+                    RegExp(r'.{4}(?=.)'),
+                    (match) => '${match[0]} ',
                   ),
-                  const SizedBox(height: 16),
-                  FilledButton(
-                    onPressed: busy
-                        ? null
-                        : () => run(() async {
-                            await ref
-                                .read(authRepositoryProvider)
-                                .verifyTotp(setup.id, code.text);
-                            if (mounted) {
-                              setState(() {
-                                enrollment = null;
-                                code.clear();
-                              });
-                            }
-                            await load();
-                            await ref.read(sessionProvider.notifier).reload();
-                          }),
-                    child: const Text('Confirmar ativação'),
+                  style: AdminStyles.fieldText.copyWith(
+                    fontFamily: 'monospace',
+                    letterSpacing: 1.2,
+                    height: 1.6,
                   ),
-                  TextButton(
-                    onPressed: busy
-                        ? null
-                        : () => run(() async {
-                            await ref
-                                .read(authRepositoryProvider)
-                                .removeTotp(setup.id);
-                            if (mounted) {
-                              setState(() {
-                                enrollment = null;
-                                code.clear();
-                              });
-                            }
-                          }),
-                    child: const Text('Cancelar'),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: busy ? null : () => copyKey(setup.secret),
+                  icon: SvgIcon(
+                    copied ? AppIcons.check : AppIcons.copy,
+                    size: 18,
+                    color: AppColors.successDarkGreen,
                   ),
-                ],
-                if (error != null) ...[
-                  const SizedBox(height: 16),
-                  Text(
-                    error!,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
-                    ),
-                  ),
-                  if (factors == null)
-                    TextButton(
-                      onPressed: load,
-                      child: const Text('Tentar novamente'),
-                    ),
-                ],
-              ],
+                  label: Text(copied ? 'Chave copiada' : 'Copiar chave'),
+                ),
+              ),
+              const Text(
+                'Mantenha esta chave em segredo. Não envie capturas do QR code ou da chave.',
+                style: AdminStyles.emptyState,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        AppCard(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const _StepTitle(number: '2', title: 'Confirme a ativação'),
+              const SizedBox(height: 12),
+              const Text(
+                'Digite os 6 dígitos exibidos no aplicativo para concluir.',
+                style: AdminStyles.body,
+              ),
+              const SizedBox(height: 16),
+              _CodeInput(
+                controller: code,
+                enabled: !busy,
+                onChanged: (_) => setState(() {}),
+                onSubmitted: (_) {
+                  if (code.text.length == 6) confirmEnrollment(setup.id);
+                },
+              ),
+              if (error != null) _SecurityError(error!),
+              const SizedBox(height: 20),
+              PrimaryButton(
+                busy ? 'Confirmando...' : 'Confirmar ativação',
+                color: AppColors.successDarkGreen,
+                onPressed: busy || code.text.length != 6
+                    ? null
+                    : () => confirmEnrollment(setup.id),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextButton(
+          onPressed: busy ? null : () => cancelEnrollment(setup.id),
+          child: const Text('Cancelar'),
+        ),
+      ],
+      if (error != null && enrollment == null) ...[
+        _SecurityError(error!),
+        if (factors == null)
+          TextButton(onPressed: load, child: const Text('Tentar novamente')),
+      ],
+    ],
+  );
+}
+
+class _SecurityLayout extends StatelessWidget {
+  const _SecurityLayout({
+    required this.title,
+    required this.children,
+    this.onBack,
+  });
+  final String title;
+  final List<Widget> children;
+  final VoidCallback? onBack;
+
+  @override
+  Widget build(BuildContext context) => Theme(
+    data: AdminStyles.formTheme(Theme.of(context)),
+    child: Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: Text(title),
+        automaticallyImplyLeading: false,
+        leading: onBack == null ? null : BackButton(onPressed: onBack),
+      ),
+      body: SafeArea(
+        child: Align(
+          alignment: Alignment.topCenter,
+          child: SingleChildScrollView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 640),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 24, 16, 32),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: children,
+                ),
+              ),
             ),
           ),
         ),
+      ),
+    ),
+  );
+}
+
+class _SecurityIntro extends StatelessWidget {
+  const _SecurityIntro({
+    required this.title,
+    required this.description,
+    this.status,
+    this.enabled = false,
+  });
+  final String title;
+  final String description;
+  final String? status;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.successBg,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const SvgIcon(
+          AppIcons.shield,
+          color: AppColors.successDarkGreen,
+          size: 24,
+        ),
+      ),
+      const SizedBox(height: 16),
+      Semantics(header: true, child: Text(title, style: AdminStyles.pageTitle)),
+      const SizedBox(height: 8),
+      Text(description, style: AdminStyles.body),
+      if (status != null) ...[
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: enabled ? AppColors.successBg : AppColors.surface,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: enabled ? AppColors.successBg : AppColors.border,
+            ),
+          ),
+          child: Text(
+            status!,
+            style: AdminStyles.fieldLabel.copyWith(
+              color: enabled
+                  ? AppColors.successDarkGreen
+                  : AppColors.textSecondary,
+            ),
+          ),
+        ),
+      ],
+    ],
+  );
+}
+
+class _StepTitle extends StatelessWidget {
+  const _StepTitle({required this.number, required this.title});
+  final String number;
+  final String title;
+  @override
+  Widget build(BuildContext context) => Semantics(
+    header: true,
+    child: Row(
+      children: [
+        Container(
+          width: 28,
+          height: 28,
+          alignment: Alignment.center,
+          decoration: const BoxDecoration(
+            color: AppColors.successBg,
+            shape: BoxShape.circle,
+          ),
+          child: Text(
+            number,
+            style: AdminStyles.cardTitle.copyWith(
+              color: AppColors.successDarkGreen,
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(child: Text(title, style: AdminStyles.formTitle)),
+      ],
+    ),
+  );
+}
+
+class _CodeInput extends StatelessWidget {
+  const _CodeInput({
+    required this.controller,
+    required this.enabled,
+    required this.onChanged,
+    required this.onSubmitted,
+  });
+  final TextEditingController controller;
+  final bool enabled;
+  final ValueChanged<String> onChanged;
+  final ValueChanged<String> onSubmitted;
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const Text('Código de autenticação', style: AdminStyles.fieldLabel),
+      const SizedBox(height: 8),
+      Semantics(
+        label: 'Código de autenticação',
+        child: TextField(
+          controller: controller,
+          enabled: enabled,
+          keyboardType: TextInputType.number,
+          textInputAction: TextInputAction.done,
+          autofillHints: const [AutofillHints.oneTimeCode],
+          inputFormatters: [
+            FilteringTextInputFormatter.digitsOnly,
+            LengthLimitingTextInputFormatter(6),
+          ],
+          style: AdminStyles.fieldText.copyWith(fontSize: 20, letterSpacing: 6),
+          decoration: const InputDecoration(hintText: '000000'),
+          onChanged: onChanged,
+          onSubmitted: onSubmitted,
+        ),
+      ),
+    ],
+  );
+}
+
+class _SecurityLoading extends StatelessWidget {
+  const _SecurityLoading();
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    label: 'Carregando configurações de segurança',
+    child: AppCard(
+      padding: const EdgeInsets.all(20),
+      child: SizedBox(
+        height: 112,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              height: 18,
+              decoration: BoxDecoration(
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              height: 12,
+              decoration: BoxDecoration(
+                color: AppColors.chipBg,
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+            const Spacer(),
+            Container(
+              height: 48,
+              decoration: BoxDecoration(
+                color: AppColors.chipBg,
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+class _SecurityError extends StatelessWidget {
+  const _SecurityError(this.message);
+  final String message;
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(top: 12),
+    child: Semantics(
+      liveRegion: true,
+      child: Text(
+        message,
+        style: AdminStyles.body.copyWith(color: AppColors.danger),
       ),
     ),
   );
