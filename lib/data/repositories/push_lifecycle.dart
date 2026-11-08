@@ -15,6 +15,23 @@ enum PushStatus {
 
 enum PushPermission { granted, denied, undecided }
 
+enum PushStep {
+  preferenceRead,
+  support,
+  permission,
+  permissionRequest,
+  token,
+  tokenRegistration,
+  tokenRemoval,
+  preferenceUpdate,
+}
+
+class PushFailure {
+  const PushFailure(this.step, this.code);
+  final PushStep step;
+  final String code;
+}
+
 abstract interface class PushTransport {
   Future<bool> supported();
   Future<PushPermission> permission();
@@ -44,6 +61,7 @@ class PushLifecycle {
     required this.configured,
     required this.platformSupported,
     required this.onStatus,
+    this.onFailure,
   });
   final PushTransport transport;
   final PushStoreFactory store;
@@ -52,6 +70,9 @@ class PushLifecycle {
   final bool configured;
   final bool platformSupported;
   final void Function(PushStatus) onStatus;
+  final void Function(PushStep, Object)? onFailure;
+  // Tasks run serially, so the current await identifies the failing operation.
+  PushStep _step = PushStep.preferenceRead;
   String? _user;
   bool _contextAvailable = false;
   String? _token;
@@ -67,6 +88,12 @@ class PushLifecycle {
   }
 
   bool _current(int epoch) => !_disposed && epoch == _epoch;
+  void _fail(Object error, int epoch) {
+    if (!_current(epoch)) return;
+    onFailure?.call(_step, error);
+    _status(PushStatus.error);
+  }
+
   Future<void> _enqueue(Future<void> Function() task) {
     final result = _tail.then((_) => task());
     _tail = result.catchError((Object _) {});
@@ -140,13 +167,11 @@ class PushLifecycle {
 
   Future<void> _sync(int epoch, String user) async {
     _status(PushStatus.loading);
-    final owner = store.capture(user);
-    if (owner == null) {
-      _status(PushStatus.error);
-      return;
-    }
-    _ownerStore = owner;
+    _step = PushStep.preferenceRead;
     try {
+      final owner = store.capture(user);
+      if (owner == null) throw StateError('No authenticated owner');
+      _ownerStore = owner;
       if (!await owner.enabled(user)) {
         if (_current(epoch)) {
           await _clear();
@@ -155,10 +180,12 @@ class PushLifecycle {
         return;
       }
       if (!_current(epoch)) return;
+      _step = PushStep.support;
       if (!await transport.supported()) {
         if (_current(epoch)) _status(PushStatus.unsupported);
         return;
       }
+      _step = PushStep.permission;
       final permission = await transport.permission();
       if (!_current(epoch)) return;
       if (permission != PushPermission.granted) {
@@ -172,12 +199,13 @@ class PushLifecycle {
         return;
       }
       await _register(epoch);
-    } catch (_) {
-      if (_current(epoch)) _status(PushStatus.error);
+    } catch (error) {
+      _fail(error, epoch);
     }
   }
 
   Future<void> _register(int epoch, [String? rotated]) async {
+    _step = PushStep.token;
     final owner = _ownerStore;
     final ownerId = _user;
     if (owner == null || ownerId == null) {
@@ -186,7 +214,7 @@ class PushLifecycle {
     final token = rotated ?? await transport.token();
     if (!_current(epoch)) return;
     if (token == null || token.isEmpty) {
-      _status(PushStatus.error);
+      _fail(StateError('No messaging token returned'), epoch);
       return;
     }
     if (_token != null && _token != token) {
@@ -194,6 +222,7 @@ class PushLifecycle {
       final previousOwner = ownerId == null
           ? _tokenStore
           : store.capture(ownerId) ?? _tokenStore;
+      _step = PushStep.tokenRemoval;
       await previousOwner?.unregister(_token!);
       _token = null;
       _tokenStore = null;
@@ -210,6 +239,7 @@ class PushLifecycle {
       return;
     }
     try {
+      _step = PushStep.tokenRegistration;
       await owner.register(token, platform);
     } catch (_) {
       await _clear();
@@ -228,12 +258,14 @@ class PushLifecycle {
           }
           try {
             final owner = _ownerStore;
+            _step = PushStep.preferenceRead;
             if (owner == null || !await owner.enabled(_user!)) {
               await _clear();
               if (_current(eventEpoch)) _status(PushStatus.disabled);
               return;
             }
             if (!_current(eventEpoch)) return;
+            _step = PushStep.permission;
             final permission = await transport.permission();
             if (!_current(eventEpoch)) return;
             if (permission != PushPermission.granted) {
@@ -248,8 +280,8 @@ class PushLifecycle {
               return;
             }
             await _register(eventEpoch, token);
-          } catch (_) {
-            if (_current(eventEpoch)) _status(PushStatus.error);
+          } catch (error) {
+            _fail(error, eventEpoch);
           }
         }),
       );
@@ -264,10 +296,12 @@ class PushLifecycle {
       if (!_current(epoch)) return;
       _status(PushStatus.loading);
       try {
+        _step = PushStep.support;
         if (!await transport.supported()) {
           if (_current(epoch)) _status(PushStatus.unsupported);
           return;
         }
+        _step = PushStep.permissionRequest;
         final permission = await transport.requestPermission();
         if (!_current(epoch)) return;
         if (permission != PushPermission.granted) {
@@ -278,13 +312,14 @@ class PushLifecycle {
           );
           return;
         }
+        _step = PushStep.preferenceUpdate;
         final owner = store.capture(_user!);
         if (owner == null) throw StateError('No authenticated owner');
         _ownerStore = owner;
         await owner.setEnabled(true);
         if (_current(epoch)) await _register(epoch);
-      } catch (_) {
-        if (_current(epoch)) _status(PushStatus.error);
+      } catch (error) {
+        _fail(error, epoch);
       }
     });
   }
@@ -296,13 +331,14 @@ class PushLifecycle {
       if (!_current(epoch)) return;
       _status(PushStatus.loading);
       try {
+        _step = PushStep.preferenceUpdate;
         final owner = store.capture(_user!);
         if (owner == null) throw StateError('No authenticated owner');
         await owner.setEnabled(false);
         await _clear();
         if (_current(epoch)) _status(PushStatus.disabled);
-      } catch (_) {
-        if (_current(epoch)) _status(PushStatus.error);
+      } catch (error) {
+        _fail(error, epoch);
       }
     });
   }

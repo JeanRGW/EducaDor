@@ -12,6 +12,9 @@ class NotificationSettingsTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final status = ref.watch(notificationControllerProvider);
+    final failure = status == PushStatus.error
+        ? ref.read(notificationControllerProvider.notifier).lastFailure
+        : null;
     final description = switch (status) {
       PushStatus.unsupported => 'Não disponível neste dispositivo.',
       PushStatus.unconfigured => 'Notificações não configuradas.',
@@ -24,7 +27,19 @@ class NotificationSettingsTile extends ConsumerWidget {
       PushStatus.denied =>
         'Permissão bloqueada. Altere nas configurações do dispositivo ou navegador.',
       PushStatus.enabled => 'Ativadas neste dispositivo.',
-      PushStatus.error => 'Não foi possível atualizar. Tente novamente.',
+      PushStatus.error => switch (failure?.step) {
+        PushStep.token =>
+          'Não foi possível registrar as notificações neste navegador.',
+        PushStep.tokenRegistration =>
+          'Não foi possível vincular este dispositivo à sua conta.',
+        PushStep.support =>
+          'Não foi possível iniciar as notificações neste dispositivo.',
+        PushStep.permission || PushStep.permissionRequest =>
+          'Não foi possível verificar a permissão de notificações.',
+        PushStep.preferenceRead || PushStep.preferenceUpdate =>
+          'Não foi possível atualizar a preferência de notificações.',
+        _ => 'Não foi possível atualizar. Tente novamente.',
+      },
     };
     final canChange =
         status == PushStatus.enabled ||

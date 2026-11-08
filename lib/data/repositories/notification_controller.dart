@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -10,7 +11,25 @@ import '../models/models.dart';
 import '../session/session_controller.dart';
 import 'notification_repository.dart';
 import 'push_lifecycle.dart';
-export 'push_lifecycle.dart' show PushStatus;
+export 'push_lifecycle.dart' show PushStatus, PushStep, PushFailure;
+
+PushFailure reportPushFailure(PushStep step, Object error) {
+  final rawCode = switch (error) {
+    FirebaseException() => error.code,
+    PostgrestException() => error.code ?? 'database-error',
+    PlatformException() => error.code,
+    TimeoutException() => 'timeout',
+    StateError() => 'invalid-state',
+    UnsupportedError() => 'unsupported-operation',
+    _ => 'unexpected-error',
+  };
+  final code = RegExp(r'^[a-zA-Z0-9][a-zA-Z0-9_/-]{0,63}$').hasMatch(rawCode)
+      ? rawCode
+      : 'unknown-error';
+  // Exception messages, stacks and request bodies may contain tokens or URLs.
+  debugPrint('EducaDor notifications: stage=${step.name}, code=$code');
+  return PushFailure(step, code);
+}
 
 const _apiKey = String.fromEnvironment('FIREBASE_API_KEY');
 const _appId = String.fromEnvironment('FIREBASE_APP_ID');
@@ -145,6 +164,7 @@ class NotificationController extends Notifier<PushStatus> {
   late final PushLifecycle _lifecycle;
   String? _user;
   String? _contextKey;
+  PushFailure? lastFailure;
   @override
   PushStatus build() {
     final transport = FirebasePushTransport(events);
@@ -157,7 +177,11 @@ class NotificationController extends Notifier<PushStatus> {
           _supabaseUrl.isNotEmpty &&
           _supabaseKey.isNotEmpty,
       platformSupported: notificationPlatformSupported,
-      onStatus: (value) => state = value,
+      onStatus: (value) {
+        if (value != PushStatus.error) lastFailure = null;
+        state = value;
+      },
+      onFailure: (step, error) => lastFailure = reportPushFailure(step, error),
     );
     ref.listen(sessionProvider, (_, next) {
       // Loading during a context/session refresh is not an identity change.

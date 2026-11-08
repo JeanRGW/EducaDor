@@ -14,4 +14,6 @@ Before release, verify real browser, installed PWA and Android permission, regis
 
 ## Local evidence
 
+Registration failures report only a fixed lifecycle stage and a validated SDK/database code in the browser console, for example `EducaDor notifications: stage=token, code=token-subscribe-failed`. Exception messages, stacks, request bodies, user IDs and tokens are never printed. The settings row distinguishes browser token acquisition, account binding and preference failures; a successful preference RPC alone does not establish successful device registration. Use the stage/code to diagnose the affected browser rather than inferring a cause from a generic error label.
+
 The test suite uses fake messaging/storage transports and no Firebase network. Android debug APK built with no Firebase defines. Web release build and static-shell generation are exercised without Firebase defines. These builds do not demonstrate actual FCM delivery; no hosted configuration or deploy was performed.

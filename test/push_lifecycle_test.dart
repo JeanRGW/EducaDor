@@ -12,6 +12,7 @@ class FakeTransport implements PushTransport {
   String value = 'token-a';
   int prompts = 0;
   int deletes = 0;
+  Object? tokenFailure;
   final controller = StreamController<String>.broadcast(sync: true);
   @override
   Future<bool> supported() async => available;
@@ -24,7 +25,11 @@ class FakeTransport implements PushTransport {
   }
 
   @override
-  Future<String?> token() async => value;
+  Future<String?> token() async {
+    if (tokenFailure case final error?) throw error;
+    return value;
+  }
+
   @override
   Future<void> deleteToken() async {
     deletes++;
@@ -47,11 +52,13 @@ class FakeStore implements PushStore, PushStoreFactory {
 
   bool preference = true;
   bool fail = false;
+  Object? readFailure;
   final log = <String>[];
   Completer<void>? pending;
   @override
   Future<bool> enabled(String userId) async {
     log.add('read:$userId');
+    if (readFailure case final error?) throw error;
     return preference;
   }
 
@@ -111,6 +118,7 @@ void main() {
   late FakeStore store;
   late PushLifecycle lifecycle;
   late List<PushStatus> statuses;
+  late List<PushStep> failedSteps;
   PushLifecycle create({bool configured = true, bool supported = true}) =>
       PushLifecycle(
         transport: transport,
@@ -119,11 +127,13 @@ void main() {
         configured: configured,
         platformSupported: supported,
         onStatus: statuses.add,
+        onFailure: (step, _) => failedSteps.add(step),
       );
   setUp(() {
     transport = FakeTransport();
     store = FakeStore();
     statuses = [];
+    failedSteps = [];
     lifecycle = create();
   });
   tearDown(() async {
@@ -271,10 +281,46 @@ void main() {
     store.fail = true;
     await lifecycle.switchUser('a');
     expect(statuses.last, PushStatus.error);
+    expect(failedSteps, [PushStep.tokenRegistration]);
     store.fail = false;
     await lifecycle.refresh();
     expect(statuses.last, PushStatus.enabled);
   });
+  test(
+    'token acquisition failure is distinct from a successful preference write',
+    () async {
+      store.preference = false;
+      await lifecycle.switchUser('a');
+      transport.tokenFailure = StateError('private transport details');
+      await lifecycle.enable();
+      expect(store.log, contains('preference:true'));
+      expect(
+        store.log.where((entry) => entry.startsWith('register:')),
+        isEmpty,
+      );
+      expect(statuses.last, PushStatus.error);
+      expect(failedSteps, [PushStep.token]);
+      transport.tokenFailure = null;
+      await lifecycle.refresh();
+      expect(statuses.last, PushStatus.enabled);
+      expect(store.log, contains('register:token-a'));
+    },
+  );
+  test(
+    'preference reads and updates report their own failure stages',
+    () async {
+      store.readFailure = StateError('private preference details');
+      await lifecycle.switchUser('a');
+      expect(failedSteps, [PushStep.preferenceRead]);
+      store.readFailure = null;
+      store.preference = false;
+      await lifecycle.refresh();
+      store.fail = true;
+      await lifecycle.enable();
+      expect(failedSteps.last, PushStep.preferenceUpdate);
+      expect(statuses.last, PushStatus.error);
+    },
+  );
   test('MFA challenge or pending password suppresses registration', () {
     const user = User(
       id: 'id',

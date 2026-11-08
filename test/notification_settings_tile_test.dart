@@ -34,6 +34,40 @@ class _Notifications extends NotificationController {
 }
 
 void main() {
+  testWidgets(
+    'token failures explain browser registration rather than claiming preference save failed',
+    (tester) async {
+      final notifier = _Notifications(PushStatus.error)
+        ..lastFailure = const PushFailure(
+          PushStep.token,
+          'token-subscribe-failed',
+        );
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            notificationControllerProvider.overrideWith(() => notifier),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.light,
+            home: const Scaffold(body: NotificationSettingsTile()),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.text(
+          'Não foi possível registrar as notificações neste navegador.',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Não foi possível atualizar. Tente novamente.'),
+        findsNothing,
+      );
+      await tester.tap(find.text('Tentar novamente'));
+      expect(notifier.retries, 1);
+    },
+  );
   for (final status in [
     PushStatus.error,
     PushStatus.enabled,
