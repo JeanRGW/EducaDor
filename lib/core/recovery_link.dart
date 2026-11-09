@@ -2,7 +2,7 @@ const passwordRecoveryRedirectUrl =
     'https://app.educador.rgw.app/recover/complete';
 
 bool isRecoveryTokenHash(String value) =>
-    RegExp(r'^(?:pkce_)?[a-fA-F0-9]{64}$').hasMatch(value);
+    RegExp(r'^(?:pkce_)?(?:[a-fA-F0-9]{56}|[a-fA-F0-9]{64})$').hasMatch(value);
 
 String? recoveryTokenFromUri(Uri uri) {
   if (uri.path != '/recover/complete' ||

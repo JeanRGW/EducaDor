@@ -237,6 +237,13 @@ void main() {
     'fragment parser rejects query credentials, duplicates and malformed links',
     () {
       final hash = 'a' * 64;
+      final sha224Hash = 'b' * 56;
+      expect(
+        recoveryTokenFromUri(
+          Uri.parse('/recover/complete#token_hash=$sha224Hash'),
+        ),
+        sha224Hash,
+      );
       expect(
         recoveryTokenFromUri(Uri.parse('/recover/complete#token_hash=$hash')),
         hash,
