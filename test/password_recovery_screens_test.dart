@@ -321,13 +321,39 @@ void main() {
     expect(router.routeInformationProvider.value.uri.path, '/reset-password');
   });
 
-  testWidgets('request form fits a narrow screen', (tester) async {
+  testWidgets('request form fits a narrow screen with an inset header', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(320, 800);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     await _show(tester, const RecoverPasswordScreen(), _Auth(), _Session(null));
     expect(find.byType(TextField), findsOneWidget);
+    final title = find.descendant(
+      of: find.byType(AppBar),
+      matching: find.text('Recuperar senha'),
+    );
+    expect(tester.getTopLeft(title).dx, 20);
+    expect(tester.getRect(title).right, lessThanOrEqualTo(300));
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('callback and new-password headers share the same inset', (
+    tester,
+  ) async {
+    for (final page in [
+      const RecoveryLinkScreen(tokenHash: null),
+      const ResetPasswordScreen(),
+    ]) {
+      await _show(tester, page, _Auth(), _Session());
+      final title = find.descendant(
+        of: find.byType(AppBar),
+        matching: find.text('Recuperar senha'),
+      );
+      expect(tester.getTopLeft(title).dx, 20);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    }
   });
 }
