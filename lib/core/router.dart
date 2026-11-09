@@ -24,6 +24,8 @@ import '../features/content/course_edit_screen.dart';
 import '../features/security/screens.dart';
 import '../features/auth/recovery_screens.dart';
 import 'recovery_link.dart';
+import 'invite_link.dart';
+import '../features/auth/invite_start_screen.dart';
 
 const _authRoutes = ['/splash', '/welcome', '/login', '/recover'];
 
@@ -53,7 +55,11 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final sessionState = ref.read(sessionProvider);
       final loc = state.matchedLocation;
-      if (loc == '/recover' || loc == '/recover/complete') return null;
+      if (loc == '/recover' ||
+          loc == '/recover/complete' ||
+          loc == '/invite/start') {
+        return null;
+      }
       final isAuth = _authRoutes.contains(loc);
       final protected =
           loc.startsWith('/funcionario/') ||
@@ -130,6 +136,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
+      GoRoute(
+        path: '/invite/start',
+        builder: (_, state) =>
+            InviteStartScreen(link: InviteAuthLink.fromUri(state.uri)),
+      ),
       GoRoute(path: '/mfa', builder: (_, _) => const MfaChallengeScreen()),
       GoRoute(
         path: '/account/security',

@@ -10,6 +10,7 @@ import '../models/models.dart';
 import 'certificate_document_repository.dart';
 import 'notification_repository.dart';
 import '../../core/recovery_link.dart';
+import '../../core/invite_link.dart';
 import '../session/recovery_intent.dart';
 
 const _supabaseUrl = String.fromEnvironment('SUPABASE_URL');
@@ -1509,6 +1510,13 @@ class AuthRepository {
     final client = _authClient;
     await client.auth.updateUser(UserAttributes(password: password));
     await client.rpc('complete_password_setup');
+  }
+
+  Future<void> verifyInviteToken(InviteAuthLink link) async {
+    await _authClient.auth.verifyOTP(
+      tokenHash: link.tokenHash,
+      type: link.type == 'invite' ? OtpType.invite : OtpType.magiclink,
+    );
   }
 
   Future<void> signOut() async {
