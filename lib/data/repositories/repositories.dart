@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
@@ -8,6 +9,8 @@ import '../mock/mock_data.dart';
 import '../models/models.dart';
 import 'certificate_document_repository.dart';
 import 'notification_repository.dart';
+import '../../core/recovery_link.dart';
+import '../session/recovery_intent.dart';
 
 const _supabaseUrl = String.fromEnvironment('SUPABASE_URL');
 const _supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
@@ -1260,7 +1263,10 @@ class ProgressRepository {
 
 class AuthRepository {
   final SupabaseClient? _injectedClient;
-  AuthRepository({SupabaseClient? client}) : _injectedClient = client;
+  final RecoveryIntentStore _recoveryIntent;
+  AuthRepository({SupabaseClient? client, RecoveryIntentStore? recoveryIntent})
+    : _injectedClient = client,
+      _recoveryIntent = recoveryIntent ?? RecoveryIntentStore();
 
   SupabaseClient get _authClient =>
       _injectedClient ??
@@ -1271,6 +1277,7 @@ class AuthRepository {
     required String email,
     required String password,
   }) async {
+    clearRecoverySession();
     await _authClient.auth.signInWithPassword(
       email: email.trim(),
       password: password,
@@ -1283,14 +1290,16 @@ class AuthRepository {
     final authUser = client?.auth.currentUser;
     if (client == null || authUser == null) return null;
     final freshUser = (await client.auth.getUser()).user;
-    if (freshUser == null) return null;
+    if (freshUser == null || freshUser.id != authUser.id) return null;
     final enrolled =
         freshUser.factors?.any(
           (factor) => factor.status == FactorStatus.verified,
         ) ??
         false;
     final aal = client.auth.mfa.getAuthenticatorAssuranceLevel().currentLevel;
-    if (enrolled && aal != AuthenticatorAssuranceLevels.aal2) {
+    final needsMfa = enrolled && aal != AuthenticatorAssuranceLevels.aal2;
+    final recovering = _isRecoverySession;
+    if (needsMfa || recovering) {
       return AppSession(
         user: User(
           id: authUser.id,
@@ -1299,7 +1308,8 @@ class AuthRepository {
           initials: '',
         ),
         contexts: const [],
-        needsMfa: true,
+        needsMfa: needsMfa,
+        recoveringPassword: recovering,
       );
     }
     final profile = await client
@@ -1357,7 +1367,114 @@ class AuthRepository {
     return result.totp.map((factor) => factor.id).toList();
   }
 
-  Future<({String id, String secret, String qr, String uri})> enrollTotp() async {
+  String? get _authSessionId {
+    final token =
+        (_injectedClient ?? _client)?.auth.currentSession?.accessToken;
+    if (token == null) return null;
+    try {
+      final data =
+          jsonDecode(
+                utf8.decode(
+                  base64Url.decode(base64Url.normalize(token.split('.')[1])),
+                ),
+              )
+              as Map<String, dynamic>;
+      final id = data['session_id'];
+      return id is String &&
+              RegExp(
+                r'^[a-fA-F0-9]{8}(?:-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}$',
+              ).hasMatch(id)
+          ? id
+          : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  bool get _isRecoverySession {
+    final id = _authSessionId;
+    final saved = _recoveryIntent.read();
+    if (id == null || id != saved) {
+      if (saved != null) _recoveryIntent.clear();
+      return false;
+    }
+    final methods = _authClient.auth.mfa
+        .getAuthenticatorAssuranceLevel()
+        .currentAuthenticationMethods;
+    return methods.any(
+      (entry) =>
+          entry.method == AMRMethod.otp || entry.method == AMRMethod.recovery,
+    );
+  }
+
+  void markRecoverySession() {
+    final id = _authSessionId;
+    if (id != null) _recoveryIntent.save(id);
+  }
+
+  void clearRecoverySession() => _recoveryIntent.clear();
+
+  Future<void> requestPasswordReset(String email) async {
+    // Hash-based email links must not depend on a verifier in the requesting browser.
+    final client =
+        _injectedClient ??
+        SupabaseClient(
+          _supabaseUrl,
+          _supabaseAnonKey,
+          authOptions: const AuthClientOptions(
+            authFlowType: AuthFlowType.implicit,
+            autoRefreshToken: false,
+          ),
+        );
+    try {
+      await client.auth.resetPasswordForEmail(
+        email.trim(),
+        redirectTo: passwordRecoveryRedirectUrl,
+      );
+    } on AuthException catch (error) {
+      if (error.code == 'over_email_send_rate_limit' ||
+          error.code == 'user_not_found') {
+        return;
+      }
+      rethrow;
+    } finally {
+      if (_injectedClient == null) await client.dispose();
+    }
+  }
+
+  Future<void> verifyRecoveryToken(String tokenHash) async {
+    if (!isRecoveryTokenHash(tokenHash)) {
+      throw StateError('Invalid recovery link');
+    }
+    final response = await _authClient.auth.verifyOTP(
+      type: OtpType.recovery,
+      tokenHash: tokenHash,
+    );
+    if (response.session == null || response.user == null) {
+      throw StateError('Invalid recovery session');
+    }
+    markRecoverySession();
+    if (!_isRecoverySession) throw StateError('Invalid recovery session');
+  }
+
+  Future<void> updateRecoveredPassword(String password) async {
+    final session = await current();
+    if (session?.recoveringPassword != true || session!.needsMfa) {
+      throw StateError('A verified recovery session is required');
+    }
+    await _authClient.auth.updateUser(UserAttributes(password: password));
+  }
+
+  Future<void> completeRecoveredPassword() async {
+    final session = await current();
+    if (session?.recoveringPassword != true || session!.needsMfa) {
+      throw StateError('A verified recovery session is required');
+    }
+    await _authClient.rpc('complete_password_setup');
+  }
+
+  Future<({String id, String secret, String qr, String uri})>
+  enrollTotp() async {
     final existing = await _authClient.auth.mfa.listFactors();
     for (final factor in existing.all) {
       if (factor.factorType == FactorType.totp &&
@@ -1401,6 +1518,7 @@ class AuthRepository {
     } catch (_) {
       // The Auth sign-out must still succeed if the network is unavailable.
     } finally {
+      clearRecoverySession();
       await _authClient.auth.signOut();
     }
   }

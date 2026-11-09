@@ -56,6 +56,7 @@ class AppSession {
   final AccessContext? active;
   final bool needsPassword;
   final bool needsMfa;
+  final bool recoveringPassword;
 
   const AppSession({
     required this.user,
@@ -63,6 +64,7 @@ class AppSession {
     this.active,
     this.needsPassword = false,
     this.needsMfa = false,
+    this.recoveringPassword = false,
   });
 
   Role? get role => active?.role;

@@ -42,6 +42,18 @@
 /set-password
   Cache-Control: no-store
 
+/recover
+  Cache-Control: no-store
+  Cloudflare-CDN-Cache-Control: no-store
+
+/recover/*
+  Cache-Control: no-store
+  Cloudflare-CDN-Cache-Control: no-store
+
+/reset-password
+  Cache-Control: no-store
+  Cloudflare-CDN-Cache-Control: no-store
+
 /assets/*
   Cache-Control: public, max-age=0, must-revalidate
 

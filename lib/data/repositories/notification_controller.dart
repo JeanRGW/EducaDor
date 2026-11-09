@@ -154,7 +154,12 @@ class FirebasePushTransport implements PushTransport {
 /// Token registration requires a completed session: an enrolled account still
 /// challenging MFA or setting its password has no server-authorized context.
 String? notificationContextKey(AppSession? session) {
-  if (session == null || session.needsMfa || session.needsPassword) return null;
+  if (session == null ||
+      session.needsMfa ||
+      session.needsPassword ||
+      session.recoveringPassword) {
+    return null;
+  }
   final active = session.active;
   return active == null ? null : '${active.role.name}:${active.companyId}';
 }

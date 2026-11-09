@@ -15,6 +15,7 @@ class SessionRefreshNotifier extends ChangeNotifier {
 }
 
 class SessionController extends AsyncNotifier<AppSession?> {
+  int _reloadEpoch = 0;
   @override
   Future<AppSession?> build() async {
     const url = String.fromEnvironment('SUPABASE_URL');
@@ -23,8 +24,13 @@ class SessionController extends AsyncNotifier<AppSession?> {
       final subscription = Supabase.instance.client.auth.onAuthStateChange
           .listen((event) {
             if (event.event == AuthChangeEvent.signedOut) {
+              _reloadEpoch++;
+              ref.read(authRepositoryProvider).clearRecoverySession();
               state = const AsyncData(null);
               sessionRefresh.refresh();
+            } else if (event.event == AuthChangeEvent.passwordRecovery) {
+              ref.read(authRepositoryProvider).markRecoverySession();
+              unawaited(_sync());
             } else if (event.event == AuthChangeEvent.signedIn ||
                 event.event == AuthChangeEvent.tokenRefreshed ||
                 event.event == AuthChangeEvent.mfaChallengeVerified) {
@@ -33,8 +39,14 @@ class SessionController extends AsyncNotifier<AppSession?> {
           });
       ref.onDispose(subscription.cancel);
     }
-    final result = await ref.read(authRepositoryProvider).current();
-    return result;
+    final epoch = ++_reloadEpoch;
+    try {
+      final result = await ref.read(authRepositoryProvider).current();
+      return epoch == _reloadEpoch ? result : state.value;
+    } catch (_) {
+      if (epoch != _reloadEpoch) return state.value;
+      rethrow;
+    }
   }
 
   Future<void> _sync() async {
@@ -59,10 +71,17 @@ class SessionController extends AsyncNotifier<AppSession?> {
   }
 
   Future<AppSession?> reload() async {
-    final session = await ref.read(authRepositoryProvider).current();
-    state = AsyncData(session);
-    sessionRefresh.refresh();
-    return session;
+    final epoch = ++_reloadEpoch;
+    try {
+      final session = await ref.read(authRepositoryProvider).current();
+      if (epoch != _reloadEpoch) return state.value;
+      state = AsyncData(session);
+      sessionRefresh.refresh();
+      return session;
+    } catch (_) {
+      if (epoch != _reloadEpoch) return state.value;
+      rethrow;
+    }
   }
 
   void discardContext(Role role, String? companyId) {
@@ -79,6 +98,7 @@ class SessionController extends AsyncNotifier<AppSession?> {
             : session.active,
         needsPassword: session.needsPassword,
         needsMfa: session.needsMfa,
+        recoveringPassword: session.recoveringPassword,
       ),
     );
     sessionRefresh.refresh();
@@ -95,18 +115,21 @@ class SessionController extends AsyncNotifier<AppSession?> {
         active: context,
         needsPassword: session.needsPassword,
         needsMfa: session.needsMfa,
+        recoveringPassword: session.recoveringPassword,
       ),
     );
     sessionRefresh.refresh();
   }
 
   Future<void> logout() async {
+    _reloadEpoch++;
     try {
       await ref.read(notificationControllerProvider.notifier).beforeLogout();
     } catch (_) {
       // Push cleanup must not prevent sign-out.
     }
     await ref.read(authRepositoryProvider).signOut();
+    _reloadEpoch++;
     state = const AsyncData(null);
     sessionRefresh.refresh();
   }
