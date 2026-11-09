@@ -39,7 +39,9 @@ test('exact static allowlist; APIs, signed/query/fragment URLs, credentials and 
   for (const url of ['https://supabase.test/main.dart.js', 'https://app.test/rest/v1/profiles',
     'https://app.test/auth/v1/user', 'https://app.test/lessons/audio.mp3',
     'https://app.test/main.dart.js?token=fake', 'https://app.test/main.dart.js#fake',
-    'https://app.test/invite/accept?token=fake', 'https://app.test/set-password']) {
+    'https://app.test/invite/accept?token=fake',
+    'https://app.test/invite/start#token_hash=fake&type=invite&token=fake',
+    'https://app.test/set-password']) {
     assert.equal(route(w, url), null, url);
   }
   for (const options of [{method: 'POST'}, {headers: new Headers({Authorization: 'Bearer fake'})},
@@ -51,7 +53,8 @@ test('exact static allowlist; APIs, signed/query/fragment URLs, credentials and 
 test('every navigation including bearer links uses only sanitized index key', async () => {
   const w = worker();
   w.cached.set('https://app.test/', 'public index');
-  for (const path of ['/contexts', '/invite/accept?token=fake', '/set-password#access_token=fake']) {
+  for (const path of ['/contexts', '/invite/accept?token=fake',
+    '/invite/start#token_hash=fake&type=invite&token=fake', '/set-password#access_token=fake']) {
     assert.equal(route(w, 'https://app.test' + path, {mode: 'navigate'}), 'https://app.test/');
     let response;
     w.handlers.fetch({request: {url: 'https://app.test' + path, method: 'GET',

@@ -99,10 +99,20 @@ or run `supabase/seed.sql` on production.
   employees **only for their active company**.
 * `invite-member` checks the signed caller and their active DB context. It
   creates a one-hour, hashed invitation; a new Auth user gets a Supabase Auth
-  invite link. An existing account receives a membership link to open after
+  invite credential wrapped in an app link (`/invite/start#...`), never a direct
+  Supabase `/auth/v1/verify` URL. The app verifies the credential only after the
+  recipient presses **Continuar**; merely opening/reloading the page (including
+  WhatsApp previews) performs no verification or invitation acceptance. Tokens
+  stay in the fragment, out of HTTP request paths, and are never logged.
+  An existing account receives a membership link to open after
   sign-in. The authorized inviter sees the link only once for private handoff.
   If it was lost, use **Gerar novo link** on the pending invitation: the old
   invitation token is invalidated, and only the newly generated link is shown.
+  Confirmed accounts always keep the existing sign-in/accept flow, even when
+  `needs_password` remains true. This flag is onboarding state, not permission
+  for an inviter to issue a login credential for an established identity. If an
+  older preview consumed the initial credential, the recipient can use email
+  password recovery and then reopen the private membership link.
    Platform gestores find pending invitations under Perfil → Configurações da plataforma (other platform
   gestores) or Empresas (company managers); company managers find theirs under
   Gestores or Funcionários.
@@ -118,6 +128,22 @@ or run `supabase/seed.sql` on production.
   recovery callback; see `18-email-recovery.md`. Invitation handoff remains manual
   and private. If email is unavailable, a trusted operator must independently verify
   identity before generating a fresh recovery link; no public admin generator exists.
+
+### Preview protection rollout and limits
+
+Deploy Flutter/PWA with the `/invite/start` route **before** the updated
+`invite-member` function, after operator approval. No schema migration or new
+public function is needed. The existing SPA fallback and `/invite/*` no-store
+headers cover the new route; the shell worker caches only the sanitized public
+index, never fragment credentials. Close older controlled PWA tabs to activate
+the updated shell before generating new invitations. Old direct Auth links are not retroactively
+protected: regenerate pending invitations after rollout. The first-gestor
+operator bootstrap remains separate and still outputs a direct Auth link; do not
+share that link through previewing clients. Auth verification still consumes a
+one-use credential on Continue, before invitation acceptance/password setup;
+it is not atomic with those operations. Previews that only fetch/render pages
+are protected, not scanners that actively press buttons. The fix does not add
+public signup or change the existing acceptance/password ordering.
 
 ## Staging checks
 

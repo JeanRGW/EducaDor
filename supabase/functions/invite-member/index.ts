@@ -3,6 +3,13 @@ import { admin, caller, newToken, preflight, respond, tokenHash } from '../_shar
 type CompanyInput = Record<'name' | 'cnpj' | 'responsible' | 'email' |
   'phone' | 'address' | 'city' | 'state' | 'field', string>;
 
+function protectedInviteLink(origin: string, tokenHash: string, type: string, token: string): string {
+  // Fragments never reach preview crawlers' HTTP requests. Auth verification is
+  // deferred to an explicit button in the app, not an auto-followed Auth URL.
+  const fragment = new URLSearchParams({ token_hash: tokenHash, type, token });
+  return `${origin.replace(/\/$/, '')}/invite/start#${fragment}`;
+}
+
 Deno.serve(async (req) => {
   const blocked = preflight(req);
   if (blocked) return blocked;
@@ -111,10 +118,10 @@ Deno.serve(async (req) => {
           type: 'invite', email, options: { redirectTo: target },
         });
         if (linkError || generated.user?.id !== existing.id ||
-          !generated.properties?.action_link) {
+          !generated.properties?.hashed_token) {
           return respond(req, { error: 'Could not reissue account link' }, 400);
         }
-        link = generated.properties.action_link;
+        link = protectedInviteLink(appOrigin, generated.properties.hashed_token, 'invite', token);
       }
 
       // Compare-and-swap prevents concurrent regenerations from returning two
@@ -170,7 +177,10 @@ Deno.serve(async (req) => {
         if (createdCompany) await admin.from('companies').delete().eq('id', companyId!);
         return respond(req, { error: 'Account unavailable' }, 400);
       }
-      if (account.user.email_confirmed_at) return respond(req, { link: target });
+      // Onboarding state must never let an inviter mint login credentials for a confirmed identity.
+      if (account.user.email_confirmed_at) {
+        return respond(req, { link: target });
+      }
       // An expired first invitation leaves an unconfirmed Auth account.
       // GoTrue may reject a second invite for an existing account; an
       // admin-generated sign-in link lets its owner confirm the same email.
@@ -178,17 +188,17 @@ Deno.serve(async (req) => {
         type: 'magiclink', email, options: { redirectTo: target },
       });
       if (resendError || resend.user?.id !== existing.id ||
-        !resend.properties?.action_link) {
+        !resend.properties?.hashed_token) {
         await admin.from('membership_invites').delete().eq('id', invitation.id);
         if (createdCompany) await admin.from('companies').delete().eq('id', companyId!);
         return respond(req, { error: 'Could not reissue account link' }, 400);
       }
-      return respond(req, { link: resend.properties.action_link });
+      return respond(req, { link: protectedInviteLink(appOrigin, resend.properties.hashed_token, 'magiclink', token) });
     }
     const { data: generated, error: linkError } = await admin.auth.admin.generateLink({
       type: 'invite', email, options: { redirectTo: target },
     });
-    if (linkError || !generated.user || !generated.properties?.action_link) {
+    if (linkError || !generated.user || !generated.properties?.hashed_token) {
       await admin.from('membership_invites').delete().eq('id', invitation.id);
       if (createdCompany) await admin.from('companies').delete().eq('id', companyId!);
       return respond(req, { error: 'Could not create account link' }, 400);
@@ -201,7 +211,7 @@ Deno.serve(async (req) => {
       if (createdCompany) await admin.from('companies').delete().eq('id', companyId!);
       return respond(req, { error: 'Could not create profile' }, 400);
     }
-    return respond(req, { link: generated.properties.action_link });
+    return respond(req, { link: protectedInviteLink(appOrigin, generated.properties.hashed_token, 'invite', token) });
   } catch {
     return respond(req, { error: 'Invalid request' }, 400);
   }
