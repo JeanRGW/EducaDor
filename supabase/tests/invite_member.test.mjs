@@ -28,13 +28,14 @@ function ilike(value, pattern) {
   return new RegExp(`${expression}$`, 'i').test(value);
 }
 
-function fixture({ profiles = [], grantedIds = [], authEmail, pending = [], confirmed = true } = {}) {
+function fixture({ profiles = [], grantedIds = [], authEmail, pending = [], confirmed = true,
+  companies = [], context = { role: 'gestor', company_id: null } } = {}) {
   const tables = {
     profiles: profiles.map((row) => ({ ...row })),
     platform_gestors: grantedIds.map((user_id) => ({ user_id })),
     company_memberships: [],
     membership_invites: pending.map((row) => ({ ...row })),
-    companies: [],
+    companies: companies.map((row) => ({ ...row })),
   };
   const patterns = [];
   const accountLookups = [];
@@ -101,7 +102,7 @@ function fixture({ profiles = [], grantedIds = [], authEmail, pending = [], conf
     preflight: () => null,
     caller: async () => ({
       id: 'publisher',
-      client: { rpc: async () => ({ data: [{ role: 'gestor', company_id: null }], error: null }) },
+      client: { rpc: async () => ({ data: [context], error: null }) },
     }),
     respond: (_req, body, status = 200) => ({ body, status }),
     newToken: () => 'a'.repeat(64),
@@ -242,6 +243,27 @@ function assertProtectedLink(link, type) {
   assert.ok(!link.includes('auth.example.test'));
 }
 
+for (const regenerate of [false, true]) {
+  test(`company inviter cannot mint a login credential for a confirmed existing gestor, regenerate=${regenerate}`, async () => {
+    const email = 'confirmed@example.test';
+    const companyId = 'c9000000-0000-4000-8000-000000000001';
+    const state = fixture({
+      profiles: [{ id: 'existing-gestor', email, needs_password: true }],
+      grantedIds: ['existing-gestor'],
+      confirmed: true,
+      companies: [{ id: companyId, active: true }],
+      context: { role: 'empresa', company_id: companyId },
+      pending: regenerate ? [{ id: 'pending', email, role: 'funcionario', company_id: companyId, expires_at: '2099-01-01T00:00:00Z', token_hash: 'old-token' }] : [],
+    });
+    const response = await state.invite({ email, role: 'funcionario', companyId, ...(regenerate ? { action: 'regenerate' } : {}) });
+    assert.equal(response.status, 200);
+    assert.equal(state.accountLinks.length, 0);
+    assert.equal(response.body.link, 'https://app.example.test/invite/accept?token=' + 'a'.repeat(64));
+    assert.equal(state.tables.platform_gestors.length, 1);
+    assert.equal(state.tables.company_memberships.length, 0);
+  });
+}
+
 test('new accounts receive an inert app link, never the auto-consuming Auth URL', async () => {
   const state = fixture();
   const response = await state.invite({ email: 'new@example.test' });
@@ -253,7 +275,7 @@ test('new accounts receive an inert app link, never the auto-consuming Auth URL'
 
 for (const confirmed of [false, true]) {
   for (const regenerate of [false, true]) {
-    test(`passwordless account gets protected auth link: confirmed=${confirmed}, regenerate=${regenerate}`, async () => {
+    test(`pending setup keeps the confirmed identity boundary: confirmed=${confirmed}, regenerate=${regenerate}`, async () => {
       const state = fixture({
         profiles: [{ id: 'existing', email: 'new@example.test', needs_password: true }],
         confirmed,
@@ -262,7 +284,12 @@ for (const confirmed of [false, true]) {
       });
       const response = await state.invite({ email: 'new@example.test', ...(regenerate ? { action: 'regenerate' } : {}) });
       assert.equal(response.status, 200);
-      assertProtectedLink(response.body.link, regenerate && !confirmed ? 'invite' : 'magiclink');
+      if (confirmed) {
+        assert.equal(state.accountLinks.length, 0);
+        assert.equal(response.body.link, 'https://app.example.test/invite/accept?token=' + 'a'.repeat(64));
+      } else {
+        assertProtectedLink(response.body.link, regenerate ? 'invite' : 'magiclink');
+      }
       assert.equal(state.tables.platform_gestors.length, 0);
     });
   }

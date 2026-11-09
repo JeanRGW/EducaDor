@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:educador/app/theme.dart';
 import 'package:educador/core/invite_link.dart';
 import 'package:educador/core/router.dart';
@@ -19,10 +21,12 @@ class _Auth extends AuthRepository {
   bool failVerify = false;
   bool failReload = false;
   InviteAuthLink? verified;
+  Completer<void>? pendingVerification;
 
   @override
   Future<void> verifyInviteToken(InviteAuthLink link) async {
     verifications++;
+    await pendingVerification?.future;
     if (failVerify) throw StateError('Expired');
     verified = link;
   }
@@ -152,6 +156,31 @@ void main() {
     expect(find.text('Continuar'), findsNothing);
     expect(auth.verifications, 0);
   });
+
+  testWidgets(
+    'a delayed failure from an old link cannot replace the new link feedback',
+    (tester) async {
+      final pending = Completer<void>();
+      final auth = _Auth()..pendingVerification = pending;
+      final container = await _show(tester, auth, _location());
+      await tester.tap(find.text('Continuar'));
+      await tester.pump();
+      final newLocation =
+          '/invite/start#token_hash=${'c' * 64}&type=invite&token=${'d' * 64}';
+      container.read(routerProvider).go(newLocation);
+      await tester.pumpAndSettle();
+      auth.failVerify = true;
+      pending.complete();
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Este link expirou'), findsNothing);
+      auth.pendingVerification = null;
+      auth.failVerify = false;
+      await tester.tap(find.text('Continuar'));
+      await tester.pumpAndSettle();
+      expect(auth.verified!.tokenHash, 'c' * 64);
+      expect(find.byType(AcceptInviteScreen), findsOneWidget);
+    },
+  );
 
   testWidgets('landing fits narrow screens and enlarged text', (tester) async {
     tester.view.physicalSize = const Size(320, 640);

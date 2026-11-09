@@ -46,7 +46,7 @@ class _InviteStartScreenState extends ConsumerState<InviteStartScreen> {
         try {
           await ref.read(authRepositoryProvider).verifyInviteToken(link);
         } catch (_) {
-          if (mounted) {
+          if (mounted && widget.link?.identity == link.identity) {
             setState(
               () => _error =
                   'Este link expirou ou já foi utilizado. Peça um novo convite a quem enviou.',
@@ -62,7 +62,7 @@ class _InviteStartScreenState extends ConsumerState<InviteStartScreen> {
         context.go('/invite/accept?token=${link.token}');
       }
     } catch (_) {
-      if (mounted) {
+      if (mounted && widget.link?.identity == link.identity) {
         setState(
           () => _error =
               'Link confirmado. Não foi possível carregar sua conta. Tente continuar novamente.',
