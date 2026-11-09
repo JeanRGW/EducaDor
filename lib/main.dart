@@ -7,7 +7,7 @@ import 'app/app.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  usePathUrlStrategy();
+  setUrlStrategy(PathUrlStrategy(BrowserPlatformLocation(), true));
   const url = String.fromEnvironment('SUPABASE_URL');
   const anonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
   if (url.isNotEmpty && anonKey.isNotEmpty) {

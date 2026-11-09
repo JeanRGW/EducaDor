@@ -10,6 +10,8 @@ import '../../shared/widgets/app_icons.dart';
 import '../../shared/widgets/common.dart';
 import '../../shared/widgets/logo.dart';
 
+export 'recovery_screens.dart' show RecoverPasswordScreen;
+
 // ---------------------------------------------------------------- Splash
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -461,52 +463,4 @@ class _LoginHero extends StatelessWidget {
       ],
     ),
   );
-}
-
-// ---------------------------------------------------------------- Recover
-class RecoverPasswordScreen extends StatefulWidget {
-  const RecoverPasswordScreen({super.key});
-
-  @override
-  State<RecoverPasswordScreen> createState() => _RecoverPasswordScreenState();
-}
-
-class _RecoverPasswordScreenState extends State<RecoverPasswordScreen> {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Recuperar Senha')),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: LogoLockup(
-              size: 90,
-              color: AppColors.primary,
-              showText: true,
-            ),
-          ),
-          const SizedBox(height: 24),
-          const Text(
-            'Solicite um link de recuperação ao administrador da plataforma. '
-            'Ele deve confirmar sua identidade antes de compartilhar o link.',
-          ),
-          const SizedBox(height: 12),
-          OutlinedButton(
-            onPressed: () => context.go('/login'),
-            style: OutlinedButton.styleFrom(
-              minimumSize: const Size.fromHeight(52),
-              side: const BorderSide(color: AppColors.border),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              foregroundColor: AppColors.textPrimary,
-            ),
-            child: const Text('Voltar'),
-          ),
-        ],
-      ),
-    );
-  }
 }

@@ -22,6 +22,8 @@ import '../features/gestor/profile_edit_screen.dart';
 import '../features/gestor/platform_settings_screen.dart';
 import '../features/content/course_edit_screen.dart';
 import '../features/security/screens.dart';
+import '../features/auth/recovery_screens.dart';
+import 'recovery_link.dart';
 
 const _authRoutes = ['/splash', '/welcome', '/login', '/recover'];
 
@@ -51,6 +53,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final sessionState = ref.read(sessionProvider);
       final loc = state.matchedLocation;
+      if (loc == '/recover' || loc == '/recover/complete') return null;
       final isAuth = _authRoutes.contains(loc);
       final protected =
           loc.startsWith('/funcionario/') ||
@@ -63,7 +66,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (sessionState.isLoading) {
         return loc == '/splash' ||
                 loc == '/invite/accept' ||
-                loc == '/set-password'
+                loc == '/set-password' ||
+                loc == '/reset-password'
             ? null
             : '/splash';
       }
@@ -73,7 +77,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       final session = sessionState.value;
 
       if (session == null) {
-        if (isAuth || loc == '/invite/accept' || loc == '/set-password') {
+        if (isAuth ||
+            loc == '/invite/accept' ||
+            loc == '/set-password' ||
+            loc == '/reset-password') {
           return null;
         }
         return '/login';
@@ -89,6 +96,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         }
         return loc == '/mfa' ? null : '/mfa';
       }
+      if (session.recoveringPassword) {
+        return loc == '/reset-password' ? null : '/reset-password';
+      }
+      if (loc == '/reset-password') return '/recover';
       if (loc == '/mfa') {
         final invite = pendingInvite;
         if (invite != null) return invite;
@@ -135,6 +146,15 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/recover',
         builder: (_, _) => const RecoverPasswordScreen(),
+      ),
+      GoRoute(
+        path: '/recover/complete',
+        builder: (_, state) =>
+            RecoveryLinkScreen(tokenHash: recoveryTokenFromUri(state.uri)),
+      ),
+      GoRoute(
+        path: '/reset-password',
+        builder: (_, _) => const ResetPasswordScreen(),
       ),
       GoRoute(
         path: '/contexts',

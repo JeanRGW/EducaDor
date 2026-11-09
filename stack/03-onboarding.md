@@ -113,10 +113,11 @@ or run `supabase/seed.sql` on production.
   adds a grant to the same account; it never creates a second account or
   accepts the role/company from the browser. New users set a password before
   using their profiles. If a link expires, create a fresh invitation.
-* Supabase's default email sender is limited to project-team addresses and is
-  unsuitable for these invitations. Until custom SMTP is configured, the
-  platform does not promise email recovery: a trusted operator must verify the
-  person's identity before generating a manual Supabase recovery link.
+* Supabase's default email sender is limited to project-team addresses. Self-service
+  password recovery uses the approved custom SMTP setup and the dedicated app
+  recovery callback; see `18-email-recovery.md`. Invitation handoff remains manual
+  and private. If email is unavailable, a trusted operator must independently verify
+  identity before generating a fresh recovery link; no public admin generator exists.
 
 ## Staging checks
 
