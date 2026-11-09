@@ -1513,10 +1513,19 @@ class AuthRepository {
   }
 
   Future<void> verifyInviteToken(InviteAuthLink link) async {
-    await _authClient.auth.verifyOTP(
+    final type = switch (link.type) {
+      'invite' => OtpType.invite,
+      'magiclink' => OtpType.magiclink,
+      _ => throw ArgumentError('Unsupported invitation authentication type'),
+    };
+    final response = await _authClient.auth.verifyOTP(
       tokenHash: link.tokenHash,
-      type: link.type == 'invite' ? OtpType.invite : OtpType.magiclink,
+      type: type,
     );
+    if (response.session == null || response.user == null) {
+      throw StateError('Invitation authentication did not establish a session');
+    }
+    clearRecoverySession();
   }
 
   Future<void> signOut() async {

@@ -8,6 +8,44 @@ import 'package:http/testing.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 void main() {
+  test(
+    'unsupported Auth types and missing verified sessions fail closed',
+    () async {
+      final requests = <http.Request>[];
+      final client = SupabaseClient(
+        'https://example.test',
+        'test-public-key',
+        httpClient: MockClient((request) async {
+          requests.add(request);
+          return http.Response(
+            '{}',
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        }),
+      );
+      addTearDown(client.dispose);
+      final repo = AuthRepository(client: client);
+      await expectLater(
+        repo.verifyInviteToken(
+          InviteAuthLink(
+            tokenHash: 'b' * 64,
+            type: 'recovery',
+            token: 'a' * 64,
+          ),
+        ),
+        throwsArgumentError,
+      );
+      expect(requests, isEmpty);
+      await expectLater(
+        repo.verifyInviteToken(
+          InviteAuthLink(tokenHash: 'b' * 64, type: 'invite', token: 'a' * 64),
+        ),
+        throwsStateError,
+      );
+      expect(requests, hasLength(1));
+    },
+  );
   for (final type in ['invite', 'magiclink']) {
     test(
       'explicit verification POSTs the $type hash to configured Auth',

@@ -108,9 +108,11 @@ or run `supabase/seed.sql` on production.
   sign-in. The authorized inviter sees the link only once for private handoff.
   If it was lost, use **Gerar novo link** on the pending invitation: the old
   invitation token is invalidated, and only the newly generated link is shown.
-  Accounts still marked `needs_password` also receive a protected Auth link,
-  including confirmed accounts whose old invitation credential was consumed by
-  a preview. Normal confirmed accounts keep the existing sign-in/accept flow.
+  Confirmed accounts always keep the existing sign-in/accept flow, even when
+  `needs_password` remains true. This flag is onboarding state, not permission
+  for an inviter to issue a login credential for an established identity. If an
+  older preview consumed the initial credential, the recipient can use email
+  password recovery and then reopen the private membership link.
    Platform gestores find pending invitations under Perfil → Configurações da plataforma (other platform
   gestores) or Empresas (company managers); company managers find theirs under
   Gestores or Funcionários.

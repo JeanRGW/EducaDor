@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
 
     const emailPattern = email.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
     const { data: existing, error: profileLookupError } = await admin.from('profiles')
-      .select('id,needs_password').ilike('email', emailPattern).maybeSingle();
+      .select('id').ilike('email', emailPattern).maybeSingle();
     if (profileLookupError) {
       if (createdCompany) await admin.from('companies').delete().eq('id', companyId!);
       return respond(req, { error: 'Account unavailable' }, 400);
@@ -113,16 +113,15 @@ Deno.serve(async (req) => {
       const token = newToken();
       const target = `${appOrigin.replace(/\/$/, '')}/invite/accept?token=${token}`;
       let link = target;
-      if (!account.user.email_confirmed_at || existing.needs_password) {
-        const type = account.user.email_confirmed_at ? 'magiclink' : 'invite';
+      if (!account.user.email_confirmed_at) {
         const { data: generated, error: linkError } = await admin.auth.admin.generateLink({
-          type, email, options: { redirectTo: target },
+          type: 'invite', email, options: { redirectTo: target },
         });
         if (linkError || generated.user?.id !== existing.id ||
           !generated.properties?.hashed_token) {
           return respond(req, { error: 'Could not reissue account link' }, 400);
         }
-        link = protectedInviteLink(appOrigin, generated.properties.hashed_token, type, token);
+        link = protectedInviteLink(appOrigin, generated.properties.hashed_token, 'invite', token);
       }
 
       // Compare-and-swap prevents concurrent regenerations from returning two
@@ -178,7 +177,8 @@ Deno.serve(async (req) => {
         if (createdCompany) await admin.from('companies').delete().eq('id', companyId!);
         return respond(req, { error: 'Account unavailable' }, 400);
       }
-      if (account.user.email_confirmed_at && !existing.needs_password) {
+      // Onboarding state must never let an inviter mint login credentials for a confirmed identity.
+      if (account.user.email_confirmed_at) {
         return respond(req, { link: target });
       }
       // An expired first invitation leaves an unconfirmed Auth account.
