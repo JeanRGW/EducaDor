@@ -388,7 +388,11 @@ class _RecoveryPage extends StatelessWidget {
   Widget build(BuildContext context) => Theme(
     data: AdminStyles.formTheme(Theme.of(context)),
     child: Scaffold(
-      appBar: AppBar(title: Text(appBar), automaticallyImplyLeading: false),
+      appBar: AppBar(
+        title: Text(appBar),
+        titleSpacing: 20,
+        automaticallyImplyLeading: false,
+      ),
       body: SafeArea(
         child: Align(
           alignment: Alignment.topCenter,
