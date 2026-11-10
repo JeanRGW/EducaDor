@@ -1,7 +1,9 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
+
 import '../../data/models/models.dart';
 import '../../data/repositories/employee_providers.dart';
 import '../../data/repositories/repositories.dart';
@@ -20,7 +22,12 @@ class EmployeePlayerScreen extends ConsumerWidget {
   });
   @override
   Widget build(BuildContext context, WidgetRef ref) => _PlayerLoader(
-    key: ValueKey((ref.watch(employeeScopeProvider), courseId, lessonId)),
+    key: ValueKey((
+      ref.watch(employeeScopeProvider),
+      ref.watch(employeeGenderProvider),
+      courseId,
+      lessonId,
+    )),
     courseId: courseId,
     lessonId: lessonId,
   );
@@ -47,6 +54,7 @@ class _PlayerLoaderState extends ConsumerState<_PlayerLoader> {
 
   Future<EmployeeLesson?> _load() async {
     final scope = ref.read(employeeScopeProvider);
+    final gender = ref.read(employeeGenderProvider);
     final repo = ref.read(employeeLearningRepositoryProvider);
     for (var offset = 0; ; offset += 50) {
       final page = await repo.lessons(
@@ -54,6 +62,11 @@ class _PlayerLoaderState extends ConsumerState<_PlayerLoader> {
         widget.courseId,
         offset: offset,
       );
+      if (!mounted ||
+          ref.read(employeeScopeProvider) != scope ||
+          ref.read(employeeGenderProvider) != gender) {
+        return null;
+      }
       for (final lesson in page.items) {
         if (lesson.id == widget.lessonId) return lesson;
       }
@@ -136,13 +149,18 @@ class _VideoPlayerState extends ConsumerState<_VideoPlayer>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     final scope = ref.read(employeeScopeProvider);
+    final gender = ref.read(employeeGenderProvider);
     _progress = PlaybackProgress(
       repository: ref.read(progressRepositoryProvider),
       companyId: scope.companyId,
       lessonId: widget.lesson.id,
+      contentGender: widget.lesson.contentGender,
       positionSec: widget.lesson.positionSec,
       completed: widget.lesson.completed,
-      isCurrent: () => mounted && ref.read(employeeScopeProvider) == scope,
+      isCurrent: () =>
+          mounted &&
+          ref.read(employeeScopeProvider) == scope &&
+          ref.read(employeeGenderProvider) == gender,
     );
     _controller = YoutubePlayerController.fromVideoId(
       videoId: widget.lesson.videoId!,
