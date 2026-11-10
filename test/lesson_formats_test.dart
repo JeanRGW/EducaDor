@@ -44,6 +44,14 @@ class _Content extends ContentRepository {
   }
 }
 
+class _LearningContent extends EmployeeLearningRepository {
+  final _Content content;
+  _LearningContent(this.content);
+  @override
+  Future<ContentLesson> lessonContent(String lessonId) async =>
+      content.current!;
+}
+
 class _Picker extends FilePicker {
   final Uint8List bytes;
   final String name;
@@ -97,6 +105,7 @@ class _Progress extends ProgressRepository {
     String lessonId, {
     required int positionSec,
     required bool completed,
+    String? contentGender,
   }) async {
     writes.add((
       companyId: companyId,
@@ -172,6 +181,9 @@ void main() {
         overrides: [
           sessionProvider.overrideWith(_Session.new),
           contentRepositoryProvider.overrideWithValue(content),
+          employeeLearningRepositoryProvider.overrideWithValue(
+            _LearningContent(content),
+          ),
           progressRepositoryProvider.overrideWithValue(progress),
         ],
       );
@@ -234,6 +246,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Enviar GIF'));
       await tester.tap(find.text('Enviar GIF'));
       await tester.pumpAndSettle();
       expect(repo.uploaded, bytes);
@@ -265,6 +278,9 @@ void main() {
         overrides: [
           sessionProvider.overrideWith(_Session.new),
           contentRepositoryProvider.overrideWithValue(content),
+          employeeLearningRepositoryProvider.overrideWithValue(
+            _LearningContent(content),
+          ),
           progressRepositoryProvider.overrideWithValue(progress),
         ],
       );
@@ -466,6 +482,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     await tester.tap(find.text('Descer').first);
+    await tester.ensureVisible(find.text('Salvar aula'));
     await tester.tap(find.text('Salvar aula'));
     await tester.pumpAndSettle();
     await tester.tap(

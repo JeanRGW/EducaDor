@@ -66,6 +66,52 @@ class _EmployeeSession extends SessionController {
 }
 
 void main() {
+  test('employee content and progress use effective variant RPCs', () async {
+    final requests = <http.Request>[];
+    final client = _client((request) async {
+      requests.add(request);
+      if (request.url.path.endsWith('/employee_lesson_content')) {
+        return http.Response(
+          jsonEncode([
+            {
+              'id': 'lesson',
+              'title': 'Aula',
+              'module_id': 'module',
+              'kind': 'quiz',
+              'content_gender': 'female',
+              'quiz_json': [],
+            },
+          ]),
+          200,
+        );
+      }
+      return http.Response('null', 200);
+    });
+    final lesson = await EmployeeLearningRepository(
+      client: client,
+    ).lessonContent('lesson');
+    expect(lesson.data['content_gender'], 'female');
+    expect(jsonDecode(requests.first.body), {'p_lesson': 'lesson'});
+    await ProgressRepository(client: client).save(
+      'company',
+      'lesson',
+      positionSec: 12,
+      completed: false,
+      contentGender: 'female',
+    );
+    expect(jsonDecode(requests.last.body), {
+      'p_company': 'company',
+      'p_lesson': 'lesson',
+      'p_position': 12,
+      'p_completed': false,
+      'p_content_gender': 'female',
+    });
+    await ProgressRepository(
+      client: client,
+    ).save('company', 'lesson', positionSec: 0, completed: true);
+    expect(jsonDecode(requests.last.body)['p_content_gender'], isNull);
+    expect(jsonDecode(requests.last.body), contains('p_content_gender'));
+  });
   for (final exists in [true, false]) {
     test(
       'course certificate lookup is scoped and bounded, exists=$exists',
@@ -333,6 +379,7 @@ void main() {
             'p_lesson': 'lesson',
             'p_position': 90,
             'p_completed': true,
+            'p_content_gender': null,
           });
           return http.Response('', 204);
         }),

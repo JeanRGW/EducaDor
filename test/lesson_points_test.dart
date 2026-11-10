@@ -62,7 +62,36 @@ void main() {
     await tester.tap(find.text('Salvar aula'));
     await tester.pumpAndSettle();
     expect(repo.saved?['points'], 10);
+    expect(repo.saved?['content_gender'], isNull);
+    expect(repo.saved?['alternate_content'], isNull);
     expect(repo.lessonId, isNull);
+  });
+
+  testWidgets('paired versions send independent content and shared points', (
+    tester,
+  ) async {
+    final repo = _Content();
+    await _show(tester, repo);
+    await tester.enterText(find.byType(TextFormField).first, 'Aula');
+    await tester.enterText(_points, '25');
+    await tester.tap(find.text('Neutra / compartilhada'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Masculina').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Adicionar versão feminina'));
+    await tester.pumpAndSettle();
+    final videos = find.widgetWithText(TextFormField, 'URL ou ID do YouTube');
+    await tester.enterText(videos.first, 'abcdefghijk');
+    await tester.enterText(videos.last, 'lmnopqrstuv');
+    await tester.ensureVisible(find.text('Salvar aula'));
+    await tester.tap(find.text('Salvar aula'));
+    await tester.pumpAndSettle();
+    expect(repo.saved?['content_gender'], 'male');
+    expect(repo.saved?['points'], 25);
+    expect(repo.saved?['video_id'], 'abcdefghijk');
+    expect(repo.saved?['alternate_content']['video_id'], 'lmnopqrstuv');
+    expect(repo.saved?['alternate_content'].containsKey('points'), false);
+    expect(repo.saved?['alternate_content'].containsKey('quiz_json'), false);
   });
 
   for (final value in [0, -5, 2147483647, -2147483648]) {

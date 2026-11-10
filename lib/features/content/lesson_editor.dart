@@ -1,7 +1,9 @@
 import 'dart:typed_data';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../data/models/models.dart';
 import '../../data/repositories/repositories.dart';
 import '../gestor/management_widgets.dart';
@@ -18,11 +20,11 @@ class LessonEditor extends ConsumerStatefulWidget {
 
 class _LessonEditorState extends ConsumerState<LessonEditor> {
   final _form = GlobalKey<FormState>();
-  late final TextEditingController _title, _body, _video, _interval, _points;
+  late final TextEditingController _title, _points;
+  late final _LessonDraft _primary;
+  _LessonDraft? _alternate;
+  String? _gender;
   late String _kind;
-  String? _fileKey;
-  List<String> _keys = [];
-  final _questions = <_QuestionDraft>[];
   bool _busy = false;
   @override
   void initState() {
@@ -30,32 +32,29 @@ class _LessonEditorState extends ConsumerState<LessonEditor> {
     final data = widget.lesson?.data ?? {};
     _kind = widget.lesson?.kind ?? 'video';
     _title = TextEditingController(text: widget.lesson?.title);
-    _body = TextEditingController(text: data['body'] as String?);
-    _video = TextEditingController(text: data['video_id'] as String?);
-    _interval = TextEditingController(text: '${data['frame_ms'] ?? 1000}');
     _points = TextEditingController(text: '${data['points'] ?? 10}');
-    _fileKey = data['file_key'] as String?;
-    _keys = (data['image_keys'] as List<dynamic>? ?? [])
-        .cast<String>()
-        .toList();
-    for (final q in data['quiz_json'] as List<dynamic>? ?? []) {
-      _questions.add(_QuestionDraft.fromJson(q as Map<String, dynamic>));
+    _gender = data['content_gender'] as String?;
+    _primary = _LessonDraft(data, primary: true);
+    final alternate = data['alternate_content'];
+    if (alternate is Map) {
+      _alternate = _LessonDraft(Map<String, dynamic>.from(alternate));
     }
-    if (_questions.isEmpty) _questions.add(_QuestionDraft());
   }
 
   @override
   void dispose() {
-    for (final c in [_title, _body, _video, _interval, _points]) {
-      c.dispose();
-    }
-    for (final q in _questions) {
-      q.dispose();
-    }
+    _title.dispose();
+    _points.dispose();
+    _primary.dispose();
+    _alternate?.dispose();
     super.dispose();
   }
 
-  Future<void> _pick({bool sequence = false, bool image = false}) async {
+  Future<void> _pick(
+    _LessonDraft draft, {
+    bool sequence = false,
+    bool image = false,
+  }) async {
     setState(() => _busy = true);
     try {
       final extensions = sequence || image
@@ -110,11 +109,11 @@ class _LessonEditorState extends ConsumerState<LessonEditor> {
       if (!mounted) return;
       setState(() {
         if (sequence) {
-          _keys = uploads;
-          _fileKey = null;
+          draft.keys = uploads;
+          draft.fileKey = null;
         } else {
-          _fileKey = uploads.single;
-          _keys = [];
+          draft.fileKey = uploads.single;
+          draft.keys = [];
         }
       });
     } catch (_) {
@@ -131,13 +130,17 @@ class _LessonEditorState extends ConsumerState<LessonEditor> {
 
   Future<void> _save() async {
     if (!_form.currentState!.validate()) return;
-    if ((['audio', 'pdf'].contains(_kind) && _fileKey == null) ||
-        (_kind == 'animation' && _fileKey == null && _keys.length < 2)) {
-      showManagementMessage(
-        context,
-        'Envie o arquivo da aula antes de salvar.',
-      );
-      return;
+    for (final draft in [_primary, ?_alternate]) {
+      if ((['audio', 'pdf'].contains(_kind) && draft.fileKey == null) ||
+          (_kind == 'animation' &&
+              draft.fileKey == null &&
+              (draft.keys.length < 2 || draft.keys.length > 100))) {
+        showManagementMessage(
+          context,
+          'Envie o arquivo de cada versão antes de salvar.',
+        );
+        return;
+      }
     }
     if (widget.lesson != null &&
         !await confirmManagementAction(
@@ -161,12 +164,9 @@ class _LessonEditorState extends ConsumerState<LessonEditor> {
             id: widget.lesson?.id,
             data: {
               'points': int.parse(_points.text.trim()),
-              'video_id': youtubeVideoId(_video.text),
-              'body': _body.text.trim(),
-              'file_key': _fileKey,
-              'image_keys': _keys,
-              'frame_ms': int.tryParse(_interval.text) ?? 1000,
-              'questions': _questions.map((q) => q.toJson()).toList(),
+              ..._primary.toJson(),
+              'content_gender': _gender,
+              'alternate_content': _alternate?.toJson(),
             },
           );
       if (mounted) Navigator.pop(context, true);
@@ -191,172 +191,252 @@ class _LessonEditorState extends ConsumerState<LessonEditor> {
       data: AdminStyles.formTheme(Theme.of(context)),
       child: Form(
         key: _form,
-        child: ListView(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
-          children: [
-            Text(
-              widget.module.title,
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 16),
-            ManagementField(
-              label: 'Título da aula',
-              labelAbove: true,
-              controller: _title,
-              requiredValue: true,
-              enabled: !_busy,
-            ),
-            ManagementField(
-              label: 'Pontos da aula',
-              labelAbove: true,
-              controller: _points,
-              enabled: !_busy,
-              keyboardType: const TextInputType.numberWithOptions(signed: true),
-              validator: (value) {
-                final points = int.tryParse(value?.trim() ?? '');
-                // Match PostgreSQL's integer column; it has no positivity rule.
-                return points == null ||
-                        points < -2147483648 ||
-                        points > 2147483647
-                    ? 'Informe um número inteiro entre -2147483648 e 2147483647.'
-                    : null;
-              },
-            ),
-            DropdownButtonFormField<String>(
-              initialValue: _kind,
-              decoration: const InputDecoration(labelText: 'Tipo da aula'),
-              items: lessonTypeLabels.entries
-                  .map(
-                    (e) => DropdownMenuItem(value: e.key, child: Text(e.value)),
-                  )
-                  .toList(),
-              onChanged: _busy || widget.lesson != null
-                  ? null
-                  : (value) => setState(() {
-                      _kind = value!;
-                      _fileKey = null;
-                      _keys = [];
-                    }),
-            ),
-            const SizedBox(height: 16),
-            if (_kind == 'video')
-              ManagementField(
-                label: 'URL ou ID do YouTube',
-                controller: _video,
-                enabled: !_busy,
-                maxLength: 500,
-                validator: (v) => youtubeVideoId(v ?? '') == null
-                    ? 'Informe um vídeo válido do YouTube.'
-                    : null,
-              ),
-            ManagementField(
-              label: _kind == 'reading'
-                  ? 'Texto da aula'
-                  : 'Texto de apoio (opcional)',
-              controller: _body,
-              labelAbove: true,
-              lines: _kind == 'reading' ? 12 : 4,
-              maxLength: 100000,
-              requiredValue: _kind == 'reading',
-              enabled: !_busy,
-            ),
-            if (['audio', 'pdf', 'animation'].contains(_kind)) ...[
+          child: Column(
+            children: [
               Text(
-                _fileKey == null
-                    ? 'Nenhum arquivo selecionado.'
-                    : 'Arquivo enviado: ${_fileKey!.split('/').last}',
+                widget.module.title,
+                style: Theme.of(context).textTheme.titleMedium,
               ),
-              OutlinedButton(
-                onPressed: _busy ? null : () => _pick(),
-                child: Text(switch (_kind) {
-                  'audio' => 'Enviar MP3',
-                  'pdf' => 'Enviar PDF',
-                  _ => 'Enviar GIF',
-                }),
+              const SizedBox(height: 16),
+              ManagementField(
+                label: 'Título da aula',
+                labelAbove: true,
+                controller: _title,
+                requiredValue: true,
+                enabled: !_busy,
               ),
-            ],
-            if (_kind == 'animation') ...[
-              OutlinedButton(
-                onPressed: _busy ? null : () => _pick(image: true),
-                child: const Text('Enviar imagem (PNG, JPG ou WebP)'),
-              ),
-              const Text('Ou envie imagens e organize a ordem dos quadros.'),
-              OutlinedButton(
-                onPressed: _busy ? null : () => _pick(sequence: true),
-                child: const Text('Enviar sequência de imagens'),
-              ),
-              if (_keys.isNotEmpty)
-                ManagementField(
-                  label: 'Duração de cada quadro (ms)',
-                  controller: _interval,
-                  enabled: !_busy,
-                  validator: (v) {
-                    final n = int.tryParse(v ?? '');
-                    return n == null || n < 100 || n > 10000
-                        ? 'Use de 100 a 10000 ms.'
-                        : null;
-                  },
+              ManagementField(
+                label: 'Pontos da aula',
+                labelAbove: true,
+                controller: _points,
+                enabled: !_busy,
+                keyboardType: const TextInputType.numberWithOptions(
+                  signed: true,
                 ),
-              for (var i = 0; i < _keys.length; i++)
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Quadro ${i + 1}'),
-                        Text(_keys[i].split('/').last),
-                        Wrap(
+                validator: (value) {
+                  final points = int.tryParse(value?.trim() ?? '');
+                  // Match PostgreSQL's integer column; it has no positivity rule.
+                  return points == null ||
+                          points < -2147483648 ||
+                          points > 2147483647
+                      ? 'Informe um número inteiro entre -2147483648 e 2147483647.'
+                      : null;
+                },
+              ),
+              DropdownButtonFormField<String>(
+                initialValue: _kind,
+                decoration: const InputDecoration(labelText: 'Tipo da aula'),
+                items: lessonTypeLabels.entries
+                    .map(
+                      (e) =>
+                          DropdownMenuItem(value: e.key, child: Text(e.value)),
+                    )
+                    .toList(),
+                onChanged: _busy || widget.lesson != null
+                    ? null
+                    : (value) => setState(() {
+                        _kind = value!;
+                        _primary.fileKey = null;
+                        _primary.keys = [];
+                        _alternate?.fileKey = null;
+                        _alternate?.keys = [];
+                      }),
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                initialValue: _gender ?? 'neutral',
+                decoration: const InputDecoration(
+                  labelText: 'Versão principal',
+                ),
+                items: const [
+                  DropdownMenuItem(
+                    value: 'neutral',
+                    child: Text('Neutra / compartilhada'),
+                  ),
+                  DropdownMenuItem(value: 'male', child: Text('Masculina')),
+                  DropdownMenuItem(value: 'female', child: Text('Feminina')),
+                ],
+                onChanged: _busy || _alternate != null
+                    ? null
+                    : (value) => setState(
+                        () => _gender = value == 'neutral' ? null : value,
+                      ),
+              ),
+              const Text(
+                'As versões são da mesma aula e compartilham pontos e progresso; não restringem o público. Uma única versão é exibida para todas as pessoas. Sem gênero informado, usa-se a versão principal.',
+              ),
+              if (_gender != null && _alternate == null)
+                TextButton(
+                  onPressed: _busy
+                      ? null
+                      : () => setState(() => _alternate = _LessonDraft({})),
+                  child: Text(
+                    _gender == 'male'
+                        ? 'Adicionar versão feminina'
+                        : 'Adicionar versão masculina',
+                  ),
+                ),
+              for (final draft in [_primary, ?_alternate]) ...[
+                const SizedBox(height: 16),
+                Text(
+                  identical(draft, _primary)
+                      ? 'Conteúdo principal'
+                      : (_gender == 'male'
+                            ? 'Conteúdo feminino'
+                            : 'Conteúdo masculino'),
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                if (!identical(draft, _primary))
+                  TextButton(
+                    onPressed: _busy
+                        ? null
+                        : () async {
+                            if (!await confirmManagementAction(
+                              context,
+                              title: 'Remover versão?',
+                              message:
+                                  'A versão alternativa será removida da aula. O progresso será mantido; arquivos enviados não são apagados.',
+                              action: 'Remover',
+                            )) {
+                              return;
+                            }
+                            if (!mounted) return;
+                            final removed = _alternate;
+                            setState(() => _alternate = null);
+                            WidgetsBinding.instance.addPostFrameCallback(
+                              (_) => removed?.dispose(),
+                            );
+                          },
+                    child: const Text('Remover versão alternativa'),
+                  ),
+                if (_kind == 'video')
+                  ManagementField(
+                    label: 'URL ou ID do YouTube',
+                    controller: draft.video,
+                    enabled: !_busy,
+                    maxLength: 500,
+                    validator: (v) => youtubeVideoId(v ?? '') == null
+                        ? 'Informe um vídeo válido do YouTube.'
+                        : null,
+                  ),
+                ManagementField(
+                  label: _kind == 'reading'
+                      ? 'Texto da aula'
+                      : 'Texto de apoio (opcional)',
+                  controller: draft.body,
+                  labelAbove: true,
+                  lines: _kind == 'reading' ? 12 : 4,
+                  maxLength: 100000,
+                  requiredValue: _kind == 'reading',
+                  enabled: !_busy,
+                ),
+                if (['audio', 'pdf', 'animation'].contains(_kind)) ...[
+                  Text(
+                    draft.fileKey == null
+                        ? 'Nenhum arquivo selecionado.'
+                        : 'Arquivo enviado: ${draft.fileKey!.split('/').last}',
+                  ),
+                  OutlinedButton(
+                    onPressed: _busy ? null : () => _pick(draft),
+                    child: Text(switch (_kind) {
+                      'audio' => 'Enviar MP3',
+                      'pdf' => 'Enviar PDF',
+                      _ => 'Enviar GIF',
+                    }),
+                  ),
+                ],
+                if (_kind == 'animation') ...[
+                  OutlinedButton(
+                    onPressed: _busy ? null : () => _pick(draft, image: true),
+                    child: const Text('Enviar imagem (PNG, JPG ou WebP)'),
+                  ),
+                  const Text(
+                    'Ou envie imagens e organize a ordem dos quadros.',
+                  ),
+                  OutlinedButton(
+                    onPressed: _busy
+                        ? null
+                        : () => _pick(draft, sequence: true),
+                    child: const Text('Enviar sequência de imagens'),
+                  ),
+                  if (draft.keys.isNotEmpty)
+                    ManagementField(
+                      label: 'Duração de cada quadro (ms)',
+                      controller: draft.interval,
+                      enabled: !_busy,
+                      validator: (v) {
+                        final n = int.tryParse(v ?? '');
+                        return n == null || n < 100 || n > 10000
+                            ? 'Use de 100 a 10000 ms.'
+                            : null;
+                      },
+                    ),
+                  for (var i = 0; i < draft.keys.length; i++)
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            TextButton(
-                              onPressed: _busy || i == 0
-                                  ? null
-                                  : () => setState(() {
-                                      final key = _keys.removeAt(i);
-                                      _keys.insert(i - 1, key);
-                                    }),
-                              child: const Text('Subir'),
-                            ),
-                            TextButton(
-                              onPressed: _busy || i == _keys.length - 1
-                                  ? null
-                                  : () => setState(() {
-                                      final key = _keys.removeAt(i);
-                                      _keys.insert(i + 1, key);
-                                    }),
-                              child: const Text('Descer'),
+                            Text('Quadro ${i + 1}'),
+                            Text(draft.keys[i].split('/').last),
+                            Wrap(
+                              children: [
+                                TextButton(
+                                  onPressed: _busy || i == 0
+                                      ? null
+                                      : () => setState(() {
+                                          final key = draft.keys.removeAt(i);
+                                          draft.keys.insert(i - 1, key);
+                                        }),
+                                  child: const Text('Subir'),
+                                ),
+                                TextButton(
+                                  onPressed: _busy || i == draft.keys.length - 1
+                                      ? null
+                                      : () => setState(() {
+                                          final key = draft.keys.removeAt(i);
+                                          draft.keys.insert(i + 1, key);
+                                        }),
+                                  child: const Text('Descer'),
+                                ),
+                              ],
                             ),
                           ],
                         ),
-                      ],
+                      ),
                     ),
+                ],
+                if (_kind == 'quiz') ...[
+                  const Text(
+                    'Cada pergunta tem uma resposta correta. Acerte todas para concluir.',
                   ),
-                ),
-            ],
-            if (_kind == 'quiz') ...[
-              const Text(
-                'Cada pergunta tem uma resposta correta. Acerte todas para concluir.',
+                  for (var i = 0; i < draft.questions.length; i++)
+                    _question(draft, draft.questions[i], i),
+                  TextButton(
+                    onPressed: _busy || draft.questions.length >= 50
+                        ? null
+                        : () => setState(
+                            () => draft.questions.add(_QuestionDraft()),
+                          ),
+                    child: const Text('Adicionar pergunta'),
+                  ),
+                ],
+              ],
+              const SizedBox(height: 20),
+              FilledButton(
+                onPressed: _busy ? null : _save,
+                child: Text(_busy ? 'Salvando...' : 'Salvar aula'),
               ),
-              for (var i = 0; i < _questions.length; i++)
-                _question(_questions[i], i),
-              TextButton(
-                onPressed: _busy || _questions.length >= 50
-                    ? null
-                    : () => setState(() => _questions.add(_QuestionDraft())),
-                child: const Text('Adicionar pergunta'),
-              ),
             ],
-            const SizedBox(height: 20),
-            FilledButton(
-              onPressed: _busy ? null : _save,
-              child: Text(_busy ? 'Salvando...' : 'Salvar aula'),
-            ),
-          ],
+          ),
         ),
       ),
     ),
   );
-  Widget _question(_QuestionDraft q, int index) => Card(
+  Widget _question(_LessonDraft draft, _QuestionDraft q, int index) => Card(
     key: ObjectKey(q),
     child: Padding(
       padding: const EdgeInsets.all(12),
@@ -389,12 +469,12 @@ class _LessonEditorState extends ConsumerState<LessonEditor> {
             ),
             onChanged: _busy ? null : (v) => setState(() => q.answer = v!),
           ),
-          if (_questions.length > 1)
+          if (draft.questions.length > 1)
             TextButton(
               onPressed: _busy
                   ? null
                   : () => setState(() {
-                      _questions.remove(q);
+                      draft.questions.remove(q);
                       WidgetsBinding.instance.addPostFrameCallback(
                         (_) => q.dispose(),
                       );
@@ -405,6 +485,48 @@ class _LessonEditorState extends ConsumerState<LessonEditor> {
       ),
     ),
   );
+}
+
+class _LessonDraft {
+  late final TextEditingController body, video, interval;
+  String? fileKey;
+  List<String> keys;
+  final questions = <_QuestionDraft>[];
+
+  _LessonDraft(Map<String, dynamic> data, {bool primary = false})
+    : fileKey = data['file_key'] as String?,
+      keys = (data['image_keys'] as List<dynamic>? ?? [])
+          .cast<String>()
+          .toList() {
+    body = TextEditingController(text: data['body'] as String?);
+    video = TextEditingController(text: data['video_id'] as String?);
+    interval = TextEditingController(text: '${data['frame_ms'] ?? 1000}');
+    for (final q
+        in data[primary ? 'quiz_json' : 'questions'] as List<dynamic>? ?? []) {
+      questions.add(
+        _QuestionDraft.fromJson(Map<String, dynamic>.from(q as Map)),
+      );
+    }
+    if (questions.isEmpty) questions.add(_QuestionDraft());
+  }
+
+  Map<String, dynamic> toJson() => {
+    'video_id': youtubeVideoId(video.text),
+    'body': body.text.trim(),
+    'file_key': fileKey,
+    'image_keys': keys,
+    'frame_ms': int.tryParse(interval.text) ?? 1000,
+    'questions': questions.map((q) => q.toJson()).toList(),
+  };
+
+  void dispose() {
+    body.dispose();
+    video.dispose();
+    interval.dispose();
+    for (final q in questions) {
+      q.dispose();
+    }
+  }
 }
 
 class _QuestionDraft {

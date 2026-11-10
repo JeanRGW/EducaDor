@@ -6,6 +6,8 @@ CREATE TABLE "public"."profiles" (
   "phone"          text,
   "birth_date"     date,
   "address"        text,
+  "gender"         text,
+  CONSTRAINT "profiles_gender_check" CHECK (gender IN ('male', 'female')),
   "needs_password" boolean NOT NULL DEFAULT false,
   CONSTRAINT "profiles_id_fkey" FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE,
   CONSTRAINT "profiles_pkey" PRIMARY KEY (id)

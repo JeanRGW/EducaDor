@@ -268,6 +268,7 @@ class _Progress extends ProgressRepository {
     String lessonId, {
     required int positionSec,
     required bool completed,
+    String? contentGender,
   }) async {
     writes.add((
       company: companyId,

@@ -540,6 +540,16 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(router.canPop(), isFalse);
+      await tester.scrollUntilVisible(
+        find.text('Salvar perfil'),
+        200,
+        scrollable: find
+            .descendant(
+              of: find.byType(ProfileEditScreen),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
       await _tap(tester, find.text('Salvar perfil'));
       expect(router.routeInformationProvider.value.uri.path, '/gestor/perfil');
       expect(profiles.writes, 1);
@@ -553,7 +563,16 @@ void main() {
       await tester.pumpAndSettle();
       expect(router.canPop(), isTrue);
       final saveButton = find.widgetWithText(FilledButton, 'Salvar perfil');
-      await tester.ensureVisible(saveButton);
+      await tester.scrollUntilVisible(
+        saveButton,
+        200,
+        scrollable: find
+            .descendant(
+              of: find.byType(ProfileEditScreen),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
       await tester.pumpAndSettle();
       await tester.tap(saveButton);
       await tester.pumpAndSettle();

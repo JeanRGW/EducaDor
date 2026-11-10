@@ -16,10 +16,14 @@ begin
   if p_offset is null or p_offset < 0 then raise exception 'Invalid query'; end if;
   select jsonb_build_object('total', (select count(*) from public.lessons l join public.modules m on m.id = l.module_id where m.course_id = p_course),
     'items', coalesce((select jsonb_agg(to_jsonb(page) order by module_position, module_id, position, id) from (
-      select l.id, l.title, l.kind, l.video_id, m.id as module_id, m.title as module_title,
+       select l.id, l.title, l.kind, effective.content->>'video_id' as video_id,
+         effective.content->>'content_gender' as content_gender, m.id as module_id, m.title as module_title,
         m.position as module_position, l.position, coalesce(lp.status,'not_started') as status,
-        greatest(coalesce(lp.position_sec,0),0) as position_sec
-      from public.modules m join public.lessons l on l.module_id = m.id
+         case when lp.content_gender is not distinct from (effective.content->>'content_gender')
+           then greatest(coalesce(lp.position_sec,0),0) else 0 end as position_sec
+       from public.modules m join public.lessons l on l.module_id = m.id
+       join public.profiles p on p.id = auth.uid()
+       cross join lateral (select public.resolved_lesson_content(l, p.gender) as content) effective
       left join public.lesson_progress lp on lp.lesson_id = l.id and lp.user_id = auth.uid() and lp.company_id = p_company
       where m.course_id = p_course order by m.position, m.id, l.position, l.id limit 50 offset p_offset
     ) page),'[]'::jsonb)) into result;

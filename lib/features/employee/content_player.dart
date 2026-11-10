@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:typed_data';
+
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:printing/printing.dart';
+
 import '../../data/models/models.dart';
 import '../../data/repositories/repositories.dart';
 import '../../data/repositories/employee_providers.dart';
@@ -44,11 +46,16 @@ class _ContentPlayerState extends ConsumerState<ContentPlayer> {
     _content = _load();
     _complete = widget.lesson.completed;
     final scope = ref.read(employeeScopeProvider);
+    final gender = ref.read(employeeGenderProvider);
     _progress = PlaybackProgress(
       repository: ref.read(progressRepositoryProvider),
       companyId: scope.companyId,
       lessonId: widget.lesson.id,
-      isCurrent: () => mounted && ref.read(employeeScopeProvider) == scope,
+      contentGender: widget.lesson.contentGender,
+      isCurrent: () =>
+          mounted &&
+          ref.read(employeeScopeProvider) == scope &&
+          ref.read(employeeGenderProvider) == gender,
       positionSec: widget.lesson.positionSec,
       completed: widget.lesson.completed,
     );
@@ -56,7 +63,14 @@ class _ContentPlayerState extends ConsumerState<ContentPlayer> {
 
   Future<_LoadedContent> _load() async {
     final repo = ref.read(contentRepositoryProvider);
-    final lesson = await repo.lesson(widget.lesson.id);
+    final lesson = await ref
+        .read(employeeLearningRepositoryProvider)
+        .lessonContent(widget.lesson.id);
+    if (!mounted ||
+        !_progress.isCurrent() ||
+        lesson.data['content_gender'] != widget.lesson.contentGender) {
+      throw StateError('O conteúdo mudou. Reabra a aula.');
+    }
     final data = lesson.data;
     final file = data['file_key'] as String?;
     final keys = (data['image_keys'] as List<dynamic>? ?? []).cast<String>();
@@ -115,8 +129,7 @@ class _ContentPlayerState extends ConsumerState<ContentPlayer> {
     } catch (_) {
       if (mounted) {
         setState(
-          () => _feedback =
-              'Não foi possível salvar o progresso do áudio. Pause para tentar novamente.',
+          () => _feedback = 'Não foi possível salvar o progresso do áudio. Pause para tentar novamente.',
         );
       }
     }

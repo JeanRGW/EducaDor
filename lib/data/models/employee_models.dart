@@ -49,6 +49,7 @@ class EmployeeSummary {
 class EmployeeLesson {
   final String id, title, moduleId, moduleTitle, kind, status;
   final String? videoId;
+  final String? contentGender;
   final int positionSec;
   const EmployeeLesson({
     required this.id,
@@ -58,6 +59,7 @@ class EmployeeLesson {
     required this.kind,
     required this.status,
     this.videoId,
+    this.contentGender,
     required this.positionSec,
   });
   bool get playable => kind == 'video'

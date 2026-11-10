@@ -6,6 +6,11 @@ export 'content_models.dart';
 /// The three experiences in the platform.
 enum Role { gestor, empresa, funcionario }
 
+enum Gender { male, female }
+
+Gender? genderFromJson(Object? value) =>
+    value == null ? null : Gender.values.byName(value as String);
+
 /// Generic content status used across courses/modules/lessons.
 enum ContentStatus { completed, inProgress, locked }
 
@@ -23,12 +28,14 @@ class User {
   final String fullName;
   final String email;
   final String initials;
+  final Gender? gender;
 
   const User({
     required this.id,
     required this.fullName,
     required this.email,
     required this.initials,
+    this.gender,
   });
 }
 
@@ -319,6 +326,7 @@ class OwnProfile {
   final String phone;
   final String address;
   final String? birthDate;
+  final Gender? gender;
 
   const OwnProfile({
     required this.fullName,
@@ -326,6 +334,7 @@ class OwnProfile {
     this.phone = '',
     this.address = '',
     this.birthDate,
+    this.gender,
   });
 }
 
