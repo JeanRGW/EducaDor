@@ -54,6 +54,7 @@ class _PlayerLoaderState extends ConsumerState<_PlayerLoader> {
 
   Future<EmployeeLesson?> _load() async {
     final scope = ref.read(employeeScopeProvider);
+    final gender = ref.read(employeeGenderProvider);
     final repo = ref.read(employeeLearningRepositoryProvider);
     for (var offset = 0; ; offset += 50) {
       final page = await repo.lessons(
@@ -61,6 +62,11 @@ class _PlayerLoaderState extends ConsumerState<_PlayerLoader> {
         widget.courseId,
         offset: offset,
       );
+      if (!mounted ||
+          ref.read(employeeScopeProvider) != scope ||
+          ref.read(employeeGenderProvider) != gender) {
+        return null;
+      }
       for (final lesson in page.items) {
         if (lesson.id == widget.lessonId) return lesson;
       }
@@ -195,7 +201,8 @@ class _VideoPlayerState extends ConsumerState<_VideoPlayer>
       }
       if (value.hasError && mounted) {
         setState(
-          () => _playbackError = 'O YouTube não está disponível. Verifique a conexão e a liberação do YouTube na rede.',
+          () => _playbackError =
+              'O YouTube não está disponível. Verifique a conexão e a liberação do YouTube na rede.',
         );
       }
     });
@@ -228,7 +235,8 @@ class _VideoPlayerState extends ConsumerState<_VideoPlayer>
           mounted &&
           !_controller.value.hasError) {
         setState(
-          () => _playbackError = 'Não foi possível obter a duração. Recarregue o vídeo para validar a conclusão.',
+          () => _playbackError =
+              'Não foi possível obter a duração. Recarregue o vídeo para validar a conclusão.',
         );
       }
     }
@@ -242,7 +250,8 @@ class _VideoPlayerState extends ConsumerState<_VideoPlayer>
     } catch (_) {
       if (mounted) {
         setState(
-          () => _error = 'Não foi possível salvar o progresso. Tente novamente antes de sair.',
+          () => _error =
+              'Não foi possível salvar o progresso. Tente novamente antes de sair.',
         );
       }
     }
