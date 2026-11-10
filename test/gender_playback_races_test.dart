@@ -87,16 +87,17 @@ class _Progress extends ProgressRepository {
   }
 }
 
-EmployeeLesson _lesson(String gender) => EmployeeLesson(
-  id: 'l',
-  title: 'Aula',
-  moduleId: 'm',
-  moduleTitle: 'Módulo',
-  kind: 'reading',
-  status: 'completed',
-  positionSec: 0,
-  contentGender: gender,
-);
+EmployeeLesson _lesson(String gender, {String status = 'completed'}) =>
+    EmployeeLesson(
+      id: 'l',
+      title: 'Aula',
+      moduleId: 'm',
+      moduleTitle: 'Módulo',
+      kind: 'reading',
+      status: status,
+      positionSec: 0,
+      contentGender: gender,
+    );
 LearningPage<EmployeeLesson> _page(String gender) =>
     LearningPage(items: [_lesson(gender)], total: 1);
 ContentLesson _content(String gender, String body) => ContentLesson(
@@ -117,7 +118,7 @@ void main() {
         repository: repo,
         companyId: 'c',
         lessonId: 'l',
-        contentGender: 'neutral',
+        contentGender: null,
         isCurrent: () => current,
         positionSec: 0,
         completed: true,
@@ -128,11 +129,7 @@ void main() {
       );
       final first = progress.save(force: true);
       final second = progress.save(force: true);
-      expect(repo.writes.single, (
-        gender: 'neutral',
-        completed: true,
-        position: 20,
-      ));
+      expect(repo.writes.single, (gender: null, completed: true, position: 20));
       current = false;
       final rejected = expectLater(second, throwsStateError);
       repo.pending.single.complete();
@@ -191,6 +188,49 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
     },
   );
+
+  testWidgets('female profile records the actual male fallback tag', (
+    tester,
+  ) async {
+    final learning = _Learning();
+    final progress = _Progress();
+    final container = ProviderContainer(
+      overrides: [
+        sessionProvider.overrideWith(_Session.new),
+        employeeLearningRepositoryProvider.overrideWithValue(learning),
+        contentRepositoryProvider.overrideWithValue(_Files()),
+        progressRepositoryProvider.overrideWithValue(progress),
+      ],
+    );
+    addTearDown(container.dispose);
+    await container.read(sessionProvider.future);
+    (container.read(sessionProvider.notifier) as _Session).change(
+      Gender.female,
+    );
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(
+          home: EmployeePlayerScreen(courseId: 'course', lessonId: 'l'),
+        ),
+      ),
+    );
+    learning.pages.single.complete(
+      LearningPage(items: [_lesson('male', status: 'not_started')], total: 1),
+    );
+    await tester.pump();
+    await tester.pump();
+    learning.contents.single.complete(_content('male', 'Conteúdo alternativo'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Concluir aula'));
+    await tester.tap(find.text('Concluir aula'));
+    await tester.pump();
+    expect(progress.writes.single.gender, 'male');
+    expect(progress.writes.single.completed, isTrue);
+    progress.pending.single.complete();
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
 
   testWidgets('obsolete paginated loader does not request later pages', (
     tester,
