@@ -33,6 +33,9 @@ begin
     if exists(select 1 from jsonb_object_keys(alternate) key where key not in
       ('video_id','file_key','image_keys','frame_ms','body','questions')) then raise exception 'Invalid alternate field'; end if;
     perform public.validate_lesson_content(p_kind, alternate);
+    if alternate ? 'file_key' then
+      alternate := jsonb_set(alternate, '{file_key}', coalesce(to_jsonb(nullif(alternate->>'file_key','')), 'null'::jsonb));
+    end if;
   end if;
   keys := array(select jsonb_array_elements_text(coalesce(p_data->'image_keys','[]')));
   k := nullif(p_data->>'file_key','');

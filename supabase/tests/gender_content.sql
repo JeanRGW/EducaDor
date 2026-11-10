@@ -41,7 +41,8 @@ do $$ declare m uuid:='d8900000-0000-4000-8000-000000000001'; l uuid; bad jsonb;
   perform public.save_content_lesson(m,'Neutral','video','{"video_id":"abcdefghijk"}');
   perform public.save_content_lesson(m,'Reading','reading','{"body":"primary","content_gender":"female","alternate_content":{"body":"alternate"}}');
   perform public.save_content_lesson(m,'Quiz','quiz','{"questions":[{"question":"Primary?","options":["Yes","No"],"answer":0}],"content_gender":"male","alternate_content":{"questions":[{"question":"Alternate?","options":["Yes","No"],"answer":1}]}}');
-  perform public.save_content_lesson(m,'Animation','animation','{"file_key":"lessons/00000000-0000-4000-8000-000000000001.gif","content_gender":"male","alternate_content":{"image_keys":["lessons/00000000-0000-4000-8000-000000000002.png","lessons/00000000-0000-4000-8000-000000000003.webp"],"frame_ms":250}}');
+  perform public.save_content_lesson(m,'Animation','animation','{"file_key":"lessons/00000000-0000-4000-8000-000000000001.gif","content_gender":"male","alternate_content":{"file_key":"","image_keys":["lessons/00000000-0000-4000-8000-000000000002.png","lessons/00000000-0000-4000-8000-000000000003.webp"],"frame_ms":250}}');
+  if (select alternate_content->>'file_key' from public.lessons where title='Animation') is not null then raise exception 'Empty alternate key not normalized'; end if;
   perform public.save_content_lesson(m,'Audio','audio','{"file_key":"lessons/00000000-0000-4000-8000-000000000001.mp3","content_gender":"male","alternate_content":{"file_key":"lessons/00000000-0000-4000-8000-000000000002.mp3"}}');
   perform public.save_content_lesson(m,'PDF','pdf','{"file_key":"lessons/00000000-0000-4000-8000-000000000001.pdf","content_gender":"male","alternate_content":{"file_key":"lessons/00000000-0000-4000-8000-000000000002.pdf"}}');
   for bad in select value from jsonb_array_elements('[
@@ -96,6 +97,8 @@ do $$ declare l uuid; row jsonb; g text; expected text; item jsonb; signature te
   if (item->>'position_sec')::int<>12 or item->>'status'<>'completed' then raise exception 'Same variant resume failed'; end if;
   perform public.save_employee_progress(public.own_company_id(),l,45,false);
   if (select content_gender from public.lesson_progress where lesson_id=l) is not null then raise exception 'Legacy progress tag not unknown'; end if;
+  select value into item from jsonb_array_elements(public.employee_lessons(public.own_company_id(),'c8900000-0000-4000-8000-000000000001')->'items') where value->>'id'=l::text;
+  if (item->>'position_sec')::int<>0 or item->>'status'<>'completed' then raise exception 'Unknown legacy variant should reset resume only'; end if;
   if (select count(*) from public.lesson_progress where lesson_id=l)<>1 then raise exception 'Duplicate progress'; end if;
   if (public.employee_summary(public.own_company_id())->>'balance')::int<>17 then raise exception 'Variant change duplicated points'; end if;
   begin perform public.save_employee_progress(public.own_company_id(),(select id from public.lessons where title='Single male'),1,false,'female'); raise exception 'Unavailable variant accepted'; exception when raise_exception then if sqlerrm='Unavailable variant accepted' then raise; end if; end;
