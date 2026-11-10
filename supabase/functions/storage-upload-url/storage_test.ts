@@ -247,6 +247,28 @@ Deno.test("keys must be private lesson objects, bounded and deduplicated", async
     assert(f.calls.length === 0);
   }
 });
+Deno.test("downloads sign both persisted versions with a 200-key total bound", async () => {
+  const frames = Array.from({ length: 200 }, (_, i) =>
+    `lessons/${i.toString(16).padStart(8, "0")}-0000-4000-8000-000000000000.webp`
+  );
+  const f = fixture({
+    ...current,
+    lesson: () => Promise.resolve({
+      file_key: null,
+      image_keys: frames.slice(0, 100),
+      alternate_content: { image_keys: frames.slice(100) },
+    }),
+  });
+  const response = await f.download(request({
+    lessonId: id,
+    alternate_content: { file_key: "lessons/forged.pdf" },
+  }));
+  assert(response.status === 200);
+  const urls = (await response.json()).urls;
+  assert(Object.keys(urls).length === 200);
+  assert(frames.every((key) => Object.hasOwn(urls, key)));
+  assert(!Object.hasOwn(urls, "lessons/forged.pdf"));
+});
 Deno.test("missing configuration, malformed JSON and failed dependencies fail closed", async () => {
   const auth = {
     origins: [origin],

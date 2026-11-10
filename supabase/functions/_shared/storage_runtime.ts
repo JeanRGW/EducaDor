@@ -14,7 +14,7 @@ export const storageAuth: HttpDependencies = {
       },
       async lesson(id) {
         const { data, error } = await current.client.from('lessons')
-          .select('file_key,image_keys').eq('id', id).maybeSingle();
+          .select('file_key,image_keys,alternate_content').eq('id', id).maybeSingle();
         return error ? null : data;
       },
     };
