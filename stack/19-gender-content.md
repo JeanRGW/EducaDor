@@ -39,6 +39,10 @@ version; the four-argument legacy overload records an unknown (null) version.
 When that tag differs from selected content, the lesson listing returns resume
 position zero. Completion and earned points remain shared and are never reset.
 Neutral legacy content retains its existing resume position.
+Older cached clients cannot identify the version played: their writes still save
+completion, but tagged lessons restart at zero on re-entry, including single-version
+lessons. Reopen the updated PWA to restore version-aware resume. This deliberate
+compatibility limitation avoids applying an unknown position to the wrong video.
 
 The download Function fetches primary and alternate file references under the
 verified caller's root-lesson RLS, validates at most 100 keys per version/200 total,
