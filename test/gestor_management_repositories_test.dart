@@ -167,6 +167,90 @@ void main() {
     });
   }
 
+  for (final gender in [Gender.male, Gender.female, null]) {
+    test(
+      'profile update sends explicit gender $gender with existing fields',
+      () async {
+        final repo = ProfileRepository(
+          client: _client((request) async {
+            expect(request.url.path, '/rest/v1/rpc/update_own_profile');
+            expect(jsonDecode(request.body), {
+              'p_name': 'Ana Silva',
+              'p_phone': '123',
+              'p_birth_date': '1990-01-01',
+              'p_address': 'Rua A',
+              'p_gender': gender?.name,
+            });
+            return http.Response('', 204);
+          }),
+        );
+        await repo.update(
+          OwnProfile(
+            fullName: ' Ana Silva ',
+            email: 'ignored@example.test',
+            phone: ' 123 ',
+            birthDate: '1990-01-01',
+            address: ' Rua A ',
+            gender: gender,
+          ),
+        );
+      },
+    );
+  }
+
+  for (final gender in [Gender.male, Gender.female, null]) {
+    test('own profile reads gender $gender', () async {
+      final user = {
+        'id': 'me',
+        'aud': 'authenticated',
+        'role': 'authenticated',
+        'email': 'ana@example.test',
+        'created_at': '2026-01-01T00:00:00Z',
+        'app_metadata': <String, dynamic>{},
+        'user_metadata': <String, dynamic>{},
+      };
+      final client = _client((request) async {
+        if (request.url.path.endsWith('/token')) {
+          return http.Response(
+            jsonEncode({
+              'access_token': 'token',
+              'refresh_token': 'refresh',
+              'token_type': 'bearer',
+              'expires_in': 3600,
+              'user': user,
+            }),
+            200,
+          );
+        }
+        expect(request.url.path, '/rest/v1/profiles');
+        expect(request.url.queryParameters['id'], 'eq.me');
+        expect(request.url.queryParameters['select'], contains('gender'));
+        return http.Response(
+          jsonEncode({
+            'full_name': 'Ana Silva',
+            'email': 'ana@example.test',
+            'phone': '123',
+            'birth_date': '1990-01-01',
+            'address': 'Rua A',
+            'gender': gender?.name,
+          }),
+          200,
+        );
+      });
+      await client.auth.signInWithPassword(
+        email: 'ana@example.test',
+        password: 'password',
+      );
+      final profile = await ProfileRepository(client: client).own();
+      expect(profile.gender, gender);
+      expect(profile.fullName, 'Ana Silva');
+      expect(profile.email, 'ana@example.test');
+      expect(profile.phone, '123');
+      expect(profile.birthDate, '1990-01-01');
+      expect(profile.address, 'Rua A');
+    });
+  }
+
   test(
     'profile update cannot send user ID, email or authorization fields',
     () async {
@@ -178,6 +262,7 @@ void main() {
             'p_phone': '123',
             'p_birth_date': '1990-01-01',
             'p_address': 'Rua A',
+            'p_gender': null,
           });
           return http.Response('', 204);
         }),

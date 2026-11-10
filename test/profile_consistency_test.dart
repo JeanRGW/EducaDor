@@ -41,6 +41,28 @@ class _Session extends SessionController {
   final bool multiple;
   bool failLogout = false;
   int logoutCalls = 0;
+  int reloadCalls = 0;
+  Gender? refreshedGender;
+
+  @override
+  Future<AppSession?> reload() async {
+    reloadCalls++;
+    final current = state.value!;
+    state = AsyncData(
+      AppSession(
+        user: User(
+          id: _user.id,
+          fullName: _user.fullName,
+          email: _user.email,
+          initials: _user.initials,
+          gender: refreshedGender,
+        ),
+        contexts: current.contexts,
+        active: current.active,
+      ),
+    );
+    return state.value;
+  }
 
   _Session(this.role, {this.multiple = true});
 
@@ -78,13 +100,22 @@ class _Invites extends InvitationRepository {
 }
 
 class _Profiles extends ProfileRepository {
-  @override
-  Future<OwnProfile> own() async => const OwnProfile(
+  OwnProfile profile = const OwnProfile(
     fullName: 'Jean Rafael Guilouski Wojcik',
     email: 'jean@example.test',
-    phone: '',
-    address: '',
+    phone: '123',
+    address: 'Rua A',
+    birthDate: '1990-01-01',
+    gender: Gender.male,
   );
+  final writes = <OwnProfile>[];
+  @override
+  Future<OwnProfile> own() async => profile;
+  @override
+  Future<void> update(OwnProfile value) async {
+    writes.add(value);
+    profile = value;
+  }
 }
 
 Future<ProviderContainer> _show(
@@ -95,6 +126,7 @@ Future<ProviderContainer> _show(
   bool multiple = true,
   _Session? session,
   _Invites? invites,
+  _Profiles? profiles,
 }) async {
   await tester.pumpWidget(const SizedBox());
   await tester.pumpAndSettle();
@@ -106,7 +138,7 @@ Future<ProviderContainer> _show(
         () => session ?? _Session(role, multiple: multiple),
       ),
       invitationRepositoryProvider.overrideWithValue(invites ?? _Invites()),
-      profileRepositoryProvider.overrideWithValue(_Profiles()),
+      profileRepositoryProvider.overrideWithValue(profiles ?? _Profiles()),
       companyIdentityProvider.overrideWith(
         (ref) async => const Company(
           id: 'company',
@@ -177,6 +209,57 @@ Future<void> _tap(WidgetTester tester, String text) async {
 }
 
 void main() {
+  testWidgets('profile gender is initialized, saved, cleared and refreshed', (
+    tester,
+  ) async {
+    final profiles = _Profiles();
+    final session = _Session(Role.gestor);
+    final container = await _show(
+      tester,
+      Role.gestor,
+      session: session,
+      profiles: profiles,
+    );
+    for (final (initial, choice, result) in [
+      (Gender.male, 'Feminino', Gender.female),
+      (Gender.female, 'Não informado', null),
+    ]) {
+      container.read(routerProvider).go('/gestor/perfil/edit');
+      await tester.pumpAndSettle();
+      final dropdown = find.byType(DropdownButtonFormField<Gender?>);
+      expect(
+        tester.widget<DropdownButtonFormField<Gender?>>(dropdown).initialValue,
+        initial,
+      );
+      await tester.ensureVisible(dropdown);
+      await tester.tap(dropdown);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(choice).last);
+      await tester.pumpAndSettle();
+      session.refreshedGender = result;
+      await tester.scrollUntilVisible(
+        find.text('Salvar perfil'),
+        200,
+        scrollable: find
+            .descendant(
+              of: find.byType(ProfileEditScreen),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
+      await _tap(tester, 'Salvar perfil');
+      final saved = profiles.writes.last;
+      expect(saved.gender, result);
+      expect(saved.fullName, _user.fullName);
+      expect(saved.email, _user.email);
+      expect(saved.phone, '123');
+      expect(saved.address, 'Rua A');
+      expect(saved.birthDate, '1990-01-01');
+      expect(container.read(sessionProvider).value!.user.gender, result);
+    }
+    expect(session.reloadCalls, 2);
+  });
+
   for (final role in Role.values) {
     for (final (width, scale) in [(390.0, 1.0), (320.0, 1.8), (1200.0, 1.0)]) {
       testWidgets(

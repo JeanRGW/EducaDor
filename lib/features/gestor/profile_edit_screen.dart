@@ -177,6 +177,7 @@ class _ProfileEditorState extends ConsumerState<_ProfileEditor> {
             enabled: !_busy && !_needsRefresh,
           ),
           DropdownButtonFormField<Gender?>(
+            isExpanded: true,
             initialValue: _gender,
             decoration: const InputDecoration(labelText: 'Gênero (opcional)'),
             items: const [
@@ -209,8 +210,9 @@ class _ProfileEditorState extends ConsumerState<_ProfileEditor> {
                         delegates: GlobalMaterialLocalizations.delegates,
                         child: Theme(
                           data: Theme.of(context).copyWith(
-                            colorScheme: Theme.of(context).colorScheme
-                                .copyWith(primary: AppColors.successDarkGreen),
+                            colorScheme: Theme.of(context).colorScheme.copyWith(
+                              primary: AppColors.successDarkGreen,
+                            ),
                           ),
                           child: child!,
                         ),
