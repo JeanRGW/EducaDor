@@ -1,12 +1,12 @@
-import { uploadHandler } from './handler.ts';
-import { downloadHandler } from '../storage-download-url/handler.ts';
+import { uploadHandler } from "./handler.ts";
+import { downloadHandler } from "../storage-download-url/handler.ts";
 import {
   lessonKeys,
   MAX_UPLOAD_SIZE,
   type StorageCaller,
   uploadInput,
-} from '../_shared/storage.ts';
-function assert(ok: unknown, message = 'Assertion failed'): asserts ok {
+} from "../_shared/storage.ts";
+function assert(ok: unknown, message = "Assertion failed"): asserts ok {
   if (!ok) throw new Error(message);
 }
 function rejects(fn: () => unknown) {
@@ -15,27 +15,27 @@ function rejects(fn: () => unknown) {
   } catch {
     return;
   }
-  throw new Error('Accepted invalid input');
+  throw new Error("Accepted invalid input");
 }
-const id = '12345678-1234-1234-1234-123456789abc';
+const id = "12345678-1234-1234-1234-123456789abc";
 const key = `lessons/${id}.pdf`;
 const frame = `lessons/${id}.webp`;
-const origin = 'https://app.example.test';
+const origin = "https://app.example.test";
 function request(
   body: unknown = {},
-  method = 'POST',
+  method = "POST",
   from: string | null = origin,
 ) {
-  return new Request('https://function.example.test', {
+  return new Request("https://function.example.test", {
     method,
     headers: {
       ...(from ? { origin: from } : {}),
-      authorization: 'Bearer verified-test-token',
+      authorization: "Bearer verified-test-token",
     },
-    ...(method === 'POST' ? { body: JSON.stringify(body) } : {}),
+    ...(method === "POST" ? { body: JSON.stringify(body) } : {}),
   });
 }
-const valid = { prefix: 'lessons', contentType: 'application/pdf', size: 42 };
+const valid = { prefix: "lessons", contentType: "application/pdf", size: 42 };
 const current: StorageCaller = {
   isGestor: () => Promise.resolve(true),
   lesson: () => Promise.resolve({ file_key: key, image_keys: [frame] }),
@@ -54,8 +54,8 @@ function fixture(caller: StorageCaller | null = current) {
       sign: (input) => {
         calls.push(input);
         return Promise.resolve({
-          putUrl: 'https://storage.test/put',
-          ...(input.public ? { publicUrl: 'https://storage.test/public' } : {}),
+          putUrl: "https://storage.test/put",
+          ...(input.public ? { publicUrl: "https://storage.test/public" } : {}),
         });
       },
     }),
@@ -64,29 +64,29 @@ function fixture(caller: StorageCaller | null = current) {
       sign: (keys, expiry) => {
         calls.push({ keys, expiry });
         return Promise.resolve(
-          Object.fromEntries(keys.map((k) => [k, 'https://storage.test/get'])),
+          Object.fromEntries(keys.map((k) => [k, "https://storage.test/get"])),
         );
       },
     }),
   };
 }
-Deno.test('upload MIME, prefix and size allowlist', () => {
+Deno.test("upload MIME, prefix and size allowlist", () => {
   for (
     const contentType of [
-      'application/pdf',
-      'audio/mpeg',
-      'image/gif',
-      'image/png',
-      'image/jpeg',
-      'image/webp',
+      "application/pdf",
+      "audio/mpeg",
+      "image/gif",
+      "image/png",
+      "image/jpeg",
+      "image/webp",
     ]
   ) {
     assert(uploadInput({ ...valid, contentType }).contentType === contentType);
   }
   assert(
     uploadInput({
-      prefix: 'covers',
-      contentType: 'image/webp',
+      prefix: "covers",
+      contentType: "image/webp",
       size: MAX_UPLOAD_SIZE,
     }),
   );
@@ -95,41 +95,41 @@ Deno.test('upload MIME, prefix and size allowlist', () => {
       null,
       [],
       {},
-      { ...valid, prefix: '../lessons' },
-      { ...valid, prefix: 'avatars' },
-      { ...valid, prefix: 'covers' },
-      { ...valid, contentType: 'video/mp4' },
-      { ...valid, contentType: '__proto__' },
-      ...[0, -1, MAX_UPLOAD_SIZE + 1, 1.5, '42', null].map((size) => ({
+      { ...valid, prefix: "../lessons" },
+      { ...valid, prefix: "avatars" },
+      { ...valid, prefix: "covers" },
+      { ...valid, contentType: "video/mp4" },
+      { ...valid, contentType: "__proto__" },
+      ...[0, -1, MAX_UPLOAD_SIZE + 1, 1.5, "42", null].map((size) => ({
         ...valid,
         size,
       })),
     ]
   ) rejects(() => uploadInput(input));
 });
-Deno.test('HTTP CORS, allowed methods, unauthorized JWT seam', async () => {
+Deno.test("HTTP CORS, allowed methods, unauthorized JWT seam", async () => {
   for (const handler of [fixture(null).upload, fixture(null).download]) {
-    const options = await handler(request({}, 'OPTIONS'));
+    const options = await handler(request({}, "OPTIONS"));
     assert(options.status === 204);
     assert(
-      options.headers.get('access-control-allow-methods') === 'POST, OPTIONS',
+      options.headers.get("access-control-allow-methods") === "POST, OPTIONS",
     );
-    assert(options.headers.get('access-control-allow-origin') === origin);
-    assert((await handler(request({}, 'GET'))).status === 403);
-    const denied = await handler(request({}, 'POST', 'https://evil.test'));
+    assert(options.headers.get("access-control-allow-origin") === origin);
+    assert((await handler(request({}, "GET"))).status === 403);
+    const denied = await handler(request({}, "POST", "https://evil.test"));
     assert(
       denied.status === 403 &&
-        !denied.headers.has('access-control-allow-origin'),
+        !denied.headers.has("access-control-allow-origin"),
     );
     assert(
-      !(await handler(request({}, 'OPTIONS', 'https://evil.test'))).headers.has(
-        'access-control-allow-origin',
+      !(await handler(request({}, "OPTIONS", "https://evil.test"))).headers.has(
+        "access-control-allow-origin",
       ),
     );
     assert((await handler(request(valid))).status === 401);
   }
 });
-Deno.test('active gestor uploads bind generated key, MIME, length and 15 minute expiry', async () => {
+Deno.test("active gestor uploads bind generated key, MIME, length and 15 minute expiry", async () => {
   const f = fixture();
   const response = await f.upload(request(valid));
   assert(response.status === 200);
@@ -145,11 +145,11 @@ Deno.test('active gestor uploads bind generated key, MIME, length and 15 minute 
       }),
   );
   const cover = await f.upload(
-    request({ prefix: 'covers', contentType: 'image/webp', size: 1 }),
+    request({ prefix: "covers", contentType: "image/webp", size: 1 }),
   );
   const payload = await cover.json();
   assert(payload.key === `covers/${id}.webp` && payload.publicUrl);
-  for (const role of ['empresa', 'funcionario', 'no active context']) {
+  for (const role of ["empresa", "funcionario", "no active context"]) {
     const blocked = fixture({
       ...current,
       isGestor: () => Promise.resolve(false),
@@ -159,7 +159,7 @@ Deno.test('active gestor uploads bind generated key, MIME, length and 15 minute 
   }
   assert((await f.upload(request({ ...valid, size: 0 }))).status === 400);
 });
-Deno.test('each download request checks lesson RLS before signing all frames for one hour', async () => {
+Deno.test("each download request checks lesson RLS before signing all frames for one hour", async () => {
   const reads: string[] = [];
   const f = fixture({
     ...current,
@@ -170,7 +170,7 @@ Deno.test('each download request checks lesson RLS before signing all frames for
   });
   for (let i = 0; i < 2; i++) {
     const response = await f.download(
-      request({ lessonId: id, key: 'ignored/forged.pdf' }),
+      request({ lessonId: id, key: "ignored/forged.pdf" }),
     );
     assert(response.status === 200);
     assert(Object.keys((await response.json()).urls).length === 2);
@@ -181,7 +181,7 @@ Deno.test('each download request checks lesson RLS before signing all frames for
       JSON.stringify({ keys: [key, frame], expiry: 3600 }),
   );
   for (
-    const denial of ['other company', 'other user', 'manager', 'paused course']
+    const denial of ["other company", "other user", "manager", "paused course"]
   ) {
     const blocked = fixture({
       ...current,
@@ -194,13 +194,27 @@ Deno.test('each download request checks lesson RLS before signing all frames for
     assert(blocked.calls.length === 0);
   }
   for (
-    const payload of [{}, { lessonId: '../other' }, { lessonId: [id] }, null]
+    const payload of [{}, { lessonId: "../other" }, { lessonId: [id] }, null]
   ) {
     assert((await f.download(request(payload))).status === 400);
   }
 });
-Deno.test('keys must be private lesson objects, bounded and deduplicated', async () => {
+Deno.test("keys must be private lesson objects, bounded and deduplicated", async () => {
   assert(lessonKeys({ file_key: key, image_keys: [key] }).length === 1);
+  assert(
+    lessonKeys({
+      file_key: key,
+      image_keys: [],
+      alternate_content: { file_key: null, image_keys: [frame] },
+    }).length === 2,
+  );
+  assert(
+    lessonKeys({
+      file_key: null,
+      image_keys: Array(100).fill(frame),
+      alternate_content: { file_key: null, image_keys: Array(100).fill(frame) },
+    }).length === 1,
+  );
   assert(
     lessonKeys({ file_key: null, image_keys: Array(100).fill(frame) })
       .length === 1,
@@ -208,12 +222,23 @@ Deno.test('keys must be private lesson objects, bounded and deduplicated', async
   for (
     const data of [
       { file_key: key, image_keys: Array(100).fill(frame) },
-      { file_key: 'covers/abc.webp', image_keys: [] },
-      { file_key: 'lessons/../secret.pdf', image_keys: [] },
-      { file_key: 'lessons/a.mp4', image_keys: [] },
-      { file_key: key, image_keys: 'bad' },
-      { file_key: `lessons/${'a'.repeat(260)}.pdf`, image_keys: [] },
+      { file_key: "covers/abc.webp", image_keys: [] },
+      { file_key: "lessons/../secret.pdf", image_keys: [] },
+      { file_key: "lessons/a.mp4", image_keys: [] },
+      { file_key: key, image_keys: "bad" },
+      { file_key: `lessons/${"a".repeat(260)}.pdf`, image_keys: [] },
       { file_key: 1, image_keys: [] },
+      { file_key: null, image_keys: [], alternate_content: [] },
+      {
+        file_key: null,
+        image_keys: [],
+        alternate_content: { image_keys: Array(101).fill(frame) },
+      },
+      {
+        file_key: null,
+        image_keys: [],
+        alternate_content: { file_key: "covers/abc.webp" },
+      },
     ]
   ) {
     rejects(() => lessonKeys(data));
@@ -222,7 +247,29 @@ Deno.test('keys must be private lesson objects, bounded and deduplicated', async
     assert(f.calls.length === 0);
   }
 });
-Deno.test('missing configuration, malformed JSON and failed dependencies fail closed', async () => {
+Deno.test("downloads sign both persisted versions with a 200-key total bound", async () => {
+  const frames = Array.from({ length: 200 }, (_, i) =>
+    `lessons/${i.toString(16).padStart(8, "0")}-0000-4000-8000-000000000000.webp`
+  );
+  const f = fixture({
+    ...current,
+    lesson: () => Promise.resolve({
+      file_key: null,
+      image_keys: frames.slice(0, 100),
+      alternate_content: { image_keys: frames.slice(100) },
+    }),
+  });
+  const response = await f.download(request({
+    lessonId: id,
+    alternate_content: { file_key: "lessons/forged.pdf" },
+  }));
+  assert(response.status === 200);
+  const urls = (await response.json()).urls;
+  assert(Object.keys(urls).length === 200);
+  assert(frames.every((key) => Object.hasOwn(urls, key)));
+  assert(!Object.hasOwn(urls, "lessons/forged.pdf"));
+});
+Deno.test("missing configuration, malformed JSON and failed dependencies fail closed", async () => {
   const auth = {
     origins: [origin],
     authenticate: () => Promise.resolve(current),
@@ -240,12 +287,12 @@ Deno.test('missing configuration, malformed JSON and failed dependencies fail cl
   assert((await download(request({ lessonId: id }))).status === 503);
   assert(
     (await upload(
-      new Request('https://function.test', { method: 'POST', body: '{' }),
+      new Request("https://function.test", { method: "POST", body: "{" }),
     )).status === 400,
   );
   const failed = downloadHandler({
     ...auth,
-    authenticate: () => Promise.reject(new Error('offline')),
+    authenticate: () => Promise.reject(new Error("offline")),
     sign: () => Promise.resolve({}),
   });
   assert((await failed(request({ lessonId: id }))).status === 400);

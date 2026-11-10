@@ -6,6 +6,8 @@ CREATE TABLE "public"."lesson_progress" (
   "position_sec" integer                  NOT NULL DEFAULT 0,
   "updated_at"   timestamp with time zone NOT NULL DEFAULT now(),
   "company_id"   uuid                     NOT NULL,
+  "content_gender" text,
+  CONSTRAINT "lesson_progress_content_gender_check" CHECK (content_gender IN ('male', 'female')),
   CONSTRAINT "lesson_progress_company_id_fkey" FOREIGN KEY (company_id) REFERENCES public.companies(id),
   CONSTRAINT "lesson_progress_pkey" PRIMARY KEY (user_id, company_id, lesson_id),
   CONSTRAINT "lesson_progress_status_check" CHECK ((status = ANY (ARRAY['locked'::text, 'in_progress'::text, 'completed'::text]))),

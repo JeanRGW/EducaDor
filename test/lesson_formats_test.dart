@@ -234,6 +234,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Enviar GIF'));
       await tester.tap(find.text('Enviar GIF'));
       await tester.pumpAndSettle();
       expect(repo.uploaded, bytes);
@@ -466,6 +467,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     await tester.tap(find.text('Descer').first);
+    await tester.ensureVisible(find.text('Salvar aula'));
     await tester.tap(find.text('Salvar aula'));
     await tester.pumpAndSettle();
     await tester.tap(
