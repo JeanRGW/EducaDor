@@ -3,6 +3,7 @@ import '../repositories/repositories.dart';
 class PlaybackProgress {
   final ProgressRepository repository;
   final String companyId, lessonId;
+  final String? contentGender;
   final bool Function() isCurrent;
   int positionSec;
   bool completed;
@@ -13,6 +14,7 @@ class PlaybackProgress {
     required this.repository,
     required this.companyId,
     required this.lessonId,
+    this.contentGender,
     required this.isCurrent,
     required this.positionSec,
     required this.completed,
@@ -49,6 +51,7 @@ class PlaybackProgress {
       lessonId,
       positionSec: position,
       completed: done,
+      contentGender: contentGender,
     );
     _saving = pending;
     try {

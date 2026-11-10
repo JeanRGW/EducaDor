@@ -64,16 +64,14 @@ class CompanyRepository {
         _injectedClient ??
         _client ??
         (throw StateError('Configure o Supabase para carregar empresas.'));
-    final data =
-        await client.rpc(
-              'gestor_companies',
-              params: {
-                'p_search': search.trim(),
-                'p_active': active,
-                'p_offset': offset,
-              },
-            )
-            as Map<String, dynamic>;
+    final data = await client.rpc(
+      'gestor_companies',
+      params: {
+        'p_search': search.trim(),
+        'p_active': active,
+        'p_offset': offset,
+      },
+    ) as Map<String, dynamic>;
     return CompanyPage(
       items: (data['items'] as List<dynamic>)
           .map((row) => _company(row as Map<String, dynamic>))
@@ -224,12 +222,10 @@ class CompanyDataRepository {
       (throw StateError('Configure o Supabase para carregar o painel.'));
 
   Future<CompanyDashboard> dashboard(String companyId) async {
-    final data =
-        await _companyClient.rpc(
-              'company_dashboard',
-              params: {'p_company': companyId},
-            )
-            as Map<String, dynamic>;
+    final data = await _companyClient.rpc(
+      'company_dashboard',
+      params: {'p_company': companyId},
+    ) as Map<String, dynamic>;
     return CompanyDashboard(
       employeeCount: (data['employee_count'] as num).toInt(),
       activeCourseCount: (data['active_course_count'] as num).toInt(),
@@ -262,16 +258,14 @@ class EmployeeRepository {
         _injectedClient ??
         _client ??
         (throw StateError('Configure o Supabase para carregar funcionários.'));
-    final data =
-        await client.rpc(
-              'company_employees',
-              params: {
-                'p_company': companyId,
-                'p_search': search.trim(),
-                'p_offset': offset,
-              },
-            )
-            as Map<String, dynamic>;
+    final data = await client.rpc(
+      'company_employees',
+      params: {
+        'p_company': companyId,
+        'p_search': search.trim(),
+        'p_offset': offset,
+      },
+    ) as Map<String, dynamic>;
     return EmployeePage(
       items: (data['items'] as List<dynamic>)
           .map((item) => _employee(item as Map<String, dynamic>))
@@ -286,12 +280,10 @@ class EmployeeRepository {
         _injectedClient ??
         _client ??
         (throw StateError('Configure o Supabase para carregar funcionários.'));
-    final rows =
-        await client.rpc(
-              'employee_completion',
-              params: {'p_company': companyId},
-            )
-            as List<dynamic>;
+    final rows = await client.rpc(
+      'employee_completion',
+      params: {'p_company': companyId},
+    ) as List<dynamic>;
     return rows.map((item) => _employee(item as Map<String, dynamic>)).toList();
   }
 }
@@ -310,16 +302,14 @@ class PeopleRepository {
     String search = '',
     int offset = 0,
   }) async {
-    final rows =
-        await _peopleClient.rpc(
-              'gestor_managers',
-              params: {
-                'p_company': companyId,
-                'p_search': search.trim(),
-                'p_offset': offset,
-              },
-            )
-            as List<dynamic>;
+    final rows = await _peopleClient.rpc(
+      'gestor_managers',
+      params: {
+        'p_company': companyId,
+        'p_search': search.trim(),
+        'p_offset': offset,
+      },
+    ) as List<dynamic>;
     return rows.map((item) {
       final row = item as Map<String, dynamic>;
       final name = row['full_name'] as String;
@@ -363,12 +353,10 @@ class PeopleRepository {
     String search = '',
     int offset = 0,
   }) async {
-    final rows =
-        await _peopleClient.rpc(
-              'platform_professionals_page',
-              params: {'p_search': search.trim(), 'p_offset': offset},
-            )
-            as List<dynamic>;
+    final rows = await _peopleClient.rpc(
+      'platform_professionals_page',
+      params: {'p_search': search.trim(), 'p_offset': offset},
+    ) as List<dynamic>;
     return rows
         .map(
           (row) => ProfessionalOption(
@@ -384,16 +372,14 @@ class PeopleRepository {
     String search = '',
     int offset = 0,
   }) async {
-    final people =
-        await _peopleClient.rpc(
-              'company_managers_page',
-              params: {
-                'p_company': companyId,
-                'p_search': search.trim(),
-                'p_offset': offset,
-              },
-            )
-            as List<dynamic>;
+    final people = await _peopleClient.rpc(
+      'company_managers_page',
+      params: {
+        'p_company': companyId,
+        'p_search': search.trim(),
+        'p_offset': offset,
+      },
+    ) as List<dynamic>;
     return people.map((row) {
       final name = row['full_name'] as String;
       return User(
@@ -458,12 +444,10 @@ class ReportRepository {
       (throw StateError('Configure o Supabase para carregar relatórios.'));
 
   Future<List<CompanyCompletion>> platformCompletion({int offset = 0}) async {
-    final rows =
-        await _reportClient.rpc(
-              'gestor_completion',
-              params: {'p_offset': offset},
-            )
-            as List<dynamic>;
+    final rows = await _reportClient.rpc(
+      'gestor_completion',
+      params: {'p_offset': offset},
+    ) as List<dynamic>;
     return rows.map((item) {
       final row = item as Map<String, dynamic>;
       return CompanyCompletion(
@@ -481,12 +465,10 @@ class ReportRepository {
     String date(DateTime value) =>
         '${value.year.toString().padLeft(4, '0')}-'
         '${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
-    final data =
-        await _reportClient.rpc(
-              'gestor_activity_report',
-              params: {'p_from': date(from), 'p_to': date(to)},
-            )
-            as Map<String, dynamic>;
+    final data = await _reportClient.rpc(
+      'gestor_activity_report',
+      params: {'p_from': date(from), 'p_to': date(to)},
+    ) as Map<String, dynamic>;
     return PlatformActivityReport(
       engagement: (data['engagement'] as List<dynamic>).map((item) {
         final row = item as Map<String, dynamic>;
@@ -553,12 +535,10 @@ class ContentRepository {
     );
   }
 
-  Future<String> createCourse(String title) async =>
-      await _contentClient.rpc(
-            'create_content_course',
-            params: {'p_title': title.trim()},
-          )
-          as String;
+  Future<String> createCourse(String title) async => await _contentClient.rpc(
+    'create_content_course',
+    params: {'p_title': title.trim()},
+  ) as String;
 
   Future<List<ContentModule>> modules(String courseId, {int offset = 0}) async {
     final rows = await _contentClient
@@ -737,12 +717,10 @@ class ContentRepository {
     String courseId, {
     int offset = 0,
   }) async {
-    final rows =
-        await _contentClient.rpc(
-              'gestor_course_lessons',
-              params: {'p_course': courseId, 'p_offset': offset},
-            )
-            as List<dynamic>;
+    final rows = await _contentClient.rpc(
+      'gestor_course_lessons',
+      params: {'p_course': courseId, 'p_offset': offset},
+    ) as List<dynamic>;
     return rows.map((item) {
       final row = item as Map<String, dynamic>;
       return EditableLesson(
@@ -798,17 +776,15 @@ class ContentRepository {
   }) async {
     final client = _client;
     if (client == null) return [];
-    final rows =
-        await client.rpc(
-              'content_catalog',
-              params: {
-                'p_search': search.trim(),
-                'p_kind': kind,
-                'p_offset': offset,
-                'p_limit': 50,
-              },
-            )
-            as List<dynamic>;
+    final rows = await client.rpc(
+      'content_catalog',
+      params: {
+        'p_search': search.trim(),
+        'p_kind': kind,
+        'p_offset': offset,
+        'p_limit': 50,
+      },
+    ) as List<dynamic>;
     return rows.map((item) {
       final row = item as Map<String, dynamic>;
       final coverKey = row['cover_key'] as String?;
@@ -862,12 +838,10 @@ class ContentRepository {
   }
 
   Future<ContentAudience> audience(String courseId) async {
-    final rows =
-        await _contentClient.rpc(
-              'gestor_course_audience',
-              params: {'p_course': courseId},
-            )
-            as List<dynamic>;
+    final rows = await _contentClient.rpc(
+      'gestor_course_audience',
+      params: {'p_course': courseId},
+    ) as List<dynamic>;
     final row = rows.single as Map<String, dynamic>;
     return ContentAudience(
       allCompanies: row['all_companies'] as bool,
@@ -909,21 +883,19 @@ class ContentRepository {
     String? coverKey,
     String? responsibleId,
   }) async {
-    final id =
-        await _contentClient.rpc(
-              'publish_video_trail',
-              params: {
-                'p_title': title.trim(),
-                'p_description': description.trim(),
-                'p_module_title': moduleTitle.trim(),
-                'p_video_id': videoId,
-                'p_all_companies': audience.allCompanies,
-                'p_company_ids': audience.companyIds,
-                'p_cover_key': coverKey,
-                'p_responsible_id': responsibleId,
-              },
-            )
-            as String;
+    final id = await _contentClient.rpc(
+      'publish_video_trail',
+      params: {
+        'p_title': title.trim(),
+        'p_description': description.trim(),
+        'p_module_title': moduleTitle.trim(),
+        'p_video_id': videoId,
+        'p_all_companies': audience.allCompanies,
+        'p_company_ids': audience.companyIds,
+        'p_cover_key': coverKey,
+        'p_responsible_id': responsibleId,
+      },
+    ) as String;
     await sendCourseAvailable(_contentClient, id);
     return id;
   }
@@ -1024,9 +996,10 @@ class EmployeeLearningRepository {
       (throw StateError('Configure o Supabase para aprender.'));
 
   Future<EmployeeSummary> summary(String companyId) async {
-    final data =
-        await _api.rpc('employee_summary', params: {'p_company': companyId})
-            as Map<String, dynamic>;
+    final data = await _api.rpc(
+      'employee_summary',
+      params: {'p_company': companyId},
+    ) as Map<String, dynamic>;
     return EmployeeSummary(
       courseCount: (data['course_count'] as num).toInt(),
       completedCourseCount: (data['completed_course_count'] as num).toInt(),
@@ -1050,18 +1023,16 @@ class EmployeeLearningRepository {
     String? state,
     int offset = 0,
   }) async {
-    final data =
-        await _api.rpc(
-              'employee_catalog',
-              params: {
-                'p_company': companyId,
-                'p_search': search.trim(),
-                'p_kind': kind,
-                'p_state': state,
-                'p_offset': offset,
-              },
-            )
-            as Map<String, dynamic>;
+    final data = await _api.rpc(
+      'employee_catalog',
+      params: {
+        'p_company': companyId,
+        'p_search': search.trim(),
+        'p_kind': kind,
+        'p_state': state,
+        'p_offset': offset,
+      },
+    ) as Map<String, dynamic>;
     return LearningPage(
       total: (data['total'] as num).toInt(),
       items: (data['items'] as List<dynamic>).map((item) {
@@ -1099,16 +1070,14 @@ class EmployeeLearningRepository {
     String courseId, {
     int offset = 0,
   }) async {
-    final data =
-        await _api.rpc(
-              'employee_lessons',
-              params: {
-                'p_company': companyId,
-                'p_course': courseId,
-                'p_offset': offset,
-              },
-            )
-            as Map<String, dynamic>;
+    final data = await _api.rpc(
+      'employee_lessons',
+      params: {
+        'p_company': companyId,
+        'p_course': courseId,
+        'p_offset': offset,
+      },
+    ) as Map<String, dynamic>;
     return LearningPage(
       total: (data['total'] as num).toInt(),
       items: (data['items'] as List<dynamic>).map((item) {
@@ -1121,10 +1090,22 @@ class EmployeeLearningRepository {
           kind: row['kind'] as String,
           status: row['status'] as String,
           videoId: row['video_id'] as String?,
+          contentGender: row['content_gender'] as String?,
           positionSec: (row['position_sec'] as num).toInt(),
         );
       }).toList(),
     );
+  }
+
+  Future<ContentLesson> lessonContent(String lessonId) async {
+    final rows = await _api.rpc(
+      'employee_lesson_content',
+      params: {'p_lesson': lessonId},
+    );
+    final row = rows is List
+        ? rows.single as Map<String, dynamic>
+        : rows as Map<String, dynamic>;
+    return ContentLesson.fromJson(row);
   }
 
   Future<bool> hasCourseCertificate(
@@ -1147,12 +1128,10 @@ class EmployeeLearningRepository {
     String companyId, {
     int offset = 0,
   }) async {
-    final data =
-        await _api.rpc(
-              'employee_certificates',
-              params: {'p_company': companyId, 'p_offset': offset},
-            )
-            as Map<String, dynamic>;
+    final data = await _api.rpc(
+      'employee_certificates',
+      params: {'p_company': companyId, 'p_offset': offset},
+    ) as Map<String, dynamic>;
     return LearningPage(
       total: (data['total'] as num).toInt(),
       items: (data['items'] as List<dynamic>).map((item) {
@@ -1190,9 +1169,10 @@ class EmployeeLearningRepository {
   }
 
   Future<List<EmployeeRank>> ranking(String companyId) async {
-    final rows =
-        await _api.rpc('employee_ranking', params: {'p_company': companyId})
-            as List<dynamic>;
+    final rows = await _api.rpc(
+      'employee_ranking',
+      params: {'p_company': companyId},
+    ) as List<dynamic>;
     return rows.map((item) {
       final row = item as Map<String, dynamic>;
       return EmployeeRank(
@@ -1245,6 +1225,7 @@ class ProgressRepository {
     String lessonId, {
     required int positionSec,
     required bool completed,
+    String? contentGender,
   }) async {
     final api =
         _injectedClient ??
@@ -1257,6 +1238,7 @@ class ProgressRepository {
         'p_lesson': lessonId,
         'p_position': positionSec,
         'p_completed': completed,
+        'p_content_gender': contentGender,
       },
     );
   }
@@ -1315,7 +1297,7 @@ class AuthRepository {
     }
     final profile = await client
         .from('profiles')
-        .select('id,full_name,email,needs_password')
+        .select('id,full_name,email,needs_password,gender')
         .eq('id', authUser.id)
         .single();
     final contextRows = await client.rpc('available_contexts') as List<dynamic>;
@@ -1356,6 +1338,7 @@ class AuthRepository {
         fullName: name,
         email: profile['email'] as String,
         initials: initials,
+        gender: genderFromJson(profile['gender']),
       ),
       contexts: contexts,
       active: active,
@@ -1373,18 +1356,13 @@ class AuthRepository {
         (_injectedClient ?? _client)?.auth.currentSession?.accessToken;
     if (token == null) return null;
     try {
-      final data =
-          jsonDecode(
-                utf8.decode(
-                  base64Url.decode(base64Url.normalize(token.split('.')[1])),
-                ),
-              )
-              as Map<String, dynamic>;
+      final data = jsonDecode(
+        utf8.decode(base64Url.decode(base64Url.normalize(token.split('.')[1]))),
+      ) as Map<String, dynamic>;
       final id = data['session_id'];
       return id is String &&
-              RegExp(
-                r'^[a-fA-F0-9]{8}(?:-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}$',
-              ).hasMatch(id)
+              RegExp(r'^[a-fA-F0-9]{8}(?:-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}$')
+                  .hasMatch(id)
           ? id
           : null;
     } catch (_) {
@@ -1556,7 +1534,7 @@ class ProfileRepository {
     if (userId == null) throw StateError('Entre para editar seu perfil.');
     final row = await client
         .from('profiles')
-        .select('full_name,email,phone,birth_date,address')
+        .select('full_name,email,phone,birth_date,address,gender')
         .eq('id', userId)
         .single();
     return OwnProfile(
@@ -1565,6 +1543,7 @@ class ProfileRepository {
       phone: row['phone'] as String? ?? '',
       birthDate: row['birth_date'] as String?,
       address: row['address'] as String? ?? '',
+      gender: genderFromJson(row['gender']),
     );
   }
 
@@ -1576,6 +1555,7 @@ class ProfileRepository {
         'p_phone': profile.phone.trim(),
         'p_birth_date': profile.birthDate,
         'p_address': profile.address.trim(),
+        'p_gender': profile.gender?.name,
       },
     );
   }
@@ -1596,17 +1576,15 @@ class InvitationRepository {
     String search = '',
     int offset = 0,
   }) async {
-    final rows =
-        await _invitationClient.rpc(
-              'directory_pending_invites',
-              params: {
-                'p_role': role?.name,
-                'p_company': companyId,
-                'p_search': search.trim(),
-                'p_offset': offset,
-              },
-            )
-            as List<dynamic>;
+    final rows = await _invitationClient.rpc(
+      'directory_pending_invites',
+      params: {
+        'p_role': role?.name,
+        'p_company': companyId,
+        'p_search': search.trim(),
+        'p_offset': offset,
+      },
+    ) as List<dynamic>;
     return rows.map((row) {
       final data = row as Map<String, dynamic>;
       return PendingInvitation(

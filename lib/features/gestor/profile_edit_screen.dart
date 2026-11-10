@@ -76,6 +76,7 @@ class _ProfileEditorState extends ConsumerState<_ProfileEditor> {
   final _form = GlobalKey<FormState>();
   late final TextEditingController _name, _phone, _address;
   late DateTime? _birthDate;
+  Gender? _gender;
   bool _busy = false;
   bool _needsRefresh = false;
   @override
@@ -86,6 +87,7 @@ class _ProfileEditorState extends ConsumerState<_ProfileEditor> {
     _phone = TextEditingController(text: p.phone);
     _address = TextEditingController(text: p.address);
     _birthDate = p.birthDate == null ? null : DateTime.parse(p.birthDate!);
+    _gender = p.gender;
   }
 
   @override
@@ -111,6 +113,7 @@ class _ProfileEditorState extends ConsumerState<_ProfileEditor> {
                 phone: _phone.text,
                 address: _address.text,
                 birthDate: _birthDate?.toIso8601String().split('T').first,
+                gender: _gender,
               ),
             );
         _needsRefresh = true;
@@ -173,6 +176,19 @@ class _ProfileEditorState extends ConsumerState<_ProfileEditor> {
             keyboardType: TextInputType.phone,
             enabled: !_busy && !_needsRefresh,
           ),
+          DropdownButtonFormField<Gender?>(
+            initialValue: _gender,
+            decoration: const InputDecoration(labelText: 'Gênero (opcional)'),
+            items: const [
+              DropdownMenuItem(value: null, child: Text('Não informado')),
+              DropdownMenuItem(value: Gender.male, child: Text('Masculino')),
+              DropdownMenuItem(value: Gender.female, child: Text('Feminino')),
+            ],
+            onChanged: _busy || _needsRefresh
+                ? null
+                : (value) => setState(() => _gender = value),
+          ),
+          const SizedBox(height: 16),
           ManagementSelector(
             label: 'Data de nascimento',
             value: _birthDate == null
@@ -193,9 +209,8 @@ class _ProfileEditorState extends ConsumerState<_ProfileEditor> {
                         delegates: GlobalMaterialLocalizations.delegates,
                         child: Theme(
                           data: Theme.of(context).copyWith(
-                            colorScheme: Theme.of(context).colorScheme.copyWith(
-                              primary: AppColors.successDarkGreen,
-                            ),
+                            colorScheme: Theme.of(context).colorScheme
+                                .copyWith(primary: AppColors.successDarkGreen),
                           ),
                           child: child!,
                         ),

@@ -22,6 +22,10 @@ final employeeScopeProvider = Provider<EmployeeScope>((ref) {
   }
   return (userId: identity.$1!, companyId: identity.$3!);
 });
+final employeeGenderProvider = Provider<Gender?>(
+  (ref) =>
+      ref.watch(sessionProvider.select((state) => state.value?.user.gender)),
+);
 Duration? _noRetry(int count, Object error) => null;
 final employeeSummaryProvider = FutureProvider.autoDispose<EmployeeSummary>((
   ref,
@@ -60,6 +64,7 @@ final employeeCourseProvider = FutureProvider.autoDispose
 final employeeLessonsProvider = FutureProvider.autoDispose
     .family<LearningPage<EmployeeLesson>, LessonQuery>((ref, query) {
       final scope = ref.watch(employeeScopeProvider);
+      ref.watch(employeeGenderProvider);
       if (scope != query.scope) return const LearningPage(items: [], total: 0);
       return ref
           .watch(employeeLearningRepositoryProvider)

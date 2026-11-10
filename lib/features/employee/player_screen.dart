@@ -1,7 +1,9 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
+
 import '../../data/models/models.dart';
 import '../../data/repositories/employee_providers.dart';
 import '../../data/repositories/repositories.dart';
@@ -20,7 +22,12 @@ class EmployeePlayerScreen extends ConsumerWidget {
   });
   @override
   Widget build(BuildContext context, WidgetRef ref) => _PlayerLoader(
-    key: ValueKey((ref.watch(employeeScopeProvider), courseId, lessonId)),
+    key: ValueKey((
+      ref.watch(employeeScopeProvider),
+      ref.watch(employeeGenderProvider),
+      courseId,
+      lessonId,
+    )),
     courseId: courseId,
     lessonId: lessonId,
   );
@@ -136,13 +143,18 @@ class _VideoPlayerState extends ConsumerState<_VideoPlayer>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     final scope = ref.read(employeeScopeProvider);
+    final gender = ref.read(employeeGenderProvider);
     _progress = PlaybackProgress(
       repository: ref.read(progressRepositoryProvider),
       companyId: scope.companyId,
       lessonId: widget.lesson.id,
+      contentGender: widget.lesson.contentGender,
       positionSec: widget.lesson.positionSec,
       completed: widget.lesson.completed,
-      isCurrent: () => mounted && ref.read(employeeScopeProvider) == scope,
+      isCurrent: () =>
+          mounted &&
+          ref.read(employeeScopeProvider) == scope &&
+          ref.read(employeeGenderProvider) == gender,
     );
     _controller = YoutubePlayerController.fromVideoId(
       videoId: widget.lesson.videoId!,
@@ -183,8 +195,7 @@ class _VideoPlayerState extends ConsumerState<_VideoPlayer>
       }
       if (value.hasError && mounted) {
         setState(
-          () => _playbackError =
-              'O YouTube não está disponível. Verifique a conexão e a liberação do YouTube na rede.',
+          () => _playbackError = 'O YouTube não está disponível. Verifique a conexão e a liberação do YouTube na rede.',
         );
       }
     });
@@ -217,8 +228,7 @@ class _VideoPlayerState extends ConsumerState<_VideoPlayer>
           mounted &&
           !_controller.value.hasError) {
         setState(
-          () => _playbackError =
-              'Não foi possível obter a duração. Recarregue o vídeo para validar a conclusão.',
+          () => _playbackError = 'Não foi possível obter a duração. Recarregue o vídeo para validar a conclusão.',
         );
       }
     }
@@ -232,8 +242,7 @@ class _VideoPlayerState extends ConsumerState<_VideoPlayer>
     } catch (_) {
       if (mounted) {
         setState(
-          () => _error =
-              'Não foi possível salvar o progresso. Tente novamente antes de sair.',
+          () => _error = 'Não foi possível salvar o progresso. Tente novamente antes de sair.',
         );
       }
     }
