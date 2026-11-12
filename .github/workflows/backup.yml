@@ -1,7 +1,9 @@
 name: Encrypted database backup
 
 on:
-  # Scheduling remains disabled pending operator approval.
+  # The job remains hard-disabled until explicit authorization.
+  schedule:
+    - cron: '17 3 * * *'
   workflow_dispatch:
     inputs:
       confirm:
