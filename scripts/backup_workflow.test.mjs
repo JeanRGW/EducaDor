@@ -5,11 +5,36 @@ import test from 'node:test';
 const backup = readFileSync(new URL('../.github/workflows/backup.yml', import.meta.url), 'utf8');
 const ci = readFileSync(new URL('../.github/workflows/ci.yml', import.meta.url), 'utf8');
 
-test('backup has a daily schedule and confirmed manual dispatch but remains hard-disabled', () => {
+test('backup is activated on a daily schedule with confirmed manual dispatch', () => {
   assert.match(backup, /^  schedule:\n    - cron: '17 3 \* \* \*'$/m);
   assert.match(backup, /^  workflow_dispatch:\n    inputs:\n      confirm:\n        description: [^\n]+\n        type: boolean\n        required: true\n        default: false$/m);
-  assert.match(backup, /false && github\.ref/);
   assert.match(backup, /github\.event_name == 'schedule' \|\| inputs\.confirm == true/);
+});
+
+test('backup guard requires main, BACKUP_ENABLED and manual confirmation', () => {
+  assert.doesNotMatch(backup, /false &&/);
+  assert.match(backup, /if: >-\n      github\.ref == 'refs\/heads\/main' && vars\.BACKUP_ENABLED == 'true' &&\n      \(github\.event_name == 'schedule' \|\| inputs\.confirm == true\)/);
+});
+
+test('backup secrets stay scoped to the backup-production environment', () => {
+  assert.match(backup, /^    environment: backup-production$/m);
+  for (const secret of ['BACKUP_DATABASE_URL', 'BACKUP_SIGNING_PRIVATE_KEY', 'BACKUP_HMAC_KEY_HEX',
+                        'BACKUP_S3_ACCESS_KEY_ID', 'BACKUP_S3_SECRET_ACCESS_KEY']) {
+    assert.ok(backup.includes(`secrets.${secret}`), `missing environment secret ${secret}`);
+  }
+});
+
+test('backup imports encryption and signing public keys and checks both fingerprints', () => {
+  assert.match(backup, /BACKUP_SIGNING_PUBLIC_KEY: \$\{\{ vars\.BACKUP_SIGNING_PUBLIC_KEY \}\}/);
+  const publishStep = backup.slice(backup.indexOf('- name: Publish verified archive'),
+                                   backup.indexOf('- name: Remove scratch'));
+  assert.ok(publishStep.includes('printf \'%s\' "$BACKUP_PUBLIC_KEY"'));
+  assert.ok(publishStep.includes('printf \'%s\' "$BACKUP_SIGNING_PUBLIC_KEY"'));
+  assert.ok(publishStep.includes('for fpr in "$BACKUP_RECIPIENT_FINGERPRINT" "$BACKUP_SIGNER_FINGERPRINT"; do'));
+  assert.ok(publishStep.includes('gpg --batch --list-keys "$fpr"'));
+  const packStep = backup.slice(backup.indexOf('- name: Encrypt and sign'),
+                                backup.indexOf('- name: Publish verified archive'));
+  assert.ok(packStep.includes('printf \'%s\' "$BACKUP_SIGNING_PUBLIC_KEY"'));
 });
 
 test('backup installs and checks the PGDG PostgreSQL 17 client before dumping', () => {

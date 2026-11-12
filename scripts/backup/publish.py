@@ -33,7 +33,8 @@ CLI_ENV = ('PATH', 'HOME', 'AWS_CONFIG_FILE', 'AWS_SHARED_CREDENTIALS_FILE',
            'AWS_PAGER', 'NO_PROXY', 'no_proxy', 'SSL_CERT_FILE', 'SSL_CERT_DIR')
 # Never echoed even when the CLI fails; subprocesses also do not inherit these.
 SECRET_ENV = ('BACKUP_DATABASE_URL', 'BACKUP_SIGNING_PRIVATE_KEY', 'BACKUP_HMAC_KEY_HEX',
-              'AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'BACKUP_PUBLIC_KEY')
+              'AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'BACKUP_PUBLIC_KEY',
+              'BACKUP_SIGNING_PUBLIC_KEY')
 
 
 def diagnose(errors):
