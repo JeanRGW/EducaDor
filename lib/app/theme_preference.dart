@@ -35,14 +35,26 @@ class ThemePreference extends Notifier<ThemeMode> {
     state = mode;
     final write = _pendingWrite.then((_) async {
       final preferences = await SharedPreferences.getInstance();
-      if (!await preferences.setString(themePreferenceKey, mode.name)) {
-        throw StateError('Could not save theme preference');
+      try {
+        if (!await preferences.setString(themePreferenceKey, mode.name)) {
+          throw StateError('Could not save theme preference');
+        }
+      } catch (_) {
+        // The legacy API updates its cache before the platform write. Discard
+        // that optimistic value before a later load or provider can see it.
+        try {
+          await preferences.reload();
+        } catch (_) {
+          // Keep the original write failure.
+        }
+        rethrow;
       }
       _savedMode = mode;
     });
     _pendingWrite = write.catchError((Object _) {});
     return write.catchError((Object error, StackTrace stack) {
-      if (revision == _revision) state = _savedMode;
+      if (revision != _revision) return;
+      state = _savedMode;
       Error.throwWithStackTrace(error, stack);
     });
   }

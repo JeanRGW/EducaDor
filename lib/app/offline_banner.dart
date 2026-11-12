@@ -46,9 +46,9 @@ class _OfflineBannerState extends State<OfflineBanner> {
                         child: Text(
                           'Sem conexão com a internet. Reconecte-se para acessar seus dados.',
                           style: TextStyle(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onErrorContainer,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onErrorContainer,
                           ),
                         ),
                       ),

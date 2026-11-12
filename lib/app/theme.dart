@@ -70,9 +70,22 @@ class AppTheme {
       onPrimary: const Color(0xFF003733),
       secondary: accent,
       onSecondary: const Color(0xFF003733),
+      secondaryContainer: const Color(0xFF134E4A),
+      onSecondaryContainer: const Color(0xFF99F6E4),
+      tertiary: const Color(0xFFF8C867),
+      onTertiary: const Color(0xFF3A2E12),
+      error: const Color(0xFFFCA5A5),
+      onError: const Color(0xFF44242A),
+      errorContainer: const Color(0xFF44242A),
+      onErrorContainer: const Color(0xFFFCA5A5),
       surface: surface,
       onSurface: foreground,
       onSurfaceVariant: secondaryText,
+      surfaceContainerLowest: const Color(0xFF081A21),
+      surfaceContainerLow: background,
+      surfaceContainer: surface,
+      surfaceContainerHigh: const Color(0xFF1B3944),
+      surfaceContainerHighest: const Color(0xFF234551),
       outline: secondaryText,
       outlineVariant: border,
     );
@@ -84,20 +97,105 @@ class AppTheme {
       scaffoldBackgroundColor: background,
     );
     return base.copyWith(
-      textTheme: base.textTheme.apply(
-        bodyColor: foreground,
-        displayColor: foreground,
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: accent,
+          foregroundColor: scheme.onPrimary,
+          minimumSize: const Size(0, 48),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          textStyle: const TextStyle(
+            fontFamily: AppFonts.inter,
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ),
-      appBarTheme: AppBarTheme(
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: accent,
+          side: BorderSide(color: border),
+          minimumSize: const Size(0, 44),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(foregroundColor: accent),
+      ),
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: accent,
+        foregroundColor: scheme.onPrimary,
+        shape: const CircleBorder(
+          side: BorderSide(color: Colors.white, width: 2),
+        ),
+      ),
+      progressIndicatorTheme: ProgressIndicatorThemeData(
+        color: accent,
+        linearTrackColor: scheme.surfaceContainerHigh,
+      ),
+      snackBarTheme: const SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: Color(0xFF061A21),
+      ),
+      textTheme: base.textTheme
+          .apply(bodyColor: foreground, displayColor: foreground)
+          .copyWith(
+            headlineSmall: const TextStyle(
+              fontFamily: AppFonts.outfit,
+              fontSize: 24,
+              fontWeight: FontWeight.w700,
+              color: foreground,
+            ),
+            titleLarge: const TextStyle(
+              fontFamily: AppFonts.outfit,
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: foreground,
+            ),
+            titleMedium: const TextStyle(
+              fontFamily: AppFonts.outfit,
+              fontSize: 17,
+              fontWeight: FontWeight.w600,
+              color: foreground,
+            ),
+            titleSmall: const TextStyle(
+              fontFamily: AppFonts.outfit,
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: foreground,
+            ),
+            bodyMedium: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w400,
+              color: foreground,
+            ),
+            bodySmall: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w400,
+              color: secondaryText,
+            ),
+            labelLarge: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.2,
+            ),
+          ),
+      appBarTheme: const AppBarTheme(
         backgroundColor: surface,
         foregroundColor: foreground,
-        surfaceTintColor: Colors.transparent,
-        titleTextStyle: const TextStyle(
+        elevation: 0,
+        centerTitle: false,
+        titleTextStyle: TextStyle(
           fontFamily: AppFonts.outfit,
           fontSize: 18,
           fontWeight: FontWeight.w700,
           color: foreground,
         ),
+        iconTheme: IconThemeData(color: foreground),
+        surfaceTintColor: Colors.transparent,
       ),
       dialogTheme: const DialogThemeData(
         backgroundColor: surface,
@@ -297,4 +395,42 @@ class AppTheme {
       ),
     );
   }
+}
+
+/// Semantic colours that keep the light palette untouched while adapting to
+/// the dark scheme. Prefer these over raw [AppColors] inside widgets.
+extension AppThemeContext on BuildContext {
+  ColorScheme get colors => Theme.of(this).colorScheme;
+  bool get isDark => Theme.of(this).brightness == Brightness.dark;
+
+  Color get successSurface => colors.successSurface;
+  Color get softSuccessSurface => colors.softSuccessSurface;
+  Color get activeSurface => colors.activeSurface;
+  Color get warningSurface => colors.warningSurface;
+  Color get dangerSurface => colors.dangerSurface;
+  Color get successForeground => colors.successForeground;
+  Color get warningForeground => colors.warningForeground;
+  Color get dangerForeground => colors.dangerForeground;
+}
+
+/// Scheme-only counterparts of [AppThemeContext], useful where only a
+/// [ThemeData] or [ColorScheme] is available (theme builders, painters).
+extension AppThemeScheme on ColorScheme {
+  bool get isDarkScheme => brightness == Brightness.dark;
+  Color get successSurface =>
+      isDarkScheme ? secondaryContainer : AppColors.successBg;
+  Color get softSuccessSurface =>
+      isDarkScheme ? surfaceContainerHigh : AppColors.successBgSoft;
+  Color get activeSurface =>
+      isDarkScheme ? secondaryContainer : AppColors.activeBg;
+  Color get warningSurface =>
+      isDarkScheme ? const Color(0xFF3B2F12) : AppColors.warningBg;
+  Color get dangerSurface =>
+      isDarkScheme ? const Color(0xFF44242A) : AppColors.dangerBg;
+  Color get successForeground =>
+      isDarkScheme ? onSecondaryContainer : AppColors.successDarkGreen;
+  Color get warningForeground =>
+      isDarkScheme ? const Color(0xFFF8C867) : AppColors.warning;
+  Color get dangerForeground =>
+      isDarkScheme ? const Color(0xFFFCA5A5) : AppColors.danger;
 }
