@@ -48,6 +48,7 @@ abstract class AppIcons {
   static const String eyeOff = 'assets/icons/eye_off.svg';
   static const String globe = 'assets/icons/globe.svg';
   static const String moon = 'assets/icons/moon.svg';
+  static const String contrast = 'assets/icons/contrast.svg';
   static const String help = 'assets/icons/help.svg';
   static const String settings = 'assets/icons/settings.svg';
   static const String shield = 'assets/icons/shield.svg';
