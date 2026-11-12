@@ -96,11 +96,23 @@ jobs:
         run: |
           set -euo pipefail
           umask 077
+          work="$RUNNER_TEMP/educador-backup"
+          errors="$work/pg.err"
+          status=0
           # Data-only: a fresh project owns the schema, so CREATE SCHEMA must not
           # collide. Auth rows are included so public.profiles -> auth.users FKs
           # can be restored; auth.schema_migrations is provider bookkeeping and
           # would conflict with the target's own Auth migration history.
-          env -i PATH="$PATH" HOME="$HOME" PGDATABASE="$PGDATABASE" "$PG_DUMP" --no-owner --no-acl --data-only --schema=public --schema=auth --exclude-table-data=auth.schema_migrations --file "$RUNNER_TEMP/educador-backup/dump.sql" 2>/dev/null || { echo 'Database dump failed.' >&2; exit 1; }
+          # stderr goes to private scratch instead of /dev/null: a silent failure
+          # hides IPv6-only hosts and pooler/sslmode problems.
+          env -i PATH="$PATH" HOME="$HOME" PGDATABASE="$PGDATABASE" "$PG_DUMP" --no-owner --no-acl --data-only --schema=public --schema=auth --exclude-table-data=auth.schema_migrations --file "$work/dump.sql" 2>"$errors" || status=$?
+          if [ "$status" -ne 0 ]; then
+            echo "Database dump failed (exit $status)." >&2
+            rm -f "$work/dump.sql"
+            # Bounded, redacted diagnostic; never the URL, password or full env.
+            python3 scripts/backup/redact.py "$errors" || echo 'Diagnostic rendering failed.' >&2
+            exit 1
+          fi
       - name: Encrypt and sign
         env:
           BACKUP_SIGNING_PRIVATE_KEY: ${{ secrets.BACKUP_SIGNING_PRIVATE_KEY }}
