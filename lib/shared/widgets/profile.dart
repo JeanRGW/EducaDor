@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/theme.dart';
+import '../../app/theme_preference.dart';
 import '../../data/session/session_controller.dart';
 import '../../features/notifications/notification_settings_tile.dart';
 import 'admin_styles.dart';
@@ -250,10 +251,27 @@ class _ProfileAccountSettingsState
           icon: AppIcons.globe,
           status: 'Português (Brasil)',
         ),
-        const ProfileMenuRow(
-          label: 'Modo escuro',
-          icon: AppIcons.moon,
-          status: 'Em breve',
+        SwitchListTile(
+          title: const Text('Modo escuro'),
+          secondary: const SvgIcon(AppIcons.moon, size: 20),
+          value: ref.watch(themePreferenceProvider) == ThemeMode.dark,
+          onChanged: (enabled) async {
+            try {
+              await ref
+                  .read(themePreferenceProvider.notifier)
+                  .setMode(enabled ? ThemeMode.dark : ThemeMode.light);
+            } catch (_) {
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'Não foi possível salvar a aparência. Tente novamente.',
+                    ),
+                  ),
+                );
+              }
+            }
+          },
         ),
         ProfileMenuRow(
           label: 'Segurança e MFA',

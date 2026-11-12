@@ -4,6 +4,7 @@ import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app/app.dart';
+import 'app/theme_preference.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -13,5 +14,13 @@ Future<void> main() async {
   if (url.isNotEmpty && anonKey.isNotEmpty) {
     await Supabase.initialize(url: url, publishableKey: anonKey);
   }
-  runApp(const ProviderScope(child: EducaDorApp()));
+  final container = ProviderContainer();
+  try {
+    await container.read(themePreferenceProvider.notifier).load();
+  } catch (_) {
+    // Storage may be unavailable; keep the default light theme.
+  }
+  runApp(
+    UncontrolledProviderScope(container: container, child: const EducaDorApp()),
+  );
 }

@@ -66,35 +66,33 @@ abstract class AdminStyles {
       base.copyWith(visualDensity: VisualDensity.standard);
 
   static ThemeData formTheme(ThemeData base) {
+    final scheme = base.colorScheme;
     final border = OutlineInputBorder(
       borderRadius: BorderRadius.circular(8),
-      borderSide: const BorderSide(color: AppColors.border),
+      borderSide: BorderSide(color: scheme.outlineVariant),
     );
     return screenTheme(base).copyWith(
       textTheme: base.textTheme.copyWith(
-        titleMedium: fieldText,
-        bodyLarge: fieldText,
+        titleMedium: fieldText.copyWith(color: scheme.onSurface),
+        bodyLarge: fieldText.copyWith(color: scheme.onSurface),
       ),
       inputDecorationTheme: base.inputDecorationTheme.copyWith(
-        hintStyle: fieldText.copyWith(color: AppColors.textMuted),
+        hintStyle: fieldText.copyWith(color: scheme.onSurfaceVariant),
         isDense: true,
         contentPadding: const EdgeInsets.all(12),
         border: border,
         enabledBorder: border,
         focusedBorder: border.copyWith(
-          borderSide: const BorderSide(
-            color: AppColors.successDarkGreen,
-            width: 1.6,
-          ),
+          borderSide: BorderSide(color: scheme.primary, width: 1.6),
         ),
       ),
       appBarTheme: base.appBarTheme.copyWith(
-        backgroundColor: AppColors.surface,
-        titleTextStyle: formTitle,
+        backgroundColor: scheme.surface,
+        titleTextStyle: formTitle.copyWith(color: scheme.onSurface),
         leadingWidth: 48,
         titleSpacing: 0,
         toolbarHeight: 52,
-        shape: const Border(bottom: BorderSide(color: AppColors.border)),
+        shape: Border(bottom: BorderSide(color: scheme.outlineVariant)),
       ),
     );
   }

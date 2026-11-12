@@ -55,6 +55,79 @@ class AppFonts {
 class AppTheme {
   AppTheme._();
 
+  /// Dark palette. Screens with explicit colours still need migration.
+  static ThemeData get dark {
+    const surface = Color(0xFF142D37);
+    const background = Color(0xFF0B2029);
+    const foreground = Color(0xFFE2EDF0);
+    const secondaryText = Color(0xFFB4C9CF);
+    const accent = Color(0xFF78D8D0);
+    const border = Color(0xFF49636D);
+    final scheme = ColorScheme.fromSeed(
+      seedColor: AppColors.primary,
+      brightness: Brightness.dark,
+      primary: accent,
+      onPrimary: const Color(0xFF003733),
+      secondary: accent,
+      onSecondary: const Color(0xFF003733),
+      surface: surface,
+      onSurface: foreground,
+      onSurfaceVariant: secondaryText,
+      outline: secondaryText,
+      outlineVariant: border,
+    );
+    final base = ThemeData(
+      useMaterial3: true,
+      visualDensity: VisualDensity.standard,
+      fontFamily: AppFonts.inter,
+      colorScheme: scheme,
+      scaffoldBackgroundColor: background,
+    );
+    return base.copyWith(
+      textTheme: base.textTheme.apply(
+        bodyColor: foreground,
+        displayColor: foreground,
+      ),
+      appBarTheme: AppBarTheme(
+        backgroundColor: surface,
+        foregroundColor: foreground,
+        surfaceTintColor: Colors.transparent,
+        titleTextStyle: const TextStyle(
+          fontFamily: AppFonts.outfit,
+          fontSize: 18,
+          fontWeight: FontWeight.w700,
+          color: foreground,
+        ),
+      ),
+      dialogTheme: const DialogThemeData(
+        backgroundColor: surface,
+        surfaceTintColor: Colors.transparent,
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: surface,
+        hintStyle: const TextStyle(color: secondaryText, fontSize: 15),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: border),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: accent, width: 1.6),
+        ),
+      ),
+      dividerTheme: const DividerThemeData(color: border, thickness: 1),
+    );
+  }
+
   static ThemeData get light {
     final base = ThemeData(
       useMaterial3: true,
