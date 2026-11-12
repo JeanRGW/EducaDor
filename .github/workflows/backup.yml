@@ -1,0 +1,57 @@
+name: Encrypted database backup
+
+on:
+  schedule:
+    - cron: '17 3 * * 0'
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Confirm this backup run
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: database-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    # Hard-disabled pending signed archive integration and independent review.
+    if: >-
+      false && github.ref == 'refs/heads/main' && vars.BACKUP_ENABLED == 'true' &&
+      (github.event_name == 'schedule' || inputs.confirm == true)
+    environment: backup-production
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      BACKUP_S3_ENDPOINT: ${{ vars.BACKUP_S3_ENDPOINT }}
+      BACKUP_TOTAL_BUDGET_BYTES: ${{ vars.BACKUP_TOTAL_BUDGET_BYTES }}
+      BACKUP_NON_BACKUP_RESERVE_BYTES: ${{ vars.BACKUP_NON_BACKUP_RESERVE_BYTES }}
+      BACKUP_RECIPIENT_FINGERPRINT: ${{ vars.BACKUP_RECIPIENT_FINGERPRINT }}
+      BACKUP_PUBLIC_KEY: ${{ vars.BACKUP_PUBLIC_KEY }}
+      BACKUP_HMAC_KEY_HEX: ${{ secrets.BACKUP_HMAC_KEY_HEX }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.BACKUP_S3_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_S3_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: sa-east-1
+      AWS_EC2_METADATA_DISABLED: 'true'
+      PGDATABASE: ${{ secrets.BACKUP_DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dump, encrypt, and publish
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          work="$(mktemp -d)"
+          trap 'rm -rf "$work"' EXIT
+          export GNUPGHOME="$work/gnupg"
+          mkdir -m 700 "$GNUPGHOME"
+          printf '%s' "$BACKUP_PUBLIC_KEY" | gpg --batch --quiet --import
+          pg_dump --no-owner --no-acl --file "$work/dump.sql" 2>/dev/null || { echo 'Database dump failed.' >&2; exit 1; }
+          python3 scripts/backup/archive.py pack "$work/dump.sql" "$work/archive" --recipient "$BACKUP_RECIPIENT_FINGERPRINT"
+          rm "$work/dump.sql"
+          python3 scripts/backup/publish.py "$work/archive"

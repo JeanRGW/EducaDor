@@ -6,7 +6,7 @@
 - `database.yml`: existing isolated local Supabase schema/regression checks, now bounded to 20 minutes with per-ref cancellation. It never targets the hosted database.
 - `deploy-pages.yml`: manual dispatch only, main only, environment `pages-production`. Builds and tests main before deploying to the existing Cloudflare Pages project `educador`, production branch `main`. No push, PR, workflow-run, or schedule trigger deploys anything.
 - `keepalive.yml`: manual dispatch only, main only, environment `database-keepalive`. Scheduling is deliberately absent until an operator explicitly approves it in a follow-up PR.
-- Backups remain deferred pending operator decisions and the remote protocol/security work described in [backup recovery](14-backup-recovery.md). An offline archive prototype exists, but no workflow or backup coverage is configured.
+- Backups remain disabled pending operator decisions and security work described in [backup recovery](14-backup-recovery.md). A hard-disabled workflow and publication prototype exist; no backup coverage is configured.
 
 New workflow actions are pinned by commit; Flutter is pinned to the locally verified stable 3.47.5, Node to 24.21.0, Deno to 2.9.8, and Wrangler to 4.157.0. Version upgrades should be reviewed together with local verification. Existing database action versions are unchanged. PR concurrency cancels superseded validation, while operational jobs queue rather than cancel midway. All workflows use read-only repository permissions and job timeouts.
 
