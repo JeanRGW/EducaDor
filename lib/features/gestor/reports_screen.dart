@@ -7,6 +7,9 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import '../../app/theme.dart';
 import '../../data/models/models.dart';
 import '../../data/repositories/gestor_providers.dart';
+import '../../data/repositories/repositories.dart';
+import '../../data/session/session_controller.dart';
+import '../reports/csv_export.dart';
 import '../../shared/widgets/app_icons.dart';
 import '../../shared/widgets/admin_styles.dart';
 import '../../shared/widgets/charts.dart';
@@ -23,6 +26,80 @@ class GestorReportsScreen extends ConsumerStatefulWidget {
 class _GestorReportsScreenState extends ConsumerState<GestorReportsScreen> {
   late ReportPeriod _period;
   int _offset = 0;
+  bool _exporting = false;
+
+  Future<void> _export() async {
+    final session = ref.read(sessionProvider).value;
+    if (session?.active?.role != Role.gestor) return;
+    final period = _period;
+    var valid = true;
+    final subscription = ref.listenManual(sessionProvider, (previous, next) {
+      if (next.value?.user.id != session?.user.id ||
+          next.value?.active?.role != Role.gestor ||
+          next.value?.active?.companyId != session?.active?.companyId) {
+        valid = false;
+      }
+    });
+    bool current() => valid && mounted;
+    setState(() => _exporting = true);
+    try {
+      final repository = ref.read(reportRepositoryProvider);
+      final companies = await readAllPages(
+        (offset) => repository.platformCompletion(offset: offset),
+        current,
+      );
+      if (!current()) return;
+      final activity = await repository.platformActivity(
+        from: period.from,
+        to: period.to,
+      );
+      if (!current()) return;
+      final rows = <List<String>>[
+        ['Relatório', 'Período inicial', 'Período final', 'Nome', 'Valor'],
+        for (final company in companies)
+          [
+            'Conclusão atual por empresa',
+            '',
+            '',
+            company.company,
+            company.percent?.toString().replaceAll('.', ',') ?? 'Sem dados',
+          ],
+        for (final entry in activity.popularContent)
+          [
+            'Conteúdo mais popular (top 10)',
+            formatDate(period.from),
+            formatDate(period.to),
+            entry.title,
+            entry.completions.toString(),
+          ],
+        for (final entry in activity.engagement)
+          [
+            'Usuários ativos por mês',
+            formatDate(period.from),
+            formatDate(period.to),
+            '${entry.month.month.toString().padLeft(2, '0')}/${entry.month.year}',
+            entry.activeUsers.toString(),
+          ],
+      ];
+      await saveCsv(
+        reportFilename('relatorio-gestor', DateTime.now()),
+        encodeCsv(rows),
+      );
+    } catch (_) {
+      if (mounted && valid) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Não foi possível exportar o relatório. Tente novamente.',
+            ),
+          ),
+        );
+      }
+    } finally {
+      subscription.close();
+      if (mounted) setState(() => _exporting = false);
+    }
+  }
 
   @override
   void initState() {
@@ -107,15 +184,21 @@ class _GestorReportsScreenState extends ConsumerState<GestorReportsScreen> {
           backgroundColor: AppColors.surface,
           titleTextStyle: AdminStyles.pageTitle,
           title: const Text('Relatórios e Análises'),
-          actions: const [
+          actions: [
             IconButton(
-              tooltip: 'Exportar CSV',
-              onPressed: null,
-              icon: SvgIcon(
-                AppIcons.fileDownload,
-                size: 20,
-                color: AppColors.textMuted,
-              ),
+              tooltip: _exporting ? 'Exportando CSV' : 'Exportar CSV',
+              onPressed: _exporting ? null : _export,
+              icon: _exporting
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const SvgIcon(
+                      AppIcons.fileDownload,
+                      size: 20,
+                      color: AppColors.textMuted,
+                    ),
             ),
           ],
         ),
@@ -170,7 +253,9 @@ class _GestorReportsScreenState extends ConsumerState<GestorReportsScreen> {
               ),
               const Padding(
                 padding: EdgeInsets.fromLTRB(16, 12, 16, 0),
-                child: Text('Exportações disponíveis em breve.'),
+                child: Text(
+                  'O CSV inclui a conclusão atual e a atividade do período selecionado.',
+                ),
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),

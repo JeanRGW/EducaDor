@@ -491,7 +491,7 @@ void main() {
     },
   );
 
-  testWidgets('reports show honest empty states and disable deferred CSV', (
+  testWidgets('reports show honest empty states and enable CSV', (
     tester,
   ) async {
     await _show(
@@ -500,14 +500,8 @@ void main() {
       reports: _Reports()..empty = true,
     );
     final export = tester.widget<IconButton>(find.byType(IconButton).first);
-    expect(export.onPressed, isNull);
-    expect(find.text('Exportações disponíveis em breve.'), findsOneWidget);
-    final semantics = tester.ensureSemantics();
-    expect(
-      find.bySemanticsLabel('Exportações disponíveis em breve.'),
-      findsOneWidget,
-    );
-    semantics.dispose();
+    expect(export.onPressed, isNotNull);
+    expect(export.tooltip, 'Exportar CSV');
     expect(find.text('Nenhuma empresa cadastrada.'), findsOneWidget);
     expect(find.text('Nenhuma conclusão no período.'), findsOneWidget);
     final popularEmpty = find.text('Nenhuma conclusão no período.');

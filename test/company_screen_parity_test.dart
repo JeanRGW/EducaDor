@@ -768,7 +768,7 @@ void main() {
       final csv = tester.widget<FilledButton>(
         find.widgetWithText(FilledButton, 'Exportar dados em CSV'),
       );
-      expect(csv.onPressed, isNull);
+      expect(csv.onPressed, isNotNull);
       expect(tester.takeException(), isNull);
     },
   );
