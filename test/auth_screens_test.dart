@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:educador/app/theme.dart';
+import 'package:educador/core/pending_invite.dart';
 import 'package:educador/data/models/models.dart';
 import 'package:educador/data/session/session_controller.dart';
 import 'package:educador/features/auth/screens.dart';
@@ -223,10 +224,9 @@ void main() {
         await tester.binding.setSurfaceSize(const Size(401, 830));
         addTearDown(() => tester.binding.setSurfaceSize(null));
         final session = _Session();
-        final invite = Uri(
-          path: '/invite/accept',
-          queryParameters: {'token': 'a' * 64},
-        );
+        setPendingInvite(redirect ? 'a' * 64 : null);
+        addTearDown(() => setPendingInvite(null));
+        final invite = Uri(path: '/invite/accept');
         final router = await _show(
           tester,
           session: session,

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:educador/app/theme.dart';
 import 'package:educador/core/invite_link.dart';
+import 'package:educador/core/pending_invite.dart';
 import 'package:educador/core/router.dart';
 import 'package:educador/data/models/models.dart';
 import 'package:educador/data/repositories/repositories.dart';
@@ -70,6 +71,10 @@ Future<ProviderContainer> _show(
 }
 
 void main() {
+  tearDown(() {
+    setPendingInvite(null);
+    setPendingStartInvite(null);
+  });
   test('parser accepts only fragment credentials and supported Auth types', () {
     for (final type in ['invite', 'magiclink']) {
       final link = InviteAuthLink.fromUri(Uri.parse(_location(type: type)))!;
@@ -98,6 +103,16 @@ void main() {
       final auth = _Auth();
       final container = await _show(tester, auth, _location(type: type));
       expect(find.byType(InviteStartScreen), findsOneWidget);
+      expect(
+        container
+            .read(routerProvider)
+            .routeInformationProvider
+            .value
+            .uri
+            .toString(),
+        '/invite/start',
+      );
+      expect(pendingStartInvite?.identity, (_hash, type, _token));
       expect(auth.verifications, 0);
       container.read(routerProvider).refresh();
       await tester.pumpAndSettle();
@@ -114,8 +129,10 @@ void main() {
             .value
             .uri
             .toString(),
-        '/invite/accept?token=$_token',
+        '/invite/accept',
       );
+      expect(pendingInvite, _token);
+      expect(pendingStartInvite, isNull);
     });
   }
 

@@ -258,7 +258,7 @@ for (const regenerate of [false, true]) {
     const response = await state.invite({ email, role: 'funcionario', companyId, ...(regenerate ? { action: 'regenerate' } : {}) });
     assert.equal(response.status, 200);
     assert.equal(state.accountLinks.length, 0);
-    assert.equal(response.body.link, 'https://app.example.test/invite/accept?token=' + 'a'.repeat(64));
+    assert.equal(response.body.link, 'https://app.example.test/invite/accept#token=' + 'a'.repeat(64));
     assert.equal(state.tables.platform_gestors.length, 1);
     assert.equal(state.tables.company_memberships.length, 0);
   });
@@ -269,6 +269,7 @@ test('new accounts receive an inert app link, never the auto-consuming Auth URL'
   const response = await state.invite({ email: 'new@example.test' });
   assert.equal(response.status, 200);
   assertProtectedLink(response.body.link, 'invite');
+  assert.equal(state.accountLinks[0].options.redirectTo, 'https://app.example.test/invite/accept');
   assert.equal(state.tables.profiles[0].needs_password, true);
   assert.equal(state.tables.platform_gestors.length, 0);
 });
@@ -286,9 +287,10 @@ for (const confirmed of [false, true]) {
       assert.equal(response.status, 200);
       if (confirmed) {
         assert.equal(state.accountLinks.length, 0);
-        assert.equal(response.body.link, 'https://app.example.test/invite/accept?token=' + 'a'.repeat(64));
+        assert.equal(response.body.link, 'https://app.example.test/invite/accept#token=' + 'a'.repeat(64));
       } else {
         assertProtectedLink(response.body.link, regenerate ? 'invite' : 'magiclink');
+        assert.equal(state.accountLinks[0].options.redirectTo, 'https://app.example.test/invite/accept');
       }
       assert.equal(state.tables.platform_gestors.length, 0);
     });

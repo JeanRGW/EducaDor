@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/theme.dart';
 import '../../core/invite_link.dart';
+import '../../core/pending_invite.dart';
 import '../../data/repositories/repositories.dart';
 import '../../data/session/session_controller.dart';
 import '../../shared/widgets/admin_styles.dart';
@@ -11,7 +12,9 @@ import '../../shared/widgets/app_icons.dart';
 import '../../shared/widgets/common.dart';
 
 class InviteStartScreen extends ConsumerStatefulWidget {
-  const InviteStartScreen({super.key, required this.link});
+  const InviteStartScreen({super.key, this.link});
+
+  /// Optional test override; production reads the current tab-scoped link.
   final InviteAuthLink? link;
 
   @override
@@ -34,8 +37,35 @@ class _InviteStartScreenState extends ConsumerState<InviteStartScreen> {
     }
   }
 
+  InviteAuthLink? get _link => widget.link ?? pendingStartInvite;
+
+  @override
+  void initState() {
+    super.initState();
+    pendingStartInviteNotifier.addListener(_onLinkReplaced);
+  }
+
+  @override
+  void dispose() {
+    pendingStartInviteNotifier.removeListener(_onLinkReplaced);
+    super.dispose();
+  }
+
+  void _onLinkReplaced() {
+    if (!mounted) return;
+    setState(() {
+      _verified = false;
+      _error = null;
+    });
+  }
+
+  void _clearStart() => setPendingStartInvite(null);
+
+  bool _isCurrent(InviteAuthLink link) =>
+      mounted && _link?.identity == link.identity;
+
   Future<void> _continue() async {
-    final link = widget.link;
+    final link = _link;
     if (_busy || link == null) return;
     setState(() {
       _busy = true;
@@ -46,7 +76,8 @@ class _InviteStartScreenState extends ConsumerState<InviteStartScreen> {
         try {
           await ref.read(authRepositoryProvider).verifyInviteToken(link);
         } catch (_) {
-          if (mounted && widget.link?.identity == link.identity) {
+          if (_isCurrent(link)) {
+            _clearStart();
             setState(
               () => _error =
                   'Este link expirou ou já foi utilizado. Peça um novo convite a quem enviou.',
@@ -54,15 +85,17 @@ class _InviteStartScreenState extends ConsumerState<InviteStartScreen> {
           }
           return;
         }
-        if (!mounted || widget.link?.identity != link.identity) return;
+        if (!_isCurrent(link)) return;
         _verified = true;
       }
       await ref.read(sessionProvider.notifier).reload();
-      if (mounted && widget.link?.identity == link.identity) {
-        context.go('/invite/accept?token=${link.token}');
+      if (_isCurrent(link)) {
+        setPendingInvite(link.token);
+        _clearStart();
+        if (mounted) context.go('/invite/accept');
       }
     } catch (_) {
-      if (mounted && widget.link?.identity == link.identity) {
+      if (_isCurrent(link)) {
         setState(
           () => _error =
               'Link confirmado. Não foi possível carregar sua conta. Tente continuar novamente.',
@@ -74,53 +107,56 @@ class _InviteStartScreenState extends ConsumerState<InviteStartScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Seu convite')),
-    body: Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 480),
-        child: ListView(
-          shrinkWrap: true,
-          padding: const EdgeInsets.all(24),
-          children: [
-            Align(
-              alignment: Alignment.centerLeft,
-              child: SvgIcon(
-                AppIcons.mail,
-                size: 40,
-                color: context.colors.primary,
+  Widget build(BuildContext context) {
+    final link = _link;
+    return Scaffold(
+      appBar: AppBar(title: const Text('Seu convite')),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 480),
+          child: ListView(
+            shrinkWrap: true,
+            padding: const EdgeInsets.all(24),
+            children: [
+              Align(
+                alignment: Alignment.centerLeft,
+                child: SvgIcon(
+                  AppIcons.mail,
+                  size: 40,
+                  color: context.colors.primary,
+                ),
               ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              widget.link == null
-                  ? 'Link de convite inválido'
-                  : 'Bem-vindo ao EducaDor',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              widget.link == null
-                  ? 'Abra o link completo ou peça um novo convite a quem enviou.'
-                  : 'Continue para confirmar seu acesso. Depois, você poderá aceitar o convite e criar sua senha.',
-              style: AdminStyles.body(context),
-            ),
-            const SizedBox(height: 24),
-            if (widget.link != null)
-              PrimaryButton(
-                _busy ? 'Confirmando...' : 'Continuar',
-                onPressed: _busy ? null : _continue,
-              ),
-            if (_error != null) ...[
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
               Text(
-                _error!,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
+                link == null
+                    ? 'Link de convite inválido'
+                    : 'Bem-vindo ao EducaDor',
+                style: Theme.of(context).textTheme.headlineSmall,
               ),
+              const SizedBox(height: 12),
+              Text(
+                link == null
+                    ? 'Abra o link completo ou peça um novo convite a quem enviou.'
+                    : 'Continue para confirmar seu acesso. Depois, você poderá aceitar o convite e criar sua senha.',
+                style: AdminStyles.body(context),
+              ),
+              const SizedBox(height: 24),
+              if (link != null)
+                PrimaryButton(
+                  _busy ? 'Confirmando...' : 'Continuar',
+                  onPressed: _busy ? null : _continue,
+                ),
+              if (_error != null) ...[
+                const SizedBox(height: 16),
+                Text(
+                  _error!,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
-    ),
-  );
+    );
+  }
 }

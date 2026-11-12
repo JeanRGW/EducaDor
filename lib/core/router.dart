@@ -25,27 +25,14 @@ import '../features/security/screens.dart';
 import '../features/auth/recovery_screens.dart';
 import 'recovery_link.dart';
 import 'invite_link.dart';
+import 'pending_invite.dart';
 import '../features/auth/invite_start_screen.dart';
 
 const _authRoutes = ['/splash', '/welcome', '/login', '/recover'];
 
-String? _inviteRedirect(String? candidate) {
-  if (candidate == null) return null;
-  final uri = Uri.tryParse(candidate);
-  if (uri == null ||
-      uri.hasScheme ||
-      uri.hasAuthority ||
-      uri.path != '/invite/accept' ||
-      !RegExp(r'^[0-9a-f]{64}$').hasMatch(uri.queryParameters['token'] ?? '')) {
-    return null;
-  }
-  return uri.toString();
-}
-
 final routerProvider = Provider<GoRouter>((ref) {
   GoRouter.optionURLReflectsImperativeAPIs = true;
   String? pendingLocation;
-  String? pendingInvite;
   ref.listen(sessionProvider, (_, _) => sessionRefresh.refresh());
   final router = GoRouter(
     initialLocation: '/splash',
@@ -55,6 +42,27 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final sessionState = ref.read(sessionProvider);
       final loc = state.matchedLocation;
+      if (loc == '/invite/start' && state.uri.hasFragment) {
+        setPendingStartInvite(InviteAuthLink.fromUri(state.uri));
+        return '/invite/start';
+      }
+      if (loc == '/invite/accept' &&
+          (state.uri.hasQuery || state.uri.hasFragment)) {
+        setPendingInvite(inviteTokenFromUri(state.uri));
+        return '/invite/accept';
+      }
+      if (loc == '/login' && state.uri.hasQuery) {
+        final candidate = Uri.tryParse(
+          state.uri.queryParameters['redirect'] ?? '',
+        );
+        if (candidate != null &&
+            !candidate.hasScheme &&
+            !candidate.hasAuthority) {
+          final token = inviteTokenFromUri(candidate);
+          if (token != null) setPendingInvite(token);
+        }
+        return '/login';
+      }
       if (loc == '/recover' ||
           loc == '/recover/complete' ||
           loc == '/invite/start') {
@@ -92,14 +100,6 @@ final routerProvider = Provider<GoRouter>((ref) {
         return '/login';
       }
       if (session.needsMfa) {
-        if (loc == '/invite/accept') {
-          pendingInvite = _inviteRedirect(state.uri.toString());
-        }
-        if (loc == '/login') {
-          pendingInvite =
-              _inviteRedirect(state.uri.queryParameters['redirect']) ??
-              pendingInvite;
-        }
         return loc == '/mfa' ? null : '/mfa';
       }
       if (session.recoveringPassword) {
@@ -107,16 +107,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       }
       if (loc == '/reset-password') return '/recover';
       if (loc == '/mfa') {
-        final invite = pendingInvite;
-        if (invite != null) return invite;
+        if (pendingInvite != null) return '/invite/accept';
         return session.needsPassword ? '/set-password' : session.homePath;
       }
-      if (loc == '/login') {
-        final invite = _inviteRedirect(state.uri.queryParameters['redirect']);
-        if (invite != null) return invite;
-      }
+      if (loc == '/login' && pendingInvite != null) return '/invite/accept';
       if (loc == '/invite/accept') return null;
-      pendingInvite = null;
       if (session.needsPassword) {
         return loc == '/set-password' ? null : '/set-password';
       }
@@ -138,8 +133,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(
         path: '/invite/start',
-        builder: (_, state) =>
-            InviteStartScreen(link: InviteAuthLink.fromUri(state.uri)),
+        builder: (_, _) => const InviteStartScreen(),
       ),
       GoRoute(path: '/mfa', builder: (_, _) => const MfaChallengeScreen()),
       GoRoute(
@@ -181,8 +175,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/invite/accept',
-        builder: (_, state) =>
-            AcceptInviteScreen(token: state.uri.queryParameters['token'] ?? ''),
+        builder: (_, _) => AcceptInviteScreen(token: pendingInvite ?? ''),
       ),
 
       // ---- Funcionário (employee) ----

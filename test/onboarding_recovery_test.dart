@@ -1,4 +1,5 @@
 import 'package:educador/app/theme.dart';
+import 'package:educador/core/pending_invite.dart';
 import 'package:educador/data/models/models.dart';
 import 'package:educador/data/repositories/repositories.dart';
 import 'package:educador/features/auth/onboarding_screens.dart';
@@ -63,15 +64,13 @@ Future<GoRouter> _show(
   _Invites invites, {
   bool password = false,
 }) async {
+  setPendingInvite(password ? null : 'a' * 64);
   final router = GoRouter(
-    initialLocation: password
-        ? '/set-password'
-        : '/invite/accept?token=test-token',
+    initialLocation: password ? '/set-password' : '/invite/accept',
     routes: [
       GoRoute(
         path: '/invite/accept',
-        builder: (_, state) =>
-            AcceptInviteScreen(token: state.uri.queryParameters['token'] ?? ''),
+        builder: (_, _) => AcceptInviteScreen(token: pendingInvite ?? ''),
       ),
       GoRoute(
         path: '/set-password',
@@ -106,6 +105,7 @@ Future<void> _savePassword(WidgetTester tester) async {
 }
 
 void main() {
+  tearDown(() => setPendingInvite(null));
   testWidgets('invalid acceptance preserves the invalid/expired error', (
     tester,
   ) async {
@@ -143,7 +143,8 @@ void main() {
       await tester.tap(find.text('Carregar perfis novamente'));
       await tester.pumpAndSettle();
       expect(invites.accepts, 1);
-      expect(invites.token, 'test-token');
+      expect(invites.token, 'a' * 64);
+      expect(pendingInvite, isNull);
       expect(auth.reloads, 4);
       expect(router.routeInformationProvider.value.uri.path, '/contexts');
     },

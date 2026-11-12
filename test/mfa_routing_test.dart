@@ -1,5 +1,6 @@
 import 'package:educador/app/app.dart';
 import 'package:educador/core/router.dart';
+import 'package:educador/core/pending_invite.dart';
 import 'package:educador/data/models/models.dart';
 import 'package:educador/data/session/session_controller.dart';
 import 'package:educador/features/security/screens.dart';
@@ -28,6 +29,7 @@ class MfaSession extends SessionController {
 }
 
 void main() {
+  tearDown(() => setPendingInvite(null));
   testWidgets('AAL1 blocks protected and invite routes until challenge', (
     tester,
   ) async {
@@ -49,6 +51,16 @@ void main() {
     container.read(routerProvider).go('/invite/accept?token=${'a' * 64}');
     await tester.pumpAndSettle();
     expect(find.byType(MfaChallengeScreen), findsOneWidget);
+    expect(pendingInvite, 'a' * 64);
+    expect(
+      container
+          .read(routerProvider)
+          .routeInformationProvider
+          .value
+          .uri
+          .toString(),
+      '/mfa',
+    );
     (container.read(sessionProvider.notifier) as MfaSession).complete();
     await tester.pumpAndSettle();
     expect(find.byType(AcceptInviteScreen), findsOneWidget);
