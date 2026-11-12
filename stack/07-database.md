@@ -100,6 +100,13 @@ existing verified-factor lookup; report queries remain guarded owner reads.
 
 ## Normal hosted deployment
 
+**Before any push, inspect all pending migrations and their rollout requirements.**
+A dry run does not make the subsequent push version-targeted: `db push --linked`
+applies every pending migration. In particular, the staged profile privacy rollout
+must pause between its two migrations; its hosted deployment is currently blocked
+until a safe procedure is approved. See [profile privacy rollout](14-profile-privacy-rollout.md).
+Do not run the commands below while that stage is pending.
+
 ```bash
 npx --yes supabase@2.122.0 link --project-ref lrlqmkamgncdgppyqnvu
 npx --yes supabase@2.122.0 db push --linked --dry-run

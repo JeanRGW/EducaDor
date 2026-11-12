@@ -10,6 +10,29 @@ first migration and verifies the recorded migration version. If the available to
 cannot target a version safely, stop and obtain an approved procedure; do not edit
 migration history, mark unapplied migrations as applied, or use Studio SQL.
 
+**Deployment blocker (2026-11-12):** no hosted version-targeted procedure has
+been verified for the pinned CLI. Its `db push` and `migration up` help expose no
+version limit. A truncated migration directory is a possible research direction,
+not an approved hosted deployment mechanism: local testing does not establish
+linked-project identity, credential handling, exact hosted history, or protection
+against concurrent migration changes between inspection and application. Do not
+use it on a hosted project until those safeguards have been independently reviewed
+and an operator approves a complete procedure. An ordinary push, migration repair,
+manual SQL, or a remote reset is not a workaround.
+
+A local-only experiment used CLI 2.122.0 with a separate project ID, ports and
+container, and copied unchanged migration files into a temporary workdir. Starting
+from history through `20261110004654`, a `db push --local --skip-vault --dry-run`
+listed only `20261112053533`; the subsequent local push recorded that version,
+created `own_profile()`, and retained authenticated table-wide SELECT. After copying
+`20261112053550`, a second dry run listed only that file; the local push recorded
+it and removed table-wide SELECT. With both files present, declarative strict
+coverage reported no schema changes. Removing the restriction file after it was
+recorded made the local dry run fail with `DbPushMissingLocalError`; its suggested
+migration repair must **not** be followed. This experiment did not contact or
+validate a hosted project and does not establish safety for missing earlier versions,
+concurrent deploys, or all unexpected histories.
+
 | Client | Before additive RPC | Additive only | Restricted |
 | --- | --- | --- | --- |
 | Old PWA (direct sensitive SELECT) | Works; exposure exists | Works; exposure exists | Profile/session reads fail |
