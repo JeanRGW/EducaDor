@@ -1283,6 +1283,26 @@ class AuthRepository {
     : _injectedClient = client,
       _recoveryIntent = recoveryIntent ?? RecoveryIntentStore();
 
+  /// Errors that prove the stored Auth session no longer exists server-side.
+  /// Anything else (network, timeouts, 5xx) stays retryable and must not sign
+  /// the user out.
+  static const _invalidSessionCodes = {
+    'session_not_found',
+    'session_expired',
+    'session_missing',
+    'refresh_token_not_found',
+    'refresh_token_already_used',
+    'user_not_found',
+    'invalid_jwt',
+    'bad_jwt',
+  };
+
+  static bool _isInvalidSession(AuthException error) {
+    if (error is AuthRetryableFetchException) return false;
+    if (error is AuthSessionMissingException) return true;
+    return _invalidSessionCodes.contains(error.code);
+  }
+
   SupabaseClient get _authClient =>
       _injectedClient ??
       _client ??
@@ -1304,7 +1324,24 @@ class AuthRepository {
     final client = _injectedClient ?? _client;
     final authUser = client?.auth.currentUser;
     if (client == null || authUser == null) return null;
-    final freshUser = (await client.auth.getUser()).user;
+    final accessToken = client.auth.currentSession?.accessToken;
+    final UserResponse fresh;
+    try {
+      fresh = await client.auth.getUser();
+    } on AuthException catch (error) {
+      if (!_isInvalidSession(error)) rethrow;
+      if (client.auth.currentSession?.accessToken != accessToken) rethrow;
+      // A separate session (for example an MFA verification) can revoke the
+      // stored one. Clear the local copy so routing falls back to login
+      // instead of surfacing a retryable error for an unrecoverable session.
+      try {
+        await client.auth.signOut(scope: SignOutScope.local);
+      } on AuthException {
+        // Best effort: the session is already unusable.
+      }
+      return null;
+    }
+    final freshUser = fresh.user;
     if (freshUser == null || freshUser.id != authUser.id) return null;
     final enrolled =
         freshUser.factors?.any(

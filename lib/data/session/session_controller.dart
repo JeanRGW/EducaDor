@@ -15,7 +15,13 @@ class SessionRefreshNotifier extends ChangeNotifier {
 }
 
 class SessionController extends AsyncNotifier<AppSession?> {
+  static const loadTimeout = Duration(seconds: 15);
+
   int _reloadEpoch = 0;
+
+  Future<AppSession?> _load() =>
+      ref.read(authRepositoryProvider).current().timeout(loadTimeout);
+
   @override
   Future<AppSession?> build() async {
     const url = String.fromEnvironment('SUPABASE_URL');
@@ -36,12 +42,15 @@ class SessionController extends AsyncNotifier<AppSession?> {
                 event.event == AuthChangeEvent.mfaChallengeVerified) {
               unawaited(_sync());
             }
+          }, onError: (Object _, StackTrace _) {
+            // Retryable refresh failures are stream errors. They must not sign
+            // the user out; /session-error keeps an explicit retry.
           });
       ref.onDispose(subscription.cancel);
     }
     final epoch = ++_reloadEpoch;
     try {
-      final result = await ref.read(authRepositoryProvider).current();
+      final result = await _load();
       return epoch == _reloadEpoch ? result : state.value;
     } catch (_) {
       if (epoch != _reloadEpoch) return state.value;
@@ -73,7 +82,7 @@ class SessionController extends AsyncNotifier<AppSession?> {
   Future<AppSession?> reload() async {
     final epoch = ++_reloadEpoch;
     try {
-      final session = await ref.read(authRepositoryProvider).current();
+      final session = await _load();
       if (epoch != _reloadEpoch) return state.value;
       state = AsyncData(session);
       sessionRefresh.refresh();
@@ -137,4 +146,8 @@ class SessionController extends AsyncNotifier<AppSession?> {
 
 final sessionProvider = AsyncNotifierProvider<SessionController, AppSession?>(
   SessionController.new,
+  // Session failures are classified and surfaced by /session-error with an
+  // explicit retry. Automatic background retries would keep the provider in
+  // AsyncLoading, which strands the router on /splash.
+  retry: (_, _) => null,
 );
