@@ -77,7 +77,7 @@ do $$ declare l uuid; row jsonb; g text; expected text; item jsonb; signature te
     end loop;
   end loop;
   perform public.update_own_profile('Legacy',null,null,null);
-  if (select gender from public.profiles where id=auth.uid())<>'female' then raise exception 'Legacy profile cleared gender'; end if;
+  if (select gender from public.own_profile())<>'female' then raise exception 'Legacy profile cleared gender'; end if;
   begin perform public.update_own_profile('Invalid',null,null,null,'invalid'); raise exception 'Invalid profile accepted'; exception when raise_exception then if sqlerrm='Invalid profile accepted' then raise; end if; end;
   if (select full_name from public.profiles where id=auth.uid())<>'Legacy' then raise exception 'Invalid profile changed identity'; end if;
   row:=public.employee_lesson_content((select id from public.lessons where title='Quiz'));
@@ -104,7 +104,7 @@ do $$ declare l uuid; row jsonb; g text; expected text; item jsonb; signature te
   begin perform public.save_employee_progress(public.own_company_id(),(select id from public.lessons where title='Single male'),1,false,'female'); raise exception 'Unavailable variant accepted'; exception when raise_exception then if sqlerrm='Unavailable variant accepted' then raise; end if; end;
   begin perform public.save_employee_progress('b8900000-0000-4000-8000-000000000002',l,1,false,'male'); raise exception 'Cross-company progress'; exception when raise_exception then if sqlerrm='Cross-company progress' then raise; end if; end;
   perform public.update_own_profile('Gender',null,null,null,null);
-  if (select gender from public.profiles where id=auth.uid()) is not null then raise exception 'Explicit clear failed'; end if;
+  if (select gender from public.own_profile()) is not null then raise exception 'Explicit clear failed'; end if;
 end $$;
 select public.select_context('empresa','b8900000-0000-4000-8000-000000000001');
 do $$ begin

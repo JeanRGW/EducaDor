@@ -1327,11 +1327,8 @@ class AuthRepository {
         recoveringPassword: recovering,
       );
     }
-    final profile = await client
-        .from('profiles')
-        .select('id,full_name,email,needs_password,gender')
-        .eq('id', authUser.id)
-        .single();
+    final profiles = await client.rpc('own_profile') as List<dynamic>;
+    final profile = profiles.single as Map<String, dynamic>;
     final contextRows = await client.rpc('available_contexts') as List<dynamic>;
     final contexts = contextRows.map((row) {
       final data = row as Map<String, dynamic>;
@@ -1569,11 +1566,8 @@ class ProfileRepository {
     final client = _profileClient;
     final userId = client.auth.currentUser?.id;
     if (userId == null) throw StateError('Entre para editar seu perfil.');
-    final row = await client
-        .from('profiles')
-        .select('full_name,email,phone,birth_date,address,gender')
-        .eq('id', userId)
-        .single();
+    final rows = await client.rpc('own_profile') as List<dynamic>;
+    final row = rows.single as Map<String, dynamic>;
     return OwnProfile(
       fullName: row['full_name'] as String,
       email: row['email'] as String,
