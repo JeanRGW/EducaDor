@@ -1,0 +1,11 @@
+-- Run only after profile_rpc and before profile_restrict in an isolated database.
+begin;
+insert into auth.users(id,email) values ('a9100000-0000-4000-8000-000000000001','profile-stage@example.test');
+insert into public.profiles(id,full_name,email,phone,birth_date,address,gender) values ('a9100000-0000-4000-8000-000000000001','Stage','profile-stage@example.test','123','1990-01-01','Address','female');
+set local role authenticated;
+select set_config('request.jwt.claims','{"sub":"a9100000-0000-4000-8000-000000000001","session_id":"a9100000-0000-4000-8000-000000000002","aal":"aal1"}',true);
+do $$ begin
+  if not exists(select 1 from public.profiles where id=auth.uid() and phone='123' and birth_date='1990-01-01' and address='Address' and gender='female') then raise exception 'Old client unavailable'; end if;
+  if not exists(select 1 from public.own_profile() where phone='123' and gender='female') then raise exception 'New client unavailable'; end if;
+end $$;
+rollback;

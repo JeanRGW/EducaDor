@@ -23,8 +23,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - name: Start isolated database
-        run: npx --yes supabase@2.122.0 db start
+      - name: Start database and test additive profile rollout stage
+        run: |
+          restriction=supabase/migrations/20261112053550_profile_restrict.sql
+          mv "$restriction" "$RUNNER_TEMP/profile_restrict.sql"
+          trap 'mv "$RUNNER_TEMP/profile_restrict.sql" "$restriction"' EXIT
+          npx --yes supabase@2.122.0 db start
+          docker exec -i supabase_db_EducaDor psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/profile_privacy_additive.sql.stage
       - name: Rebuild from migrations
         run: bash scripts/db.sh reset
       - name: Check declarative schema matches migrations
