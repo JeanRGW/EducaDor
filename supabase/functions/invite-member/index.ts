@@ -111,8 +111,8 @@ Deno.serve(async (req) => {
       }
 
       const token = newToken();
-      const target = `${appOrigin.replace(/\/$/, '')}/invite/accept?token=${token}`;
-      let link = target;
+      const target = `${appOrigin.replace(/\/$/, '')}/invite/accept`;
+      let link = `${target}#token=${token}`;
       if (!account.user.email_confirmed_at) {
         const { data: generated, error: linkError } = await admin.auth.admin.generateLink({
           type: 'invite', email, options: { redirectTo: target },
@@ -154,7 +154,7 @@ Deno.serve(async (req) => {
     if (pending?.length) return respond(req, { error: 'Invitation already pending' }, 409);
 
     const token = newToken();
-    const target = `${appOrigin.replace(/\/$/, '')}/invite/accept?token=${token}`;
+    const target = `${appOrigin.replace(/\/$/, '')}/invite/accept`;
     const { data: invitation, error: insertError } = await admin.from('membership_invites')
       .insert({ email, role, company_id: companyId, invited_by: current.id,
         dept: role === 'funcionario' && typeof input.department === 'string'
@@ -179,7 +179,7 @@ Deno.serve(async (req) => {
       }
       // Onboarding state must never let an inviter mint login credentials for a confirmed identity.
       if (account.user.email_confirmed_at) {
-        return respond(req, { link: target });
+        return respond(req, { link: `${target}#token=${token}` });
       }
       // An expired first invitation leaves an unconfirmed Auth account.
       // GoTrue may reject a second invite for an existing account; an

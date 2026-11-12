@@ -105,7 +105,15 @@ or run `supabase/seed.sql` on production.
   WhatsApp previews) performs no verification or invitation acceptance. Tokens
   stay in the fragment, out of HTTP request paths, and are never logged.
   An existing account receives a membership link to open after
-  sign-in. The authorized inviter sees the link only once for private handoff.
+  sign-in. `/invite/start` credentials are likewise moved into tab-scoped
+  storage before a clean URL replaces the fragment, and removed after hand-off
+  or failure. Membership tokens also arrive in the fragment (`/invite/accept#token=...`):
+  the app immediately moves the token into tab-scoped browser storage and
+  replaces the URL with `/invite/accept`, so later navigations, refreshes and the
+  login/MFA hand-off never carry it, and logout or cancellation clears it.
+  A legacy `?token=` link is accepted once and scrubbed the same way, but the
+  initial request path may already contain it in transport/host logs.
+  The authorized inviter sees the link only once for private handoff.
   If it was lost, use **Gerar novo link** on the pending invitation: the old
   invitation token is invalidated, and only the newly generated link is shown.
   Confirmed accounts always keep the existing sign-in/accept flow, even when

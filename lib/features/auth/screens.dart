@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/theme.dart';
+import '../../core/pending_invite.dart';
 import '../../data/session/session_controller.dart';
 import '../../shared/widgets/app_icons.dart';
 import '../../shared/widgets/common.dart';
@@ -203,10 +204,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           .read(sessionProvider.notifier)
           .login(email: _email.text, password: _password.text);
       if (!mounted) return;
-      final redirect = widget.redirectTo;
       context.go(
-        redirect != null && redirect.startsWith('/invite/accept?token=')
-            ? redirect
+        pendingInvite != null
+            ? '/invite/accept'
             : session.needsPassword
             ? '/set-password'
             : session.homePath,

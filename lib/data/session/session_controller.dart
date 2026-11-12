@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/pending_invite.dart';
 import '../models/models.dart';
 import '../repositories/repositories.dart';
 import '../repositories/notification_controller.dart';
@@ -122,6 +123,8 @@ class SessionController extends AsyncNotifier<AppSession?> {
   }
 
   Future<void> logout() async {
+    setPendingInvite(null);
+    setPendingStartInvite(null);
     _reloadEpoch++;
     try {
       await ref.read(notificationControllerProvider.notifier).beforeLogout();

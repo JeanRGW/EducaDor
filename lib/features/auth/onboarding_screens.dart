@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/theme.dart';
+import '../../core/pending_invite.dart';
 import '../../data/repositories/repositories.dart';
 import '../../data/session/session_controller.dart';
 import '../../shared/widgets/app_icons.dart';
@@ -141,11 +142,12 @@ class _AcceptInviteScreenState extends ConsumerState<AcceptInviteScreen> {
           }
           return;
         }
-        if (!mounted || widget.token != token) return;
+        if (!mounted || widget.token != token || pendingInvite != token) return;
         setState(() => _accepted = true);
       }
       final session = await ref.read(sessionProvider.notifier).reload();
-      if (!mounted || widget.token != token) return;
+      if (!mounted || widget.token != token || pendingInvite != token) return;
+      setPendingInvite(null);
       context.go(
         session?.needsPassword == true ? '/set-password' : '/contexts',
       );
@@ -185,18 +187,7 @@ class _AcceptInviteScreenState extends ConsumerState<AcceptInviteScreen> {
               'Entrar para aceitar',
               onPressed: widget.token.isEmpty
                   ? null
-                  : () {
-                      final target = Uri(
-                        path: '/invite/accept',
-                        queryParameters: {'token': widget.token},
-                      ).toString();
-                      context.go(
-                        Uri(
-                          path: '/login',
-                          queryParameters: {'redirect': target},
-                        ).toString(),
-                      );
-                    },
+                  : () => context.go('/login'),
             )
           else
             PrimaryButton(
@@ -205,6 +196,15 @@ class _AcceptInviteScreenState extends ConsumerState<AcceptInviteScreen> {
                   : (_busy ? 'Aceitando...' : 'Aceitar convite'),
               onPressed: _busy || widget.token.isEmpty ? null : _accept,
             ),
+          TextButton(
+            onPressed: _busy
+                ? null
+                : () {
+                    setPendingInvite(null);
+                    context.go('/login');
+                  },
+            child: const Text('Cancelar'),
+          ),
         ],
       ),
     );
