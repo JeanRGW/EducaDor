@@ -69,7 +69,7 @@ void main() {
             const CompanyCompletion(
               companyId: 'company-a',
               company: 'Grupo Santa Maria',
-              percent: 0.82,
+              percent: 82,
             ),
             const CompanyCompletion(
               companyId: 'company-b',
@@ -79,7 +79,7 @@ void main() {
             const CompanyCompletion(
               companyId: 'company-c',
               company: 'Varejo Central',
-              percent: 0.47,
+              percent: 47,
             ),
           ],
         ),
@@ -139,9 +139,9 @@ void main() {
         ),
         companyDepartmentsProvider.overrideWith(
           (ref, query) async => const [
-            MapEntry('Comercial', 0.82),
-            MapEntry('RH', 0.74),
-            MapEntry('TI', 0.61),
+            MapEntry('Comercial', 82.0),
+            MapEntry('RH', 74.0),
+            MapEntry('TI', 61.0),
             MapEntry('Operações', null),
           ],
         ),
