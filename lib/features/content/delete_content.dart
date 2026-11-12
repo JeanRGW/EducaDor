@@ -22,10 +22,10 @@ Future<bool> confirmContentDeletion(
         context: context,
         builder: (context) => AlertDialog(
           scrollable: true,
-          title: Text('Excluir $label?', style: AdminStyles.formTitle),
+          title: Text('Excluir $label?', style: AdminStyles.formTitle(context)),
           content: Text(
             '“$title” será excluído permanentemente. $descendants Os pontos obtidos nesse conteúdo deixarão de compor o saldo dos funcionários. Os arquivos enviados permanecerão no armazenamento. Esta ação não pode ser desfeita.',
-            style: AdminStyles.body,
+            style: AdminStyles.body(context),
           ),
           actions: [
             TextButton(
@@ -34,7 +34,10 @@ Future<bool> confirmContentDeletion(
             ),
             FilledButton(
               onPressed: () => Navigator.pop(context, true),
-              style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
+              style: FilledButton.styleFrom(
+                backgroundColor: context.colors.error,
+                foregroundColor: context.colors.onError,
+              ),
               child: Text('Excluir $label'),
             ),
           ],

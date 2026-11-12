@@ -100,9 +100,9 @@ class _RecoverPasswordScreenState extends ConsumerState<RecoverPasswordScreen> {
           onPressed: busy ? null : request,
         ),
       ] else ...[
-        const Text(
+        Text(
           'Confira também a caixa de spam. Se não receber, fale com o administrador da plataforma.',
-          style: AdminStyles.body,
+          style: AdminStyles.body(context),
         ),
         const SizedBox(height: 16),
         OutlinedButton(
@@ -411,23 +411,26 @@ class _RecoveryPage extends StatelessWidget {
                         child: Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: AppColors.successBg,
+                            color: context.successSurface,
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: SvgIcon(
                             icon,
                             size: 24,
-                            color: AppColors.successDarkGreen,
+                            color: context.successForeground,
                           ),
                         ),
                       ),
                       const SizedBox(height: 20),
                       Semantics(
                         header: true,
-                        child: Text(title, style: AdminStyles.pageTitle),
+                        child: Text(
+                          title,
+                          style: AdminStyles.pageTitle(context),
+                        ),
                       ),
                       const SizedBox(height: 10),
-                      Text(description, style: AdminStyles.body),
+                      Text(description, style: AdminStyles.body(context)),
                       const SizedBox(height: 24),
                       ...children,
                     ],
@@ -452,7 +455,9 @@ class _RecoveryError extends StatelessWidget {
       liveRegion: true,
       child: Text(
         text,
-        style: AdminStyles.body.copyWith(color: AppColors.danger),
+        style: AdminStyles.body(
+          context,
+        ).copyWith(color: context.dangerForeground),
       ),
     ),
   );

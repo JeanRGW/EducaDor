@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/theme.dart';
+import '../../app/theme_preference.dart';
 import '../../data/session/session_controller.dart';
 import '../../features/notifications/notification_settings_tile.dart';
 import 'admin_styles.dart';
@@ -36,9 +37,13 @@ class ProfilePage extends StatelessWidget {
       physics: const AlwaysScrollableScrollPhysics(),
       children: [
         Container(
-          decoration: const BoxDecoration(
-            color: AppColors.surface,
-            border: Border(bottom: BorderSide(color: AppColors.border)),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            border: Border(
+              bottom: BorderSide(
+                color: Theme.of(context).colorScheme.outlineVariant,
+              ),
+            ),
           ),
           padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),
           child: Center(
@@ -50,13 +55,13 @@ class ProfilePage extends StatelessWidget {
                   const SizedBox(height: 16),
                   Text(
                     name,
-                    style: AdminStyles.pageTitle,
+                    style: AdminStyles.pageTitle(context),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 4),
                   Text(
                     subtitle,
-                    style: AdminStyles.body,
+                    style: AdminStyles.body(context),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 10),
@@ -66,14 +71,16 @@ class ProfilePage extends StatelessWidget {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: AppColors.successBg,
+                      color: Theme.of(context).colorScheme.secondaryContainer,
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
                       badge,
                       textAlign: TextAlign.center,
-                      style: AdminStyles.fieldLabel.copyWith(
-                        color: AppColors.successDarkGreen,
+                      style: AdminStyles.fieldLabel(context).copyWith(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSecondaryContainer,
                       ),
                     ),
                   ),
@@ -128,10 +135,10 @@ class ProfileMenuRow extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(bottom: 8),
     child: Material(
-      color: AppColors.surface,
+      color: Theme.of(context).colorScheme.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: AppColors.border),
+        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -142,13 +149,17 @@ class ProfileMenuRow extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             child: Row(
               children: [
-                SvgIcon(icon, size: 20, color: AppColors.textSecondary),
+                SvgIcon(
+                  icon,
+                  size: 20,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     label,
-                    style: AdminStyles.body.copyWith(
-                      color: AppColors.textPrimary,
+                    style: AdminStyles.body(context).copyWith(
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontSize: 14,
                     ),
                   ),
@@ -158,17 +169,17 @@ class ProfileMenuRow extends StatelessWidget {
                   Flexible(
                     child: Text(
                       status!,
-                      style: AdminStyles.body.copyWith(fontSize: 12),
+                      style: AdminStyles.body(context).copyWith(fontSize: 12),
                       textAlign: TextAlign.right,
                     ),
                   ),
                 ],
                 if (onTap != null) ...[
                   const SizedBox(width: 8),
-                  const SvgIcon(
+                  SvgIcon(
                     AppIcons.chevronRight,
                     size: 18,
-                    color: AppColors.textMuted,
+                    color: Theme.of(context).colorScheme.outline,
                   ),
                 ],
               ],
@@ -229,12 +240,12 @@ class _ProfileAccountSettingsState
       children: [
         ...widget.notices,
         if (widget.managementActions.isNotEmpty) ...[
-          const Text('Gestão', style: AdminStyles.cardTitle),
+          Text('Gestão', style: AdminStyles.cardTitle(context)),
           const SizedBox(height: 12),
           ...widget.managementActions,
           const SizedBox(height: 12),
         ],
-        const Text('Configurações de conta', style: AdminStyles.cardTitle),
+        Text('Configurações de conta', style: AdminStyles.cardTitle(context)),
         const SizedBox(height: 12),
         ProfileMenuRow(
           label: 'Editar dados pessoais',
@@ -250,10 +261,52 @@ class _ProfileAccountSettingsState
           icon: AppIcons.globe,
           status: 'Português (Brasil)',
         ),
-        const ProfileMenuRow(
-          label: 'Modo escuro',
-          icon: AppIcons.moon,
-          status: 'Em breve',
+        SwitchListTile(
+          title: const Text('Seguir aparência do sistema'),
+          subtitle: const Text('Usa o tema claro ou escuro do seu dispositivo'),
+          secondary: const SvgIcon(AppIcons.globe, size: 20),
+          value: ref.watch(themePreferenceProvider) == ThemeMode.system,
+          onChanged: (enabled) async {
+            try {
+              await ref
+                  .read(themePreferenceProvider.notifier)
+                  .setMode(enabled ? ThemeMode.system : ThemeMode.light);
+            } catch (_) {
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'Não foi possível salvar a aparência. Tente novamente.',
+                    ),
+                  ),
+                );
+              }
+            }
+          },
+        ),
+        SwitchListTile(
+          title: const Text('Modo escuro'),
+          secondary: const SvgIcon(AppIcons.moon, size: 20),
+          value: ref.watch(themePreferenceProvider) == ThemeMode.dark,
+          onChanged: ref.watch(themePreferenceProvider) == ThemeMode.system
+              ? null
+              : (enabled) async {
+                  try {
+                    await ref
+                        .read(themePreferenceProvider.notifier)
+                        .setMode(enabled ? ThemeMode.dark : ThemeMode.light);
+                  } catch (_) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Não foi possível salvar a aparência. Tente novamente.',
+                          ),
+                        ),
+                      );
+                    }
+                  }
+                },
         ),
         ProfileMenuRow(
           label: 'Segurança e MFA',
@@ -275,19 +328,20 @@ class _ProfileAccountSettingsState
         OutlinedButton.icon(
           onPressed: _signingOut ? null : _logout,
           style: OutlinedButton.styleFrom(
-            foregroundColor: AppColors.danger,
-            backgroundColor: AppColors.surface,
-            side: BorderSide(color: AppColors.danger.withValues(alpha: 0.3)),
-            minimumSize: const Size.fromHeight(48),
-            textStyle: AdminStyles.body.copyWith(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
+            foregroundColor: context.dangerForeground,
+            backgroundColor: Theme.of(context).colorScheme.surface,
+            side: BorderSide(
+              color: context.dangerForeground.withValues(alpha: 0.3),
             ),
+            minimumSize: const Size.fromHeight(48),
+            textStyle: AdminStyles.body(
+              context,
+            ).copyWith(fontSize: 14, fontWeight: FontWeight.w600),
           ),
-          icon: const SvgIcon(
+          icon: SvgIcon(
             AppIcons.logout,
             size: 20,
-            color: AppColors.danger,
+            color: context.dangerForeground,
           ),
           label: Text(_signingOut ? 'Saindo...' : 'Sair'),
         ),

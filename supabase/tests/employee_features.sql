@@ -35,6 +35,11 @@ insert into lessons(id,module_id,title,kind,video_id,points,position) values
  ('e7000000-0000-4000-8000-000000000002','d7000000-0000-4000-8000-000000000002','First video','video','abcdefghijk',10,1),
  ('e7000000-0000-4000-8000-000000000003','d7000000-0000-4000-8000-000000000003','Quiz','quiz',null,10,1);
 insert into rewards(id,title,points_cost) values ('f7000000-0000-4000-8000-000000000001','Reward',15);
+-- Auth session rows: the application guard rejects tokens without a live session.
+insert into auth.sessions(id,user_id,created_at,updated_at,not_after) values
+ ('ff700000-0000-4000-8000-000000000001','a7000000-0000-4000-8000-000000000001',now(),now(),now()+interval '24 hours')
+ on conflict do nothing;
+
 set local role authenticated;
 select set_config('request.jwt.claims','{"sub":"a7000000-0000-4000-8000-000000000001","session_id":"ff700000-0000-4000-8000-000000000001"}',true);
 do $$ begin

@@ -39,7 +39,11 @@ class CompanyDashboardScreen extends ConsumerWidget {
           toolbarHeight: MediaQuery.textScalerOf(context).scale(16) > 22
               ? 100
               : 78,
-          shape: const Border(bottom: BorderSide(color: AppColors.border)),
+          shape: Border(
+            bottom: BorderSide(
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
+          ),
           title: Row(
             children: [
               CompanyAvatar(initials: companyInitials(companyName)),
@@ -52,12 +56,14 @@ class CompanyDashboardScreen extends ConsumerWidget {
                       companyName,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: AdminStyles.cardTitle.copyWith(fontSize: 16),
+                      style: AdminStyles.cardTitle(
+                        context,
+                      ).copyWith(fontSize: 16),
                     ),
                     Text(
                       'Administrador da Empresa',
                       maxLines: 2,
-                      style: AdminStyles.body.copyWith(fontSize: 12),
+                      style: AdminStyles.body(context).copyWith(fontSize: 12),
                     ),
                   ],
                 ),
@@ -65,13 +71,13 @@ class CompanyDashboardScreen extends ConsumerWidget {
               IconButton(
                 tooltip: 'Notificações',
                 onPressed: () => showNotificationSettings(context),
-                icon: const CircleAvatar(
+                icon: CircleAvatar(
                   radius: 18,
-                  backgroundColor: AppColors.background,
+                  backgroundColor: Theme.of(context).scaffoldBackgroundColor,
                   child: SvgIcon(
                     AppIcons.bell,
                     size: 18,
-                    color: AppColors.textPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
               ),
@@ -171,34 +177,38 @@ class CompanyDashboardScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Wrap(
+                    Wrap(
                       spacing: 16,
                       runSpacing: 4,
                       children: [
                         Text(
                           'Participação Mensal',
-                          style: AdminStyles.cardTitle,
+                          style: AdminStyles.cardTitle(context),
                         ),
                         Text(
                           'Tendência de engajamento',
                           style: TextStyle(
                             fontFamily: AppFonts.inter,
                             fontSize: 11,
-                            color: AppColors.primary,
+                            color: context.colors.primary,
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 12),
                     if (result.isLoading)
-                      const SizedBox(
+                      SizedBox(
                         height: 140,
-                        child: ColoredBox(color: AppColors.chipBg),
+                        child: ColoredBox(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.surfaceContainerHigh,
+                        ),
                       )
                     else if (data == null)
-                      const Text(
+                      Text(
                         'Participação indisponível.',
-                        style: AdminStyles.body,
+                        style: AdminStyles.body(context),
                       )
                     else
                       Semantics(
@@ -215,26 +225,29 @@ class CompanyDashboardScreen extends ConsumerWidget {
                         ),
                       ),
                     const SizedBox(height: 8),
-                    const Text(
+                    Text(
                       'Funcionários com atualização de progresso por mês. Baseado na última atualização; mês atual parcial.',
-                      style: CompanyStyles.caption,
+                      style: CompanyStyles.caption(context),
                     ),
                   ],
                 ),
               ),
-              const Padding(
+              Padding(
                 padding: EdgeInsets.only(top: 20, bottom: 12),
-                child: Text('Destaques', style: AdminStyles.cardTitle),
+                child: Text('Destaques', style: AdminStyles.cardTitle(context)),
               ),
               if (result.isLoading)
                 const DataSkeleton()
               else if (result.hasError)
-                const Text('Destaques indisponíveis.', style: AdminStyles.body)
+                Text(
+                  'Destaques indisponíveis.',
+                  style: AdminStyles.body(context),
+                )
               else if (highlights.isEmpty)
-                const AppCard(
+                AppCard(
                   child: Text(
                     'Nenhuma conclusão registrada na empresa.',
-                    style: AdminStyles.body,
+                    style: AdminStyles.body(context),
                   ),
                 )
               else ...[
@@ -253,13 +266,15 @@ class CompanyDashboardScreen extends ConsumerWidget {
                               children: [
                                 Text(
                                   '${employee.fullName}${employee.department.isEmpty ? '' : ' (${employee.department})'}',
-                                  style: AdminStyles.body.copyWith(
-                                    color: AppColors.textPrimary,
+                                  style: AdminStyles.body(context).copyWith(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurface,
                                   ),
                                 ),
-                                const Text(
+                                Text(
                                   'Conclusão atual',
-                                  style: CompanyStyles.caption,
+                                  style: CompanyStyles.caption(context),
                                 ),
                               ],
                             ),
@@ -270,9 +285,9 @@ class CompanyDashboardScreen extends ConsumerWidget {
                       ),
                     ),
                   ),
-                const Text(
+                Text(
                   'Maiores conclusões entre todos os funcionários da empresa.',
-                  style: CompanyStyles.caption,
+                  style: CompanyStyles.caption(context),
                 ),
               ],
               const SizedBox(height: 12),
@@ -329,30 +344,35 @@ class _Metric extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Expanded(child: Text(label, style: AdminStyles.fieldLabel)),
+                    Expanded(
+                      child: Text(
+                        label,
+                        style: AdminStyles.fieldLabel(context),
+                      ),
+                    ),
                     const SizedBox(width: 8),
-                    SvgIcon(icon, size: 16, color: AppColors.successDarkGreen),
+                    SvgIcon(icon, size: 16, color: context.successForeground),
                   ],
                 ),
                 const SizedBox(height: 10),
                 Text(
                   value,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: AppFonts.outfit,
                     fontSize: 24,
                     fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                     height: 1.2,
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   caption,
-                  style: CompanyStyles.caption.copyWith(
+                  style: CompanyStyles.caption(context).copyWith(
                     color:
                         caption == 'Em breve' || caption.startsWith('Sem dados')
-                        ? AppColors.textMuted
-                        : AppColors.success,
+                        ? Theme.of(context).colorScheme.outline
+                        : context.successForeground,
                   ),
                 ),
               ],

@@ -43,13 +43,13 @@ class EmployeeProfileScreen extends ConsumerWidget {
                   children: [
                     Text(
                       value,
-                      style: AdminStyles.formTitle,
+                      style: AdminStyles.formTitle(context),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 4),
                     Text(
                       label,
-                      style: AdminStyles.body.copyWith(fontSize: 12),
+                      style: AdminStyles.body(context).copyWith(fontSize: 12),
                       textAlign: TextAlign.center,
                     ),
                   ],

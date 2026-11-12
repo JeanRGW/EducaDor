@@ -164,10 +164,15 @@ class _PendingInvitesSectionState extends ConsumerState<PendingInvitesSection> {
           ),
         ),
       if (_loading && _pending.isEmpty)
-        const AppCard(
+        AppCard(
           child: Row(
             children: [
-              CircleAvatar(backgroundColor: AppColors.chipBg, radius: 20),
+              CircleAvatar(
+                backgroundColor: Theme.of(
+                  context,
+                ).colorScheme.surfaceContainerHigh,
+                radius: 20,
+              ),
               SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -232,18 +237,18 @@ class _PendingInviteCard extends StatelessWidget {
         : Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const SvgIcon(
+              SvgIcon(
                 AppIcons.building,
                 size: 16,
-                color: AppColors.successDarkGreen,
+                color: context.successForeground,
               ),
               const SizedBox(width: 6),
               Flexible(
                 child: Text(
                   companyName!,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodySmall?.copyWith(color: AppColors.navy),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
                 ),
               ),
             ],
@@ -253,12 +258,14 @@ class _PendingInviteCard extends StatelessWidget {
       icon: SvgIcon(
         AppIcons.key,
         size: 16,
-        color: busy ? AppColors.textMuted : AppColors.primary,
+        color: busy
+            ? Theme.of(context).colorScheme.outline
+            : context.colors.primary,
       ),
       label: Text(busy ? 'Gerando...' : 'Gerar novo link'),
       style: OutlinedButton.styleFrom(
-        foregroundColor: AppColors.primary,
-        side: const BorderSide(color: AppColors.border),
+        foregroundColor: context.colors.primary,
+        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
         minimumSize: const Size(0, 40),
         padding: const EdgeInsets.symmetric(horizontal: 12),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -287,9 +294,9 @@ class _PendingInviteCard extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                         invite.email,
-                        style: Theme.of(
-                          context,
-                        ).textTheme.bodySmall?.copyWith(color: AppColors.navy),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
                       ),
                     ],
                     if (wide && company != null) ...[
@@ -346,7 +353,7 @@ class _InvitePlaceholder extends StatelessWidget {
     width: width,
     height: height,
     decoration: BoxDecoration(
-      color: AppColors.chipBg,
+      color: Theme.of(context).colorScheme.surfaceContainerHigh,
       borderRadius: BorderRadius.circular(4),
     ),
   );

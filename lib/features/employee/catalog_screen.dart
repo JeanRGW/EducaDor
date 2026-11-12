@@ -72,14 +72,14 @@ class _CatalogState extends ConsumerState<_Catalog> {
               final stacked = stackedHeader;
               final title = Text(
                 'MÓDULOS',
-                style: AdminStyles.pageTitle.copyWith(
-                  fontSize: constraints.maxWidth < 340 ? 18 : 20,
-                ),
+                style: AdminStyles.pageTitle(
+                  context,
+                ).copyWith(fontSize: constraints.maxWidth < 340 ? 18 : 20),
               );
               final tabs = Container(
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
-                  color: AppColors.chipBg,
+                  color: Theme.of(context).colorScheme.surfaceContainerHigh,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Row(
@@ -93,7 +93,7 @@ class _CatalogState extends ConsumerState<_Catalog> {
                         selected: _tab == index,
                         child: Material(
                           color: _tab == index
-                              ? AppColors.surface
+                              ? Theme.of(context).colorScheme.surface
                               : Colors.transparent,
                           borderRadius: BorderRadius.circular(7),
                           child: InkWell(
@@ -109,15 +109,15 @@ class _CatalogState extends ConsumerState<_Catalog> {
                               ),
                               child: Text(
                                 label,
-                                style: AdminStyles.fieldLabel.copyWith(
+                                style: AdminStyles.fieldLabel(context).copyWith(
                                   fontFamily: AppFonts.outfit,
                                   fontWeight: FontWeight.w700,
                                   fontSize: constraints.maxWidth < 340
                                       ? 10
                                       : 11,
                                   color: _tab == index
-                                      ? AppColors.primary
-                                      : AppColors.textMuted,
+                                      ? context.colors.primary
+                                      : Theme.of(context).colorScheme.outline,
                                 ),
                               ),
                             ),
@@ -160,9 +160,13 @@ class _CatalogState extends ConsumerState<_Catalog> {
             slivers: [
               SliverToBoxAdapter(
                 child: Container(
-                  decoration: const BoxDecoration(
-                    color: AppColors.surface,
-                    border: Border(bottom: BorderSide(color: AppColors.border)),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface,
+                    border: Border(
+                      bottom: BorderSide(
+                        color: Theme.of(context).colorScheme.outlineVariant,
+                      ),
+                    ),
                   ),
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                   child: Column(
@@ -171,10 +175,10 @@ class _CatalogState extends ConsumerState<_Catalog> {
                       SearchField(
                         'Pesquisar conteúdo de aprendizagem...',
                         compact: true,
-                        prefixIcon: const SvgIcon(
+                        prefixIcon: SvgIcon(
                           AppIcons.search,
                           size: 18,
-                          color: AppColors.textMuted,
+                          color: Theme.of(context).colorScheme.outline,
                         ),
                         onChanged: (value) {
                           _debounce?.cancel();
@@ -205,7 +209,7 @@ class _CatalogState extends ConsumerState<_Catalog> {
                         selected: _filter,
                         outlined: true,
                         solidSelection: true,
-                        activeColor: AppColors.primary,
+                        activeColor: context.colors.primary,
                         onSelected: (index) => setState(() {
                           _filter = index;
                           _offset = 0;
@@ -230,10 +234,10 @@ class _CatalogState extends ConsumerState<_Catalog> {
                           ),
                       if (pages.first.isLoading) const DataSkeleton(),
                       if (total == 0)
-                        const AppCard(
+                        AppCard(
                           child: Text(
                             'Nenhum curso disponível para esta pesquisa.',
-                            style: AdminStyles.body,
+                            style: AdminStyles.body(context),
                           ),
                         ),
                     ],

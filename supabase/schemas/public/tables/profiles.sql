@@ -44,7 +44,7 @@ REVOKE ALL ("needs_password") ON TABLE "public"."profiles" FROM "authenticated";
 
 REVOKE ALL ("phone") ON TABLE "public"."profiles" FROM "authenticated";
 
-GRANT SELECT ON TABLE "public"."profiles" TO "authenticated";
+GRANT SELECT (id, full_name, email, avatar_key, needs_password) ON TABLE "public"."profiles" TO "authenticated";
 
 REVOKE ALL ON TABLE "public"."profiles" FROM "postgres";
 

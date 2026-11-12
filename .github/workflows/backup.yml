@@ -1,0 +1,115 @@
+name: Encrypted database backup
+
+on:
+  schedule:
+    - cron: '17 3 * * 0'
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Confirm this backup run
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: database-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    # Hard-disabled pending signed archive integration and independent review.
+    if: >-
+      false && github.ref == 'refs/heads/main' && vars.BACKUP_ENABLED == 'true' &&
+      (github.event_name == 'schedule' || inputs.confirm == true)
+    environment: backup-production
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      BACKUP_S3_ENDPOINT: ${{ vars.BACKUP_S3_ENDPOINT }}
+      BACKUP_TOTAL_BUDGET_BYTES: ${{ vars.BACKUP_TOTAL_BUDGET_BYTES }}
+      BACKUP_NON_BACKUP_RESERVE_BYTES: ${{ vars.BACKUP_NON_BACKUP_RESERVE_BYTES }}
+      BACKUP_EGRESS_BUDGET_BYTES: ${{ vars.BACKUP_EGRESS_BUDGET_BYTES }}
+      BACKUP_EXCLUSIVE_WRITER_ATTESTED: ${{ vars.BACKUP_EXCLUSIVE_WRITER_ATTESTED }}
+      BACKUP_MULTIPART_RESERVE_ATTESTED: ${{ vars.BACKUP_MULTIPART_RESERVE_ATTESTED }}
+      BACKUP_NO_ROLLBACK_CLOCK_ATTESTED: ${{ vars.BACKUP_NO_ROLLBACK_CLOCK_ATTESTED }}
+      BACKUP_RECIPIENT_FINGERPRINT: ${{ vars.BACKUP_RECIPIENT_FINGERPRINT }}
+      BACKUP_PUBLIC_KEY: ${{ vars.BACKUP_PUBLIC_KEY }}
+      BACKUP_SIGNER_FINGERPRINT: ${{ vars.BACKUP_SIGNER_FINGERPRINT }}
+      AWS_DEFAULT_REGION: sa-east-1
+      AWS_EC2_METADATA_DISABLED: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      # awscli 1.36.40 fails on Python 3.14 argparse; keep a supported interpreter.
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.12'
+      - name: Install pinned AWS CLI (transitive dependencies require review)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m venv "$RUNNER_TEMP/backup-aws-venv"
+          "$RUNNER_TEMP/backup-aws-venv/bin/pip" install --disable-pip-version-check 'awscli==1.36.40' >/dev/null
+      - name: Prepare private scratch
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -m 700 "$RUNNER_TEMP/educador-backup"
+      - name: Dump database
+        env:
+          PGDATABASE: ${{ secrets.BACKUP_DATABASE_URL }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          env -i PATH="$PATH" HOME="$HOME" PGDATABASE="$PGDATABASE" pg_dump --no-owner --no-acl --file "$RUNNER_TEMP/educador-backup/dump.sql" 2>/dev/null || { echo 'Database dump failed.' >&2; exit 1; }
+      - name: Encrypt and sign
+        env:
+          BACKUP_SIGNING_PRIVATE_KEY: ${{ secrets.BACKUP_SIGNING_PRIVATE_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          work="$RUNNER_TEMP/educador-backup"
+          export GNUPGHOME="$work/signing-home"
+          mkdir -m 700 "$GNUPGHOME"
+          printf '%s' "$BACKUP_PUBLIC_KEY" | env -i PATH="$PATH" HOME="$HOME" GNUPGHOME="$GNUPGHOME" gpg --batch --quiet --import 2>/dev/null
+          printf '%s' "$BACKUP_SIGNING_PRIVATE_KEY" | env -i PATH="$PATH" HOME="$HOME" GNUPGHOME="$GNUPGHOME" gpg --batch --quiet --import 2>/dev/null
+          unset BACKUP_SIGNING_PRIVATE_KEY
+          env -i PATH="$PATH" HOME="$HOME" GNUPGHOME="$GNUPGHOME" python3 scripts/backup/archive.py pack "$work/dump.sql" "$work/archive" --recipient "$BACKUP_RECIPIENT_FINGERPRINT" --signer "$BACKUP_SIGNER_FINGERPRINT"
+          env -i PATH="$PATH" HOME="$HOME" GNUPGHOME="$GNUPGHOME" gpgconf --kill gpg-agent
+          rm -rf "$GNUPGHOME" "$work/dump.sql"
+      - name: Publish verified archive
+        env:
+          BACKUP_HMAC_KEY_HEX: ${{ secrets.BACKUP_HMAC_KEY_HEX }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.BACKUP_S3_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_S3_SECRET_ACCESS_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          work="$RUNNER_TEMP/educador-backup"
+          export GNUPGHOME="$work/verify-home"
+          mkdir -m 700 "$GNUPGHOME"
+          printf '%s' "$BACKUP_PUBLIC_KEY" | env -i PATH="$PATH" HOME="$HOME" GNUPGHOME="$GNUPGHOME" gpg --batch --quiet --import 2>/dev/null
+          export PATH="$RUNNER_TEMP/backup-aws-venv/bin:$PATH"
+          export AWS_CONFIG_FILE="$work/aws-config" AWS_SHARED_CREDENTIALS_FILE="$work/aws-credentials"
+          export AWS_MAX_ATTEMPTS=1 AWS_RETRY_MODE=standard AWS_PAGER=''
+          unset AWS_PROFILE AWS_DEFAULT_PROFILE AWS_SESSION_TOKEN AWS_SECURITY_TOKEN AWS_CA_BUNDLE
+          printf '[default]\nregion = sa-east-1\ns3 =\n    addressing_style = path\n' > "$AWS_CONFIG_FILE"
+          touch "$AWS_SHARED_CREDENTIALS_FILE"
+          python3 scripts/backup/publish.py "$work/archive"
+      - name: Remove scratch
+        if: always()
+        shell: bash
+        run: |
+          if [ -d "$RUNNER_TEMP/educador-backup/signing-home" ]; then
+            GNUPGHOME="$RUNNER_TEMP/educador-backup/signing-home" gpgconf --kill gpg-agent || true
+          fi
+          if [ -d "$RUNNER_TEMP/educador-backup/verify-home" ]; then
+            GNUPGHOME="$RUNNER_TEMP/educador-backup/verify-home" gpgconf --kill gpg-agent || true
+          fi
+          rm -rf "$RUNNER_TEMP/educador-backup"

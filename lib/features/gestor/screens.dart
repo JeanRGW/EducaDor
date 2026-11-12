@@ -122,10 +122,10 @@ class _AddCompanyScreenState extends ConsumerState<AddCompanyScreen> {
         title: const Text('Adicionar empresa'),
         leading: IconButton(
           tooltip: 'Voltar',
-          icon: const SvgIcon(
+          icon: SvgIcon(
             AppIcons.arrowBack,
             size: 20,
-            color: AppColors.successDarkGreen,
+            color: context.successForeground,
           ),
           onPressed: () => leaveManagementPage(context, '/gestor/empresas'),
         ),

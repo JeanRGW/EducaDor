@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2.116.0';
+import { verifiedSessionId } from './session.ts';
 
 const url = Deno.env.get('SUPABASE_URL')!;
 const secret = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -37,7 +38,7 @@ export function preflight(req: Request): Response | null {
 }
 
 export async function caller(req: Request): Promise<{
-  id: string; email: string; client: SupabaseClient;
+  id: string; session: string; email: string; client: SupabaseClient;
 } | null> {
   const jwt = req.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
   if (!jwt) return null;
@@ -45,14 +46,17 @@ export async function caller(req: Request): Promise<{
   if (error || !data.user?.id || !data.user.email || !data.user.email_confirmed_at) {
     return null;
   }
+  // Decode only after getUser verifies this bearer token; never trust body claims.
+  let session: string;
+  try { session = verifiedSessionId(jwt); } catch { return null; }
   const client = createClient(url, Deno.env.get('SUPABASE_ANON_KEY')!, {
     auth: { autoRefreshToken: false, persistSession: false },
     global: { headers: { Authorization: `Bearer ${jwt}` } },
   });
-  // Verify MFA against current server-side factor state, not stale JWT claims alone.
+  // Verify against current server-side session/factor state, not stale JWT claims.
   const { error: mfaError } = await client.rpc('require_mfa_if_enrolled');
   if (mfaError) return null;
-  return { id: data.user.id, email: data.user.email.toLowerCase(), client };
+  return { id: data.user.id, session, email: data.user.email.toLowerCase(), client };
 }
 
 export function newToken(): string {

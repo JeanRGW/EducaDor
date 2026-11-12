@@ -5,6 +5,8 @@ declare
   r text; cid uuid; result_course uuid; cert public.certificates%rowtype; rows jsonb;
   pending timestamp with time zone; claimed timestamp with time zone;
 begin
+  -- Service-role calls bypass RLS: revalidate the claimed session first.
+  perform public.require_live_session_id(p_user, p_session);
   select sc.role, sc.company_id into r, cid from public.session_contexts sc
     where sc.user_id = p_user and sc.session_id = p_session and (
       (sc.role = 'gestor' and exists(select 1 from public.platform_gestors g where g.user_id = p_user)) or

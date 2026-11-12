@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../app/theme.dart';
+import '../../data/models/models.dart';
 import '../../data/repositories/company_providers.dart';
+import '../../data/repositories/repositories.dart';
 import '../../data/session/session_controller.dart';
 import '../../shared/widgets/admin_styles.dart';
 import '../../shared/widgets/app_icons.dart';
 import '../../shared/widgets/charts.dart';
 import '../../shared/widgets/common.dart';
 import '../gestor/widgets.dart' show DataSkeleton;
+import '../reports/csv_export.dart';
 import 'widgets.dart';
 
 class CompanyCompletionScreen extends ConsumerStatefulWidget {
@@ -22,6 +26,97 @@ class _CompanyCompletionScreenState
     extends ConsumerState<CompanyCompletionScreen> {
   int _lastPage = 0;
   String? _companyId;
+  bool _exporting = false;
+
+  Future<void> _export() async {
+    final session = ref.read(sessionProvider).value;
+    final companyId = session?.active?.companyId;
+    if (session == null ||
+        session.active?.role != Role.empresa ||
+        companyId == null ||
+        session.needsMfa ||
+        session.needsPassword) {
+      return;
+    }
+    var valid = true;
+    final router = GoRouter.maybeOf(context);
+    const reportPath = '/empresa/relatorios';
+    void routeChanged() {
+      if (router?.routerDelegate.currentConfiguration.uri.path != reportPath) {
+        valid = false;
+      }
+    }
+
+    router?.routerDelegate.addListener(routeChanged);
+    if (router != null) routeChanged();
+    final subscription = ref.listenManual(sessionProvider, (previous, next) {
+      if (next.value?.user.id != session.user.id ||
+          next.value?.needsMfa == true ||
+          next.value?.needsPassword == true ||
+          next.value?.active?.role != Role.empresa ||
+          next.value?.active?.companyId != companyId) {
+        valid = false;
+      }
+    });
+    bool current() => valid && mounted;
+    setState(() => _exporting = true);
+    try {
+      final repository = ref.read(employeeRepositoryProvider);
+      if (!current()) return;
+      final page = await repository.page(companyId);
+      if (!mounted || !valid) return;
+      final employees = requireSingleSnapshot(
+        page.items,
+        total: page.filteredCount,
+      );
+      if (employees.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Nenhum funcionário para exportar.')),
+        );
+        return;
+      }
+      final rows = <List<String>>[
+        ['Funcionário', 'Departamento', 'Cargo', 'Conclusão (%)'],
+        for (final employee in employees)
+          [
+            employee.fullName,
+            employee.department,
+            employee.jobTitle,
+            employee.hasCompletion
+                ? employee.completionPct.toString().replaceAll('.', ',')
+                : 'Sem dados',
+          ],
+      ];
+      await saveCsv(
+        reportFilename('conclusao-funcionarios', DateTime.now()),
+        encodeCsv(rows),
+      );
+    } on ExportTooLarge {
+      if (mounted && valid) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Exportação indisponível para mais de 50 funcionários: não é possível garantir um retrato consistente.',
+            ),
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted && valid) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Não foi possível exportar os dados. Tente novamente.',
+            ),
+          ),
+        );
+      }
+    } finally {
+      subscription.close();
+      router?.routerDelegate.removeListener(routeChanged);
+      if (mounted) setState(() => _exporting = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -73,9 +168,13 @@ class _CompanyCompletionScreenState
             children: [
               Container(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                decoration: const BoxDecoration(
-                  color: AppColors.surface,
-                  border: Border(bottom: BorderSide(color: AppColors.border)),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface,
+                  border: Border(
+                    bottom: BorderSide(
+                      color: Theme.of(context).colorScheme.outlineVariant,
+                    ),
+                  ),
                 ),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
@@ -83,23 +182,25 @@ class _CompanyCompletionScreenState
                     vertical: 8,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColors.background,
+                    color: Theme.of(context).scaffoldBackgroundColor,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.border),
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.outlineVariant,
+                    ),
                   ),
-                  child: const Row(
+                  child: Row(
                     children: [
                       Expanded(
                         child: Text(
                           'Conclusão atual · sem filtro de período',
-                          style: AdminStyles.fieldLabel,
+                          style: AdminStyles.fieldLabel(context),
                         ),
                       ),
                       SizedBox(width: 8),
                       SvgIcon(
                         AppIcons.calendar,
                         size: 16,
-                        color: Color(0xFF475569),
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ],
                   ),
@@ -114,9 +215,9 @@ class _CompanyCompletionScreenState
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             'Conclusão por departamento',
-                            style: AdminStyles.cardTitle,
+                            style: AdminStyles.cardTitle(context),
                           ),
                           const SizedBox(height: 10),
                           for (final department in departments)
@@ -125,8 +226,8 @@ class _CompanyCompletionScreenState
                                 department.key,
                                 department.value!,
                                 compact: true,
-                                color: AppColors.primary,
-                                valueColor: AppColors.primary,
+                                color: context.colors.primary,
+                                valueColor: context.colors.primary,
                               )
                             else
                               Padding(
@@ -135,7 +236,7 @@ class _CompanyCompletionScreenState
                                 ),
                                 child: Text(
                                   '${department.key}: sem dados de conclusão',
-                                  style: AdminStyles.body,
+                                  style: AdminStyles.body(context),
                                 ),
                               ),
                           if (loading) const DataSkeleton(),
@@ -157,9 +258,9 @@ class _CompanyCompletionScreenState
                               },
                             ),
                           if (!loading && !hasError && departments.isEmpty)
-                            const Text(
+                            Text(
                               'Nenhum dado de conclusão por departamento.',
-                              style: AdminStyles.body,
+                              style: AdminStyles.body(context),
                             ),
                           if (!loading &&
                               !hasError &&
@@ -172,13 +273,13 @@ class _CompanyCompletionScreenState
                       ),
                     ),
                     const SizedBox(height: 16),
-                    const AppCard(
+                    AppCard(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             'Indicadores Regulatórios',
-                            style: AdminStyles.cardTitle,
+                            style: AdminStyles.cardTitle(context),
                           ),
                           SizedBox(height: 12),
                           _Indicator(
@@ -190,7 +291,7 @@ class _CompanyCompletionScreenState
                           SizedBox(height: 8),
                           Text(
                             'Indicadores disponíveis em breve.',
-                            style: CompanyStyles.caption,
+                            style: CompanyStyles.caption(context),
                           ),
                         ],
                       ),
@@ -206,11 +307,12 @@ class _CompanyCompletionScreenState
                               child: Text('Exportar relatório em PDF'),
                             ),
                           ),
-                          const Tooltip(
-                            message: 'Exportação em CSV disponível em breve.',
-                            child: FilledButton(
-                              onPressed: null,
-                              child: Text('Exportar dados em CSV'),
+                          FilledButton(
+                            onPressed: _exporting ? null : _export,
+                            child: Text(
+                              _exporting
+                                  ? 'Exportando CSV...'
+                                  : 'Exportar dados em CSV',
                             ),
                           ),
                         ];
@@ -235,9 +337,9 @@ class _CompanyCompletionScreenState
                       },
                     ),
                     const SizedBox(height: 8),
-                    const Text(
-                      'Exportações disponíveis em breve.',
-                      style: CompanyStyles.caption,
+                    Text(
+                      'O CSV contém a conclusão atual dos funcionários desta empresa.',
+                      style: CompanyStyles.caption(context),
                     ),
                   ],
                 ),
@@ -259,7 +361,9 @@ class _Indicator extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(12),
     decoration: BoxDecoration(
-      color: highlighted ? AppColors.successBg : AppColors.background,
+      color: highlighted
+          ? context.successSurface
+          : Theme.of(context).scaffoldBackgroundColor,
       borderRadius: BorderRadius.circular(8),
     ),
     child: Row(
@@ -267,15 +371,15 @@ class _Indicator extends StatelessWidget {
         Expanded(
           child: Text(
             label,
-            style: AdminStyles.body.copyWith(
+            style: AdminStyles.body(context).copyWith(
               color: highlighted
-                  ? AppColors.successDarkGreen
-                  : const Color(0xFF475569),
+                  ? context.successForeground
+                  : Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
         ),
         const SizedBox(width: 12),
-        Text('—', style: AdminStyles.cardTitle),
+        Text('—', style: AdminStyles.cardTitle(context)),
       ],
     ),
   );

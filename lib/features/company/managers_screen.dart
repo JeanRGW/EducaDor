@@ -111,10 +111,10 @@ class _CompanyManagersScreenState extends ConsumerState<CompanyManagersScreen> {
           leading: IconButton(
             tooltip: 'Voltar',
             onPressed: () => leaveManagementPage(context, '/empresa/perfil'),
-            icon: const SvgIcon(
+            icon: SvgIcon(
               AppIcons.arrowBack,
               size: 20,
-              color: AppColors.successDarkGreen,
+              color: context.successForeground,
             ),
           ),
         ),
@@ -140,12 +140,18 @@ class _CompanyManagersScreenState extends ConsumerState<CompanyManagersScreen> {
                 retry: () => _load(more: _offset > 0),
               ),
             if (_loading && _people.isEmpty) const DataSkeleton(),
-            const Padding(
+            Padding(
               padding: EdgeInsets.only(bottom: 12),
-              child: Text('Gestores ativos', style: AdminStyles.cardTitle),
+              child: Text(
+                'Gestores ativos',
+                style: AdminStyles.cardTitle(context),
+              ),
             ),
             if (!_loading && !_error && _people.isEmpty)
-              const Text('Nenhum gestor encontrado.', style: AdminStyles.body),
+              Text(
+                'Nenhum gestor encontrado.',
+                style: AdminStyles.body(context),
+              ),
             for (final member in _people) ...[
               AppCard(
                 child: Row(
@@ -156,8 +162,14 @@ class _CompanyManagersScreenState extends ConsumerState<CompanyManagersScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(member.fullName, style: AdminStyles.cardTitle),
-                          Text(member.email, style: CompanyStyles.caption),
+                          Text(
+                            member.fullName,
+                            style: AdminStyles.cardTitle(context),
+                          ),
+                          Text(
+                            member.email,
+                            style: CompanyStyles.caption(context),
+                          ),
                         ],
                       ),
                     ),

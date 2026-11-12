@@ -129,7 +129,8 @@ class _ContentPlayerState extends ConsumerState<ContentPlayer> {
     } catch (_) {
       if (mounted) {
         setState(
-          () => _feedback = 'Não foi possível salvar o progresso do áudio. Pause para tentar novamente.',
+          () => _feedback =
+              'Não foi possível salvar o progresso do áudio. Pause para tentar novamente.',
         );
       }
     }

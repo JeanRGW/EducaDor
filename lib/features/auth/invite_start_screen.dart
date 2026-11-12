@@ -118,12 +118,12 @@ class _InviteStartScreenState extends ConsumerState<InviteStartScreen> {
             shrinkWrap: true,
             padding: const EdgeInsets.all(24),
             children: [
-              const Align(
+              Align(
                 alignment: Alignment.centerLeft,
                 child: SvgIcon(
                   AppIcons.mail,
                   size: 40,
-                  color: AppColors.primary,
+                  color: context.colors.primary,
                 ),
               ),
               const SizedBox(height: 24),
@@ -138,7 +138,7 @@ class _InviteStartScreenState extends ConsumerState<InviteStartScreen> {
                 link == null
                     ? 'Abra o link completo ou peça um novo convite a quem enviou.'
                     : 'Continue para confirmar seu acesso. Depois, você poderá aceitar o convite e criar sua senha.',
-                style: AdminStyles.body,
+                style: AdminStyles.body(context),
               ),
               const SizedBox(height: 24),
               if (link != null)
@@ -148,7 +148,10 @@ class _InviteStartScreenState extends ConsumerState<InviteStartScreen> {
                 ),
               if (_error != null) ...[
                 const SizedBox(height: 16),
-                Text(_error!, style: const TextStyle(color: AppColors.danger)),
+                Text(
+                  _error!,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
               ],
             ],
           ),

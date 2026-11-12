@@ -6,7 +6,9 @@ CREATE OR REPLACE FUNCTION public.require_mfa_if_enrolled()
   SET search_path TO ''
   AS $function$
 begin
-  if auth.uid() is null then raise exception 'Authentication required' using errcode = '42501'; end if;
+  -- One shared gate for every authenticated request: a revoked session is denied
+  -- even when its JWT is still unexpired, and enrolled accounts need aal2.
+  perform public.require_live_session();
   if coalesce(auth.jwt()->>'aal', '') <> 'aal2' and exists (
     select 1 from auth.mfa_factors where user_id = auth.uid() and status = 'verified'
   ) then

@@ -1,4 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:typed_data';
+
+import 'package:file_picker/file_picker.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:educador/app/theme.dart';
 import 'package:educador/data/models/models.dart';
@@ -36,6 +41,21 @@ class _Session extends SessionController {
     contexts: [_gestor, _empresa],
     active: _gestor,
   );
+
+  void changeUser(String id) {
+    state = AsyncData(
+      AppSession(
+        user: User(
+          id: id,
+          fullName: 'Outra',
+          email: 'other@example.test',
+          initials: 'O',
+        ),
+        contexts: const [_gestor, _empresa],
+        active: _gestor,
+      ),
+    );
+  }
 
   @override
   Future<void> select(AccessContext context) async {
@@ -144,14 +164,38 @@ class _Companies extends CompanyRepository {
   }
 }
 
+class _CsvPicker extends FilePicker {
+  final files = <Uint8List>[];
+  @override
+  Future<String?> saveFile({
+    String? dialogTitle,
+    String? fileName,
+    String? initialDirectory,
+    FileType type = FileType.any,
+    List<String>? allowedExtensions,
+    Uint8List? bytes,
+    bool lockParentWindow = false,
+  }) async {
+    files.add(bytes!);
+    return null;
+  }
+}
+
 class _Reports extends ReportRepository {
   int completionCalls = 0;
   final List<ReportPeriod> activityCalls = [];
   bool fail = false;
   bool empty = false;
+  Completer<List<CompanyCompletion>>? completionPending;
+  Completer<PlatformActivityReport>? activityPending;
+  List<CompanyCompletion>? completionOverride;
+  final offsets = <int>[];
   @override
   Future<List<CompanyCompletion>> platformCompletion({int offset = 0}) async {
     completionCalls++;
+    offsets.add(offset);
+    if (completionPending != null) return completionPending!.future;
+    if (completionOverride != null) return completionOverride!;
     if (fail) throw StateError('Offline');
     return empty
         ? []
@@ -171,6 +215,7 @@ class _Reports extends ReportRepository {
     required DateTime to,
   }) async {
     activityCalls.add((from: from, to: to));
+    if (activityPending != null) return activityPending!.future;
     if (fail) throw StateError('Offline');
     return PlatformActivityReport(
       engagement: [EngagementMonth(month: from, activeUsers: empty ? 0 : 2)],
@@ -215,6 +260,55 @@ Future<ProviderContainer> _show(
   return ProviderScope.containerOf(
     tester.element(find.byType(screen.runtimeType)),
   );
+}
+
+Future<(ProviderContainer, GoRouter)> _reportShell(
+  WidgetTester tester,
+  _Reports reports,
+) async {
+  final container = ProviderContainer(
+    overrides: [
+      sessionProvider.overrideWith(_Session.new),
+      reportRepositoryProvider.overrideWithValue(reports),
+    ],
+  );
+  addTearDown(container.dispose);
+  await container.read(sessionProvider.future);
+  final router = GoRouter(
+    initialLocation: '/gestor/relatorios',
+    routes: [
+      StatefulShellRoute.indexedStack(
+        builder: (_, _, shell) => Scaffold(body: shell),
+        branches: [
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/gestor/relatorios',
+                builder: (_, _) => const GestorReportsScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/gestor/home',
+                builder: (_, _) => const Text('Outra aba'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    ],
+  );
+  addTearDown(router.dispose);
+  await tester.pumpWidget(
+    UncontrolledProviderScope(
+      container: container,
+      child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
+    ),
+  );
+  await tester.pumpAndSettle();
+  return (container, router);
 }
 
 void main() {
@@ -447,6 +541,129 @@ void main() {
   );
 
   testWidgets(
+    'period picker is disabled while export is pending and saved bytes use captured period',
+    (tester) async {
+      final repo = _Reports();
+      await _show(tester, const GestorReportsScreen(), reports: repo);
+      final picker = _CsvPicker();
+      FilePicker.platform = picker;
+      repo.completionPending = Completer<List<CompanyCompletion>>();
+      await tester.tap(find.byTooltip('Exportar CSV'));
+      await tester.pump();
+      await tester.tap(find.byType(AppCard).first);
+      await tester.pump();
+      expect(find.byType(DateRangePickerDialog), findsNothing);
+      final period = repo.activityCalls.first;
+      repo.completionPending!.complete(const [
+        CompanyCompletion(
+          companyId: 'a',
+          company: 'Empresa; "A"',
+          percent: 37.5,
+        ),
+      ]);
+      await tester.pumpAndSettle();
+      expect(repo.offsets, [0, 0]);
+      expect(repo.activityCalls.last, period);
+      expect(picker.files, hasLength(1));
+      final csv = utf8.decode(picker.files.single.skip(3).toList());
+      expect(csv, contains('"Empresa; ""A""";"37,5"'));
+      expect(
+        csv,
+        contains(
+          '"${formatDate(period.from)}";"${formatDate(period.to)}";"Curso real";"3"',
+        ),
+      );
+    },
+  );
+
+  for (final duringActivity in [false, true]) {
+    testWidgets(
+      'leaving retained gestor tab cancels pending ${duringActivity ? 'activity' : 'completion'} RPC',
+      (tester) async {
+        final repo = _Reports();
+        final (_, router) = await _reportShell(tester, repo);
+        final picker = _CsvPicker();
+        FilePicker.platform = picker;
+        if (duringActivity) {
+          repo.activityPending = Completer<PlatformActivityReport>();
+        } else {
+          repo.completionPending = Completer<List<CompanyCompletion>>();
+        }
+        await tester.tap(find.byTooltip('Exportar CSV'));
+        await tester.pump();
+        expect(repo.completionCalls, 2);
+        router.go('/gestor/home');
+        await tester.pumpAndSettle();
+        router.go('/gestor/relatorios');
+        await tester.pump();
+        if (duringActivity) {
+          repo.activityPending!.complete(
+            PlatformActivityReport(engagement: [], popularContent: []),
+          );
+        } else {
+          repo.completionPending!.complete([]);
+        }
+        await tester.pumpAndSettle();
+        expect(picker.files, isEmpty);
+        expect(repo.activityCalls.length, duringActivity ? 2 : 1);
+      },
+    );
+  }
+
+  for (final identity in [false, true]) {
+    testWidgets(
+      'pending gestor export cancels on ${identity ? 'account' : 'context'} change',
+      (tester) async {
+        final repo = _Reports();
+        final (container, _) = await _reportShell(tester, repo);
+        final picker = _CsvPicker();
+        FilePicker.platform = picker;
+        repo.completionPending = Completer<List<CompanyCompletion>>();
+        await tester.tap(find.byTooltip('Exportar CSV'));
+        await tester.pump();
+        final session = container.read(sessionProvider.notifier) as _Session;
+        if (identity) {
+          session.changeUser('different');
+        } else {
+          await session.select(_empresa);
+        }
+        await tester.pump();
+        final callsAfterChange = repo.activityCalls.length;
+        repo.completionPending!.complete([]);
+        await tester.pumpAndSettle();
+        expect(picker.files, isEmpty);
+        expect(repo.activityCalls, hasLength(callsAfterChange));
+      },
+    );
+  }
+
+  for (final count in [49, 50]) {
+    testWidgets('gestor CSV handles $count company snapshot boundary', (
+      tester,
+    ) async {
+      final repo = _Reports();
+      await _show(tester, const GestorReportsScreen(), reports: repo);
+      final picker = _CsvPicker();
+      FilePicker.platform = picker;
+      repo.completionOverride = List.generate(
+        count,
+        (i) => CompanyCompletion(
+          companyId: '$i',
+          company: 'Empresa $i',
+          percent: 10,
+        ),
+      );
+      await tester.tap(find.byTooltip('Exportar CSV'));
+      await tester.pumpAndSettle();
+      expect(picker.files.length, count == 49 ? 1 : 0);
+      if (count == 50) {
+        expect(find.textContaining('50 empresas ou mais'), findsOneWidget);
+      }
+      expect(repo.offsets, [0, 0]);
+    });
+  }
+
+  testWidgets(
     'reports load current completion independently of the date selector',
     (tester) async {
       final repo = _Reports();
@@ -491,7 +708,7 @@ void main() {
     },
   );
 
-  testWidgets('reports show honest empty states and disable deferred CSV', (
+  testWidgets('reports show honest empty states and enable CSV', (
     tester,
   ) async {
     await _show(
@@ -500,14 +717,8 @@ void main() {
       reports: _Reports()..empty = true,
     );
     final export = tester.widget<IconButton>(find.byType(IconButton).first);
-    expect(export.onPressed, isNull);
-    expect(find.text('Exportações disponíveis em breve.'), findsOneWidget);
-    final semantics = tester.ensureSemantics();
-    expect(
-      find.bySemanticsLabel('Exportações disponíveis em breve.'),
-      findsOneWidget,
-    );
-    semantics.dispose();
+    expect(export.onPressed, isNotNull);
+    expect(export.tooltip, 'Exportar CSV');
     expect(find.text('Nenhuma empresa cadastrada.'), findsOneWidget);
     expect(find.text('Nenhuma conclusão no período.'), findsOneWidget);
     final popularEmpty = find.text('Nenhuma conclusão no período.');

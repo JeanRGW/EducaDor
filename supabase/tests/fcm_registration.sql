@@ -10,6 +10,12 @@ insert into companies(id,name) values ('b9000000-0000-4000-8000-000000000001','C
 insert into company_memberships(user_id,company_id,role) values
  ('a9000000-0000-4000-8000-000000000001','b9000000-0000-4000-8000-000000000001','funcionario'),
  ('a9000000-0000-4000-8000-000000000002','b9000000-0000-4000-8000-000000000001','funcionario');
+-- Auth session rows: the application guard rejects tokens without a live session.
+insert into auth.sessions(id,user_id,created_at,updated_at,not_after) values
+ ('f9000000-0000-4000-8000-000000000001','a9000000-0000-4000-8000-000000000001',now(),now(),now()+interval '24 hours'),
+ ('f9000000-0000-4000-8000-000000000002','a9000000-0000-4000-8000-000000000002',now(),now(),now()+interval '24 hours')
+ on conflict do nothing;
+
 set local role authenticated;
 select set_config('request.jwt.claims','{"sub":"a9000000-0000-4000-8000-000000000001","session_id":"f9000000-0000-4000-8000-000000000001"}',true);
 select public.select_context('funcionario','b9000000-0000-4000-8000-000000000001');
@@ -67,7 +73,11 @@ do $$ declare old_updated timestamptz; old_owner uuid; begin
 end $$;
 set local role authenticated;
 select set_config('request.jwt.claims','{"sub":"a9000000-0000-4000-8000-000000000001"}',true);
-select public.unregister_fcm_token('test-token');
+do $$ begin
+  begin perform public.unregister_fcm_token('test-token');
+    raise exception 'Sessionless unregister accepted';
+  exception when insufficient_privilege then null; end;
+end $$;
 reset role;
 do $$ begin
  if (select count(*) from public.fcm_tokens where token='test-token') <> 1 or

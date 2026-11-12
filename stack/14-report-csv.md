@@ -1,0 +1,13 @@
+# CSV report export
+
+CSV uses UTF-8 with BOM, semicolon separators and comma decimal marks for Brazilian spreadsheet defaults. Fields are quoted and spreadsheet formula prefixes are neutralized.
+
+Exports deliberately use only a single bounded response per report section. The company employee RPC returns a count and at most 50 employees in the same database snapshot; it fails rather than exporting when the count differs. The platform completion RPC returns at most 50 rows without a count, so 50 rows is ambiguous and export fails (up to 49 companies supported). The separate platform activity section is a second snapshot; its period is explicit and it can reflect changes after the completion snapshot. Each section is internally consistent, but the combined file is not an atomic cross-section snapshot. Multi-page exports require new guarded, bounded snapshot infrastructure; deduplication or a second pass cannot ensure consistency under concurrent changes. No schema or database changes are included.
+
+Leaving a report route or changing identity/context cancels a pending export before opening the save dialog. The period picker is disabled while export is in progress. A native save dialog already opened cannot be recalled by the app.
+
+## Proposed scalable design (not implemented)
+
+A future page RPC would return at most 50 rows, a cursor offset and `done`, preserving the mandatory 50-row pagination. Each call would re-check MFA and the authorized role/company scope, rebuild the complete report in one statement, and hash a typed canonical serialization covering the format version, scope/account/session, filters and every exported row before the cursor. Ordering would use immutable unique UUIDs. The client would buffer all pages and open the save dialog only after the final page confirms the same revision; any mismatch, context change or timeout discards buffered data and asks the user to restart.
+
+This detects changed output between calls; it is not a continuous historical database snapshot and cannot detect changes that revert between reads. Rebuilding and hashing the full dataset on every page is O(N²/50), so it needs conservative row/byte caps and measured performance before use. Function-local `statement_timeout` does not limit the outer RPC. It requires an operator-configured request timeout plus SQL tests for insert/delete/update on both sides of a cursor, aggregations, empty/50/51 rows, malformed revisions and cursors, cross-company/gestor access, MFA, revoked access, UTF-8/null/rounding, byte limits and concurrent transactions. Until then, the current fail-closed single-response limits remain. A safe partial is preferable to an unproven page RPC or a claim of certified historical snapshots.

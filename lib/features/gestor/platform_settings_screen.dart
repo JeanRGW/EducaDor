@@ -35,11 +35,14 @@ class _PlatformSettingsScreenState
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.all(20),
           children: [
-            const Text('Gestores da plataforma', style: AdminStyles.cardTitle),
+            Text(
+              'Gestores da plataforma',
+              style: AdminStyles.cardTitle(context),
+            ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'Gerencie os acessos de quem administra a plataforma.',
-              style: AdminStyles.body,
+              style: AdminStyles.body(context),
             ),
             const SizedBox(height: 20),
             PrimaryButton(

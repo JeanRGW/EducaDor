@@ -465,7 +465,10 @@ class MockData {
   ];
 
   static const popularContent = <MapEntry<String, String>>[
-    MapEntry('Tecnologia na Educação - curso', '840 conclusões • +12% de interesse'),
+    MapEntry(
+      'Tecnologia na Educação - curso',
+      '840 conclusões • +12% de interesse',
+    ),
     MapEntry('Saúde mental - módulo', '620 conclusões • +8% de interesse'),
     MapEntry('Segurança no trabalho', '410 conclusões • +15% de interesse'),
   ];

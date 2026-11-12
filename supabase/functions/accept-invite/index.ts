@@ -13,7 +13,8 @@ Deno.serve(async (req) => {
     // Verified identity only; the transaction derives role/company from the
     // invitation and serializes with revocation before granting access.
     const { error } = await admin.rpc('accept_membership_invite', {
-      p_token_hash: await tokenHash(token), p_user: current.id, p_email: current.email,
+      p_token_hash: await tokenHash(token), p_user: current.id,
+      p_session: current.session, p_email: current.email,
     });
     if (error) return respond(req, { error: 'Invitation unavailable' }, 400);
     return respond(req, { success: true });

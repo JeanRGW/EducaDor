@@ -233,32 +233,34 @@ class _CompanyEditorState extends ConsumerState<_CompanyEditor> {
               children: [
                 Text(
                   _active ? 'Empresa ativa' : 'Empresa pausada',
-                  style: AdminStyles.cardTitle.copyWith(
+                  style: AdminStyles.cardTitle(context).copyWith(
                     color: _active
-                        ? AppColors.successDarkGreen
-                        : AppColors.danger,
+                        ? context.successForeground
+                        : context.dangerForeground,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   'Registro: ${widget.company.registeredAt.isEmpty ? '—' : formatDate(DateTime.parse(widget.company.registeredAt))}',
-                  style: AdminStyles.body,
+                  style: AdminStyles.body(context),
                 ),
                 const SizedBox(height: 12),
                 OutlinedButtonTheme(
                   data: OutlinedButtonThemeData(
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.successDarkGreen,
+                      foregroundColor: context.successForeground,
                       minimumSize: const Size(0, 44),
                       padding: const EdgeInsets.symmetric(
                         horizontal: 12,
                         vertical: 10,
                       ),
-                      side: const BorderSide(color: AppColors.border),
+                      side: BorderSide(
+                        color: Theme.of(context).colorScheme.outlineVariant,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      textStyle: AdminStyles.fieldLabel,
+                      textStyle: AdminStyles.fieldLabel(context),
                     ),
                   ),
                   child: Wrap(
@@ -289,10 +291,10 @@ class _CompanyEditorState extends ConsumerState<_CompanyEditor> {
           _field('name'),
           _field('cnpj'),
           _field('code_prefix'),
-          const Text(
+          Text(
             'Use de 1 a 12 letras maiúsculas (A–Z) ou números (0–9). '
             'Exemplo: EDU-XXXXXX. A alteração vale apenas para novos certificados.',
-            style: AdminStyles.body,
+            style: AdminStyles.body(context),
           ),
           const SizedBox(height: 16),
           _field('responsible'),
