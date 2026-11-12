@@ -1,5 +1,4 @@
 import { admin, caller, preflight, respond } from '../_shared/invites.ts';
-import { verifiedSessionId } from '../issue-certificate/request.ts';
 import { createSender } from './fcm.ts';
 import { handle, type PushEvent } from './handler.ts';
 
@@ -14,12 +13,9 @@ Deno.serve(async (req) => {
       // Invoke the caller-context helper before any privileged database call.
       const context = await current.client.rpc('selected_context');
       if (context.error || !context.data?.length) return null;
-      let session: string;
-      try { session = verifiedSessionId(request.headers.get('authorization')!.replace(/^Bearer\s+/i, '')); }
-      catch { return null; }
       return async (event: PushEvent) => {
         const { data, error } = await admin.rpc('claim_push_recipients', {
-          p_user: current.id, p_session: session, p_event: event.event,
+          p_user: current.id, p_session: current.session, p_event: event.event,
           p_course: event.event === 'course_available' ? event.course_id : null,
           p_company: event.event === 'course_available' ? event.company_id ?? null : null,
           p_certificate: event.event === 'certificate_issued' ? event.certificate_id : null,

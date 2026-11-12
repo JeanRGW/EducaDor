@@ -14,6 +14,11 @@ insert into platform_gestors(user_id) values ('a9000000-0000-4000-8000-000000000
 insert into courses(id,title) values ('c9000000-0000-4000-8000-000000000001','Security');
 insert into modules(id,course_id,title) values ('d9000000-0000-4000-8000-000000000001','c9000000-0000-4000-8000-000000000001','Module');
 insert into lessons(id,module_id,title,kind,video_id) values ('e9000000-0000-4000-8000-000000000001','d9000000-0000-4000-8000-000000000001','Video','video','abcdefghijk');
+-- Auth session rows: the application guard rejects tokens without a live session.
+insert into auth.sessions(id,user_id,created_at,updated_at,not_after) values
+ ('f9000000-0000-4000-8000-000000000001','a9000000-0000-4000-8000-000000000001',now(),now(),now()+interval '24 hours')
+ on conflict do nothing;
+
 set local role authenticated;
 select set_config('request.jwt.claims','{"sub":"a9000000-0000-4000-8000-000000000001","session_id":"f9000000-0000-4000-8000-000000000001"}',true);
 do $$ declare field text; begin

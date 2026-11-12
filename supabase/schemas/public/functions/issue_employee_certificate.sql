@@ -12,6 +12,8 @@ CREATE OR REPLACE FUNCTION public.issue_employee_certificate (
 declare result uuid; prefix text; code_value text;
 begin
   perform pg_advisory_xact_lock(hashtext(p_user::text || p_company::text || p_course::text));
+  -- Serialize with revocation before trusting the session context.
+  perform public.require_live_session_id(p_user, p_session);
   perform 1 from public.session_contexts sc join public.company_memberships cm on cm.user_id = sc.user_id and cm.company_id = sc.company_id and cm.role = sc.role
     join public.companies co on co.id = cm.company_id and co.active
     where sc.user_id = p_user and sc.session_id = p_session and sc.role = 'funcionario' and sc.company_id = p_company for share of sc,cm,co;

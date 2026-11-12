@@ -46,6 +46,12 @@ begin
   end;
   raise exception 'Expected error % from %', expected, statement;
 end $$;
+-- Auth session rows: the application guard rejects tokens without a live session.
+insert into auth.sessions(id,user_id,created_at,updated_at,not_after) values
+ ('f2000000-0000-4000-8000-000000000001','a2000000-0000-4000-8000-000000000001',now(),now(),now()+interval '24 hours'),
+ ('f2000000-0000-4000-8000-000000000003','a2000000-0000-4000-8000-000000000002',now(),now(),now()+interval '24 hours')
+ on conflict do nothing;
+
 set local role authenticated;
 select set_config('request.jwt.claims',
   '{"sub":"a2000000-0000-4000-8000-000000000001","session_id":"f2000000-0000-4000-8000-000000000001"}', true);
@@ -125,7 +131,9 @@ do $$ begin
     and company_id = 'b2000000-0000-4000-8000-000000000002' and role = 'empresa') or
     exists (select 1 from session_contexts where user_id = 'a2000000-0000-4000-8000-000000000002') then
     raise exception 'Revocation scope or selected-session cleanup failed'; end if;
-  if has_function_privilege('authenticated', 'accept_membership_invite(text, uuid, text)', 'execute') or
+  if has_function_privilege('authenticated', 'accept_membership_invite(text, uuid, uuid, text)', 'execute') or
+    has_function_privilege('authenticated', 'accept_membership_invite(text, uuid, text)', 'execute') or
+    not has_function_privilege('service_role', 'accept_membership_invite(text, uuid, uuid, text)', 'execute') or
     has_function_privilege('anon', 'revoke_gestor_access(uuid, uuid)', 'execute') then
     raise exception 'Privileged operation exposed'; end if;
 end $$;
@@ -133,8 +141,9 @@ end $$;
 insert into membership_invites(email, role, token_hash, expires_at) values
   ('gestor-two@example.test', 'gestor', repeat('2', 64), now() + interval '1 hour');
 set local role service_role;
-select accept_membership_invite(repeat('2', 64), 'a2000000-0000-4000-8000-000000000002', 'gestor-two@example.test');
-select pg_temp.expect_error('select accept_membership_invite(repeat(''2'',64), ''a2000000-0000-4000-8000-000000000002'', ''gestor-two@example.test'')', 'Invitation unavailable');
+select accept_membership_invite(repeat('2', 64), 'a2000000-0000-4000-8000-000000000002',
+  'f2000000-0000-4000-8000-000000000003', 'gestor-two@example.test');
+select pg_temp.expect_error('select accept_membership_invite(repeat(''2'',64), ''a2000000-0000-4000-8000-000000000002'', ''f2000000-0000-4000-8000-000000000003'', ''gestor-two@example.test'')', 'Invitation unavailable');
 reset role;
 do $$ begin
   if not exists (select 1 from platform_gestors where user_id = 'a2000000-0000-4000-8000-000000000002') or

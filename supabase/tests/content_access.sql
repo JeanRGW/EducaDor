@@ -38,6 +38,13 @@ insert into lessons(id, module_id, title, kind) values
   ('ee000000-0000-4000-8000-000000000001', 'dd000000-0000-4000-8000-000000000001', 'Selected lesson', 'reading'),
   ('ee000000-0000-4000-8000-000000000002', 'dd000000-0000-4000-8000-000000000002', 'All lesson', 'reading');
 
+-- Auth session rows: the application guard rejects tokens without a live session.
+insert into auth.sessions(id,user_id,created_at,updated_at,not_after) values
+ ('ff000000-0000-4000-8000-000000000001','aa000000-0000-4000-8000-000000000001',now(),now(),now()+interval '24 hours'),
+ ('ff000000-0000-4000-8000-000000000002','aa000000-0000-4000-8000-000000000002',now(),now(),now()+interval '24 hours'),
+ ('ff000000-0000-4000-8000-000000000003','aa000000-0000-4000-8000-000000000003',now(),now(),now()+interval '24 hours')
+ on conflict do nothing;
+
 set local role authenticated;
 select set_config('request.jwt.claims',
   '{"sub":"aa000000-0000-4000-8000-000000000001","session_id":"ff000000-0000-4000-8000-000000000001"}', true);

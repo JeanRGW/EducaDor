@@ -1,3 +1,10 @@
+-- Direct Storage API calls from a signed-in user must also use a live session.
+CREATE POLICY "storage_public_session" ON "storage"."objects"
+  AS RESTRICTIVE
+  TO "authenticated"
+  USING (public.mfa_access_allowed())
+  WITH CHECK (public.mfa_access_allowed());
+
 CREATE POLICY "storage_public_delete" ON "storage"."objects"
   FOR DELETE
   TO PUBLIC

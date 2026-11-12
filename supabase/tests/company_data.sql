@@ -26,6 +26,11 @@ insert into company_memberships(user_id, company_id, role, dept) values
   ('a3000000-0000-4000-8000-000000000001', 'b3000000-0000-4000-8000-000000000002', 'funcionario', 'TI'),
   ('a3000000-0000-4000-8000-000000000001', 'b3000000-0000-4000-8000-000000000003', 'empresa', null),
   ('a3000000-0000-4000-8000-000000000002', 'b3000000-0000-4000-8000-000000000001', 'funcionario', 'TI');
+-- Auth session rows: the application guard rejects tokens without a live session.
+insert into auth.sessions(id,user_id,created_at,updated_at,not_after) values
+ ('f3000000-0000-4000-8000-000000000001','a3000000-0000-4000-8000-000000000001',now(),now(),now()+interval '24 hours')
+ on conflict do nothing;
+
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"a3000000-0000-4000-8000-000000000001","session_id":"f3000000-0000-4000-8000-000000000001","user_role":"empresa","company_id":"b3000000-0000-4000-8000-000000000001"}', true);
 do $$ begin

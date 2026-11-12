@@ -15,6 +15,11 @@ insert into public.company_memberships(user_id,company_id,role) values
   ('a8900000-0000-4000-8000-000000000001','b8900000-0000-4000-8000-000000000001','empresa');
 insert into public.courses(id,title,all_companies) values ('c8900000-0000-4000-8000-000000000001','Gender',true);
 insert into public.modules(id,course_id,title) values ('d8900000-0000-4000-8000-000000000001','c8900000-0000-4000-8000-000000000001','Module');
+-- Auth session rows: the application guard rejects tokens without a live session.
+insert into auth.sessions(id,user_id,created_at,updated_at,not_after) values
+ ('ff890000-0000-4000-8000-000000000001','a8900000-0000-4000-8000-000000000001',now(),now(),now()+interval '24 hours')
+ on conflict do nothing;
+
 set local role authenticated;
 select set_config('request.jwt.claims','{"sub":"a8900000-0000-4000-8000-000000000001","session_id":"ff890000-0000-4000-8000-000000000001","aal":"aal1"}',true);
 select public.select_context('gestor',null);

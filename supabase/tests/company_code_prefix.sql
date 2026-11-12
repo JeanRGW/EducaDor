@@ -36,6 +36,11 @@ begin
   end;
   raise exception 'Expected error % from %',expected,statement;
 end $$;
+-- Auth session rows: the application guard rejects tokens without a live session.
+insert into auth.sessions(id,user_id,created_at,updated_at,not_after) values
+ ('f9000000-0000-4000-8000-000000000001','a9000000-0000-4000-8000-000000000001',now(),now(),now()+interval '24 hours')
+ on conflict do nothing;
+
 set local role authenticated;
 select set_config('request.jwt.claims','{"sub":"a9000000-0000-4000-8000-000000000001","session_id":"f9000000-0000-4000-8000-000000000001"}',true);
 select pg_temp.expect_error('select update_company(''b9000000-0000-4000-8000-000000000001'',''{"name":"Company","code_prefix":"ABC"}'')','Forbidden');
