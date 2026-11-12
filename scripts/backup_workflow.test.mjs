@@ -12,6 +12,16 @@ test('backup has a daily schedule and confirmed manual dispatch but remains hard
   assert.match(backup, /github\.event_name == 'schedule' \|\| inputs\.confirm == true/);
 });
 
+test('backup installs and checks the PGDG PostgreSQL 17 client before dumping', () => {
+  assert.match(backup, /apt\.postgresql\.org\/pub\/repos\/apt/);
+  assert.match(backup, /B97B0AFCAA1A47F044F244A07FCC7D46ACCC4CF8/);
+  assert.match(backup, /apt-get install -y postgresql-client-17/);
+  assert.match(backup, /pg_dump --version \| grep -E/);
+  assert.ok(backup.indexOf('- name: Install PostgreSQL 17 client') < backup.indexOf('- name: Dump database'));
+  assert.match(backup, /PGDATABASE: \$\{\{ secrets\.BACKUP_DATABASE_URL \}\}/);
+  assert.match(backup, /pg_dump --no-owner --no-acl/);
+});
+
 test('backup uses B2 path-style and phase-isolated credentials', () => {
   assert.match(backup, /https:\/\/s3\.us-east-005\.backblazeb2\.com/);
   assert.match(backup, /addressing_style = path/);

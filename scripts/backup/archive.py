@@ -20,6 +20,10 @@ MAX_CHUNKS = (MAX_TOTAL + CHUNK - 1) // CHUNK
 BLOCK = 65536
 
 
+class MissingPassphraseError(ValueError):
+    pass
+
+
 def digest(data):
     return hashlib.sha256(data).hexdigest()
 
@@ -89,8 +93,8 @@ def read_bounded(parent, name, limit):
     return out.getvalue()
 
 
-def run_output(args, out, limit):
-    process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+def run_output(args, out, limit, pass_fds=()):
+    process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, pass_fds=pass_fds,
                                env={k: os.environ[k] for k in ('PATH', 'HOME', 'GNUPGHOME', 'LANG', 'LC_ALL')
                                     if k in os.environ})
     try:
@@ -210,8 +214,32 @@ def unpack(source, destination, signer):
                             raise ValueError('part integrity mismatch')
                         out.write(data)
                 compressed = root / 'dump.gz'
-                with compressed.open('wb') as out:
-                    run_output(['gpg', '--batch', '--decrypt', str(encrypted)], out, MAX_COMPRESSED)
+                passphrase_path = os.environ.get('BACKUP_GPG_PASSPHRASE_FILE')
+                passphrase = None
+                try:
+                    options = []
+                    if passphrase_path is not None:
+                        pass_parent, pass_name = paths(passphrase_path)
+                        try:
+                            passphrase = regular_at(pass_parent, pass_name)
+                        finally:
+                            os.close(pass_parent)
+                        info = os.fstat(passphrase.fileno())
+                        if info.st_uid != os.geteuid() or stat.S_IMODE(info.st_mode) != 0o600:
+                            raise ValueError('passphrase file must be owned by the current user and mode 0600')
+                        options = ['--pinentry-mode', 'loopback', '--passphrase-file',
+                                   f'/proc/self/fd/{passphrase.fileno()}']
+                    with compressed.open('wb') as out:
+                        try:
+                            run_output(['gpg', '--batch', *options, '--decrypt', str(encrypted)], out,
+                                       MAX_COMPRESSED, pass_fds=(passphrase.fileno(),) if passphrase else ())
+                        except subprocess.CalledProcessError as error:
+                            if passphrase_path is None:
+                                raise MissingPassphraseError('Decryption failed; if the key is passphrase-protected, set BACKUP_GPG_PASSPHRASE_FILE.') from error
+                            raise
+                finally:
+                    if passphrase:
+                        passphrase.close()
                 result = root / 'dump'
                 with gzip.open(compressed, 'rb') as src, result.open('wb') as out:
                     copy_bounded(src, out, MAX_PLAIN)
@@ -241,6 +269,8 @@ def main():
             pack(args.dump, args.directory, args.recipient, args.signer)
         else:
             unpack(args.directory, args.dump, args.signer)
+    except MissingPassphraseError as error:
+        parser.exit(1, f'{error}\n')
     except (OSError, ValueError, KeyError, TypeError, subprocess.CalledProcessError, EOFError) as error:
         parser.exit(1, f'Archive operation failed ({type(error).__name__}).\n')
 
