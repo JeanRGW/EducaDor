@@ -394,8 +394,9 @@ def main():
         if len(sys.argv) not in (2, 4) or (len(sys.argv) == 4 and sys.argv[1] != 'retrieve'):
             raise ValueError('expected archive directory or retrieve RUN DIRECTORY')
         endpoint = os.environ['BACKUP_S3_ENDPOINT']
-        if endpoint.rstrip('/') != 'https://s3.us-east-005.backblazeb2.com':
-            raise ValueError('invalid endpoint')
+        match = re.fullmatch(r'https://s3\.([a-z0-9-]+)\.backblazeb2\.com/?', endpoint)
+        if not match or os.environ.get('AWS_DEFAULT_REGION') != match.group(1):
+            raise ValueError('invalid endpoint or mismatched region')
         if len(sys.argv) == 2 and sys.argv[1] == 'audit':
             audit(int(os.environ['BACKUP_EGRESS_BUDGET_BYTES']),
                   bytes.fromhex(os.environ['BACKUP_HMAC_KEY_HEX']), os.environ['BACKUP_SIGNER_FINGERPRINT'])

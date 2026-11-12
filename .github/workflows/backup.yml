@@ -39,7 +39,7 @@ jobs:
       BACKUP_RECIPIENT_FINGERPRINT: ${{ vars.BACKUP_RECIPIENT_FINGERPRINT }}
       BACKUP_PUBLIC_KEY: ${{ vars.BACKUP_PUBLIC_KEY }}
       BACKUP_SIGNER_FINGERPRINT: ${{ vars.BACKUP_SIGNER_FINGERPRINT }}
-      AWS_DEFAULT_REGION: us-east-005
+      AWS_DEFAULT_REGION: ${{ vars.AWS_DEFAULT_REGION || 'us-east-005' }}
       AWS_EC2_METADATA_DISABLED: 'true'
     steps:
       - uses: actions/checkout@v4
@@ -100,7 +100,7 @@ jobs:
           export AWS_CONFIG_FILE="$work/aws-config" AWS_SHARED_CREDENTIALS_FILE="$work/aws-credentials"
           export AWS_MAX_ATTEMPTS=1 AWS_RETRY_MODE=standard AWS_PAGER=''
           unset AWS_PROFILE AWS_DEFAULT_PROFILE AWS_SESSION_TOKEN AWS_SECURITY_TOKEN AWS_CA_BUNDLE
-          printf '[default]\nregion = us-east-005\ns3 =\n    addressing_style = path\n' > "$AWS_CONFIG_FILE"
+          printf '[default]\ns3 =\n    addressing_style = path\n' > "$AWS_CONFIG_FILE"
           touch "$AWS_SHARED_CREDENTIALS_FILE"
           python3 scripts/backup/publish.py "$work/archive"
       - name: Remove scratch

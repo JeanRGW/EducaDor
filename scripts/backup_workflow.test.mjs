@@ -10,6 +10,7 @@ test('backup remains disabled, manual, B2 path-style and phase-isolated', () => 
   assert.doesNotMatch(backup, /^\s+schedule:/m);
   assert.match(backup, /https:\/\/s3\.us-east-005\.backblazeb2\.com/);
   assert.match(backup, /addressing_style = path/);
+  assert.match(backup, /AWS_DEFAULT_REGION: \$\{\{ vars\.AWS_DEFAULT_REGION \|\| 'us-east-005' \}\}/);
   assert.match(backup, /BACKUP_DAILY_RETENTION/);
   assert.match(backup, /BACKUP_WEEKLY_RETENTION/);
   assert.match(backup, /secrets\.BACKUP_S3_ACCESS_KEY_ID/);
