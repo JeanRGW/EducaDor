@@ -55,4 +55,7 @@ Apply the reviewed generated database migration first, deploy
 `storage-download-url` with existing JWT verification next, then publish the
 matching PWA after generating its static-shell worker. Old profile/progress RPC
 signatures remain compatible. Do not deploy individual feature branches. Hosted
-migration application remains operator-approved; local fixtures always roll back.
+migration application remains operator-approved and subject to the staged privacy
+rollout blocker in [Profile privacy rollout](14-profile-privacy-rollout.md); do not
+use an unbounded push while the staged migrations are pending. Local fixtures always
+roll back.
