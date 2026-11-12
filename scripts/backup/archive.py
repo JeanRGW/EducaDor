@@ -139,7 +139,7 @@ def pack(source, destination, recipient, signer):
                     raise ValueError('compressed backup exceeds limit')
                 encrypted = root / 'dump.gpg'
                 with encrypted.open('wb') as out:
-                    run_output(['gpg', '--batch', '--trust-model', 'always', '--output', '-', '--encrypt', '--recipient', recipient, str(compressed)], out, MAX_TOTAL)
+                    run_output(['gpg', '--no-options', '--batch', '--no-encrypt-to', '--trust-model', 'always', '--output', '-', '--encrypt', '--recipient', recipient, str(compressed)], out, MAX_TOTAL)
                 parts = root / 'parts'
                 parts.mkdir(mode=0o700)
                 entries = []
