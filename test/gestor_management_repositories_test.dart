@@ -222,18 +222,17 @@ void main() {
             200,
           );
         }
-        expect(request.url.path, '/rest/v1/profiles');
-        expect(request.url.queryParameters['id'], 'eq.me');
-        expect(request.url.queryParameters['select'], contains('gender'));
+        expect(request.url.path, '/rest/v1/rpc/own_profile');
+        expect(jsonDecode(request.body), isNull);
         return http.Response(
-          jsonEncode({
+          jsonEncode([{
             'full_name': 'Ana Silva',
             'email': 'ana@example.test',
             'phone': '123',
             'birth_date': '1990-01-01',
             'address': 'Rua A',
             'gender': gender?.name,
-          }),
+          }]),
           200,
         );
       });

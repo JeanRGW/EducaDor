@@ -24,7 +24,7 @@ do $$ declare field text; begin
  begin update profiles set full_name=''; raise exception 'Validation bypass'; exception when insufficient_privilege then null; end;
  begin perform complete_password_setup(); raise exception 'Missing password accepted'; exception when raise_exception then if sqlerrm <> 'Password unavailable' then raise; end if; end;
  perform update_own_profile(' Edited ',' 123 ',null,' Address ');
- if not exists(select 1 from profiles where id=auth.uid() and full_name='Edited' and phone='123' and address='Address' and needs_password) then raise exception 'Own RPC failed'; end if;
+ if not exists(select 1 from public.own_profile() where id=auth.uid() and full_name='Edited' and phone='123' and address='Address' and needs_password) then raise exception 'Own RPC failed'; end if;
  begin perform update_own_profile('',null,null,null); raise exception 'Invalid profile accepted'; exception when raise_exception then if sqlerrm <> 'Invalid profile' then raise; end if; end;
 end $$;
 -- Empty string is also Auth's no-password representation.
