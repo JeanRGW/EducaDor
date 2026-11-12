@@ -24,8 +24,12 @@ class GestorDashboardScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         toolbarHeight: 78,
-        backgroundColor: AppColors.surface,
-        shape: const Border(bottom: BorderSide(color: AppColors.border)),
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        shape: Border(
+          bottom: BorderSide(
+            color: Theme.of(context).colorScheme.outlineVariant,
+          ),
+        ),
         automaticallyImplyLeading: false,
         titleSpacing: 16,
         title: Row(
@@ -34,17 +38,17 @@ class GestorDashboardScreen extends ConsumerWidget {
               width: 40,
               height: 40,
               alignment: Alignment.center,
-              decoration: const BoxDecoration(
-                color: AppColors.successBg,
+              decoration: BoxDecoration(
+                color: context.successSurface,
                 shape: BoxShape.circle,
               ),
               child: Text(
                 user?.initials ?? '',
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: AppFonts.outfit,
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.successDarkGreen,
+                  color: context.successForeground,
                 ),
               ),
             ),
@@ -62,13 +66,13 @@ class GestorDashboardScreen extends ConsumerWidget {
                       height: 1.25,
                     ),
                   ),
-                  const Text(
+                  Text(
                     'Gerente de Plataforma',
                     style: TextStyle(
                       fontFamily: AppFonts.inter,
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
-                      color: Color(0xFF475569),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                       height: 1.35,
                     ),
                   ),
@@ -77,13 +81,13 @@ class GestorDashboardScreen extends ConsumerWidget {
             ),
             IconButton(
               tooltip: 'Notificações',
-              icon: const CircleAvatar(
+              icon: CircleAvatar(
                 radius: 18,
-                backgroundColor: AppColors.background,
+                backgroundColor: Theme.of(context).scaffoldBackgroundColor,
                 child: SvgIcon(
                   AppIcons.bell,
                   size: 18,
-                  color: AppColors.textPrimary,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
               onPressed: () => showNotificationSettings(context),
@@ -306,11 +310,11 @@ class _DashboardStatCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   metric.label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: AppFonts.inter,
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFF475569),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                     height: 1.3,
                   ),
                 ),
@@ -333,11 +337,11 @@ class _DashboardStatCard extends StatelessWidget {
           if (metric.delta != null)
             Text(
               metric.delta!,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: AppFonts.inter,
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
-                color: AppColors.success,
+                color: context.successForeground,
                 height: 1.2,
               ),
             )
@@ -363,8 +367,8 @@ class _ActivityRow extends StatelessWidget {
           Container(
             width: 32,
             height: 32,
-            decoration: const BoxDecoration(
-              color: AppColors.successBg,
+            decoration: BoxDecoration(
+              color: context.successSurface,
               shape: BoxShape.circle,
             ),
             child: SvgIcon(
@@ -392,12 +396,12 @@ class _ActivityRow extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   _timeAgo(activity.occurredAt),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: AppFonts.inter,
                     fontSize: 11,
                     fontWeight: FontWeight.w400,
                     height: 1.2,
-                    color: AppColors.textMuted,
+                    color: Theme.of(context).colorScheme.outline,
                   ),
                 ),
               ],

@@ -125,12 +125,12 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                           key: const ValueKey('employee-balance'),
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            gradient: const LinearGradient(
+                            gradient: LinearGradient(
                               begin: Alignment.bottomLeft,
                               end: Alignment.topRight,
                               colors: [
                                 AppColors.primary,
-                                AppColors.successDarkGreen,
+                                context.successForeground,
                               ],
                             ),
                             borderRadius: BorderRadius.circular(16),
@@ -171,10 +171,11 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                                     children: [
                                       Text(
                                         _points(data.balance),
-                                        style: AdminStyles.pageTitle.copyWith(
-                                          color: Colors.white,
-                                          fontSize: 28,
-                                        ),
+                                        style: AdminStyles.pageTitle(context)
+                                            .copyWith(
+                                              color: Colors.white,
+                                              fontSize: 28,
+                                            ),
                                       ),
                                       const Text(
                                         'Pontos',
@@ -211,10 +212,10 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                           ),
                       if (pages.first.isLoading) const DataSkeleton(),
                       if (rewards.isEmpty && pages.first.asData != null)
-                        const AppCard(
+                        AppCard(
                           child: Text(
                             'Nenhuma recompensa disponível.',
-                            style: AdminStyles.body,
+                            style: AdminStyles.body(context),
                           ),
                         ),
                     ],
@@ -258,14 +259,24 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                                         reward.title.toLowerCase().contains(
                                           'caneca',
                                         )
-                                        ? [
-                                            const Color(0xFFF1F5F9),
-                                            const Color(0xFFE2E8F0),
-                                          ]
-                                        : [
-                                            const Color(0xFFCCFBF1),
-                                            const Color(0xFFE0E7FF),
-                                          ],
+                                        ? (context.isDark
+                                              ? [
+                                                  const Color(0xFF1E3A45),
+                                                  const Color(0xFF24444F),
+                                                ]
+                                              : [
+                                                  const Color(0xFFF1F5F9),
+                                                  const Color(0xFFE2E8F0),
+                                                ])
+                                        : (context.isDark
+                                              ? [
+                                                  const Color(0xFF123B3A),
+                                                  const Color(0xFF25304F),
+                                                ]
+                                              : [
+                                                  const Color(0xFFCCFBF1),
+                                                  const Color(0xFFE0E7FF),
+                                                ]),
                                   ),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
@@ -274,23 +285,23 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                                       ? AppIcons.coffee
                                       : AppIcons.gift,
                                   size: 40,
-                                  color: AppColors.successDarkGreen,
+                                  color: context.successForeground,
                                 ),
                               ),
                               const SizedBox(height: 8),
                               Expanded(
                                 child: Text(
                                   reward.title,
-                                  style: AdminStyles.cardTitle,
+                                  style: AdminStyles.cardTitle(context),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                               Text(
                                 '${_points(reward.cost)} pontos',
-                                style: AdminStyles.fieldLabel.copyWith(
-                                  color: AppColors.successDarkGreen,
-                                ),
+                                style: AdminStyles.fieldLabel(
+                                  context,
+                                ).copyWith(color: context.successForeground),
                               ),
                               FilledButton(
                                 style: FilledButton.styleFrom(
@@ -299,9 +310,9 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                                     horizontal: 8,
                                     vertical: 4,
                                   ),
-                                  backgroundColor: AppColors.successBgSoft,
-                                  foregroundColor: AppColors.successDarkGreen,
-                                  textStyle: AdminStyles.fieldLabel,
+                                  backgroundColor: context.softSuccessSurface,
+                                  foregroundColor: context.successForeground,
+                                  textStyle: AdminStyles.fieldLabel(context),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(8),
                                   ),
@@ -363,7 +374,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                                       child: AppCard(
                                         key: ValueKey('rank-${rows[i].userId}'),
                                         color: rows[i].userId == scope.userId
-                                            ? AppColors.successBgSoft
+                                            ? context.softSuccessSurface
                                             : null,
                                         borderRadius: 8,
                                         padding: const EdgeInsets.symmetric(
@@ -374,23 +385,27 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                                           children: [
                                             Text(
                                               '${i + 1}.',
-                                              style: AdminStyles.body.copyWith(
-                                                color: AppColors.textPrimary,
-                                                fontWeight:
-                                                    rows[i].userId ==
-                                                        scope.userId
-                                                    ? FontWeight.w700
-                                                    : FontWeight.w400,
-                                              ),
+                                              style: AdminStyles.body(context)
+                                                  .copyWith(
+                                                    color: Theme.of(
+                                                      context,
+                                                    ).colorScheme.onSurface,
+                                                    fontWeight:
+                                                        rows[i].userId ==
+                                                            scope.userId
+                                                        ? FontWeight.w700
+                                                        : FontWeight.w400,
+                                                  ),
                                             ),
                                             const SizedBox(width: 4),
                                             Expanded(
                                               child: Text(
                                                 '${rows[i].name}${rows[i].department.isEmpty ? '' : ' (${rows[i].department})'}${rows[i].userId == scope.userId ? ' · você' : ''}',
-                                                style: AdminStyles.body
+                                                style: AdminStyles.body(context)
                                                     .copyWith(
-                                                      color:
-                                                          AppColors.textPrimary,
+                                                      color: Theme.of(
+                                                        context,
+                                                      ).colorScheme.onSurface,
                                                       fontWeight:
                                                           rows[i].userId ==
                                                               scope.userId
@@ -402,8 +417,10 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                                             const SizedBox(width: 8),
                                             Text(
                                               '${_points(rows[i].points)} pts',
-                                              style: AdminStyles.fieldLabel
-                                                  .copyWith(
+                                              style:
+                                                  AdminStyles.fieldLabel(
+                                                    context,
+                                                  ).copyWith(
                                                     color: AppColors
                                                         .successDarkGreen,
                                                   ),

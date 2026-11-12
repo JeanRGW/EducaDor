@@ -152,14 +152,20 @@ class _ProfileEditorState extends ConsumerState<_ProfileEditor> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('E-mail de acesso', style: AdminStyles.fieldLabel),
+                Text(
+                  'E-mail de acesso',
+                  style: AdminStyles.fieldLabel(context),
+                ),
                 const SizedBox(height: 6),
-                SelectableText(widget.profile.email, style: AdminStyles.body),
+                SelectableText(
+                  widget.profile.email,
+                  style: AdminStyles.body(context),
+                ),
               ],
             ),
           ),
           const SizedBox(height: 24),
-          const Text('Dados pessoais', style: AdminStyles.cardTitle),
+          Text('Dados pessoais', style: AdminStyles.cardTitle(context)),
           const SizedBox(height: 16),
           ManagementField(
             label: 'Nome completo',
@@ -211,7 +217,7 @@ class _ProfileEditorState extends ConsumerState<_ProfileEditor> {
                         child: Theme(
                           data: Theme.of(context).copyWith(
                             colorScheme: Theme.of(context).colorScheme.copyWith(
-                              primary: AppColors.successDarkGreen,
+                              primary: context.successForeground,
                             ),
                           ),
                           child: child!,
@@ -231,8 +237,8 @@ class _ProfileEditorState extends ConsumerState<_ProfileEditor> {
                     ? null
                     : () => setState(() => _birthDate = null),
                 style: TextButton.styleFrom(
-                  foregroundColor: AppColors.successDarkGreen,
-                  textStyle: AdminStyles.fieldLabel,
+                  foregroundColor: context.successForeground,
+                  textStyle: AdminStyles.fieldLabel(context),
                 ),
                 child: const Text('Limpar data'),
               ),

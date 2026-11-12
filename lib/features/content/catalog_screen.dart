@@ -111,8 +111,8 @@ class _ContentCatalogScreenState extends ConsumerState<ContentCatalogScreen> {
     appBar: AppBar(
       automaticallyImplyLeading: false,
       titleSpacing: 16,
-      backgroundColor: AppColors.surface,
-      titleTextStyle: AdminStyles.pageTitle,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      titleTextStyle: AdminStyles.pageTitle(context),
       title: const Text('Conteúdo Educacional'),
     ),
     floatingActionButton: widget.platform
@@ -142,8 +142,12 @@ class _ContentCatalogScreenState extends ConsumerState<ContentCatalogScreen> {
           Container(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
             decoration: BoxDecoration(
-              color: AppColors.surface,
-              border: const Border(bottom: BorderSide(color: AppColors.border)),
+              color: Theme.of(context).colorScheme.surface,
+              border: Border(
+                bottom: BorderSide(
+                  color: Theme.of(context).colorScheme.outlineVariant,
+                ),
+              ),
             ),
             child: Column(
               children: [
@@ -153,7 +157,7 @@ class _ContentCatalogScreenState extends ConsumerState<ContentCatalogScreen> {
                   prefixIcon: SvgIcon(
                     AppIcons.search,
                     size: 18,
-                    color: const Color(0xFF475569),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                   onChanged: (value) {
                     _search = value;
@@ -169,7 +173,7 @@ class _ContentCatalogScreenState extends ConsumerState<ContentCatalogScreen> {
                 FilterChips(
                   plainInactive: true,
                   activeColor: widget.platform
-                      ? AppColors.successDarkGreen
+                      ? context.successForeground
                       : AppColors.primary,
                   options: const [
                     'Todos',
@@ -308,13 +312,19 @@ class ManagedContentCard extends StatelessWidget {
                       errorBuilder: (_, _, _) => const _CoverFallback(),
                       loadingBuilder: (_, child, progress) => progress == null
                           ? child
-                          : const ColoredBox(color: AppColors.chipBg),
+                          : ColoredBox(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.surfaceContainerHigh,
+                            ),
                     )
                   else
                     const _CoverFallback(),
                   if (!available)
                     ColoredBox(
-                      color: AppColors.surface.withValues(alpha: 0.45),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.surface.withValues(alpha: 0.45),
                     ),
                   Positioned(
                     top: 12,
@@ -325,7 +335,7 @@ class ManagedContentCard extends StatelessWidget {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: AppColors.successBg,
+                        color: context.successSurface,
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
@@ -334,7 +344,7 @@ class ManagedContentCard extends StatelessWidget {
                           fontFamily: AppFonts.inter,
                           fontSize: platform ? 10 : 11,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.successDarkGreen,
+                          color: context.successForeground,
                         ),
                       ),
                     ),
@@ -355,14 +365,14 @@ class ManagedContentCard extends StatelessWidget {
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
                             color: available
-                                ? AppColors.textPrimary
-                                : AppColors.textMuted,
+                                ? Theme.of(context).colorScheme.onSurface
+                                : Theme.of(context).colorScheme.outline,
                             height: 1.3,
                           )
-                        : AdminStyles.cardTitle.copyWith(
+                        : AdminStyles.cardTitle(context).copyWith(
                             color: available
-                                ? AppColors.textPrimary
-                                : AppColors.textMuted,
+                                ? Theme.of(context).colorScheme.onSurface
+                                : Theme.of(context).colorScheme.outline,
                           ),
                   ),
                   const SizedBox(height: 4),
@@ -380,23 +390,23 @@ class ManagedContentCard extends StatelessWidget {
                                 : '${item.companyCount} ${item.companyCount == 1 ? 'empresa liberada' : 'empresas liberadas'}',
                             style: TextStyle(
                               color: available
-                                  ? AppColors.successDarkGreen
-                                  : AppColors.textMuted,
+                                  ? context.successForeground
+                                  : Theme.of(context).colorScheme.outline,
                             ),
                           ),
                         ],
                       ),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: AppFonts.inter,
                         fontSize: 11,
-                        color: AppColors.textMuted,
+                        color: Theme.of(context).colorScheme.outline,
                         height: 1.4,
                       ),
                     )
                   else
                     Text(
                       '${item.moduleCount} ${item.moduleCount == 1 ? 'módulo' : 'módulos'}  ·  ${item.lessonCount} ${item.lessonCount == 1 ? 'aula' : 'aulas'}',
-                      style: AdminStyles.body.copyWith(fontSize: 11),
+                      style: AdminStyles.body(context).copyWith(fontSize: 11),
                     ),
                   const SizedBox(height: 14),
                   Row(
@@ -411,11 +421,15 @@ class ManagedContentCard extends StatelessWidget {
                                   fontFamily: AppFonts.inter,
                                   fontSize: 11,
                                   color: available
-                                      ? const Color(0xFF475569)
-                                      : AppColors.textMuted,
+                                      ? Theme.of(
+                                          context,
+                                        ).colorScheme.onSurfaceVariant
+                                      : Theme.of(context).colorScheme.outline,
                                   height: 1.4,
                                 )
-                              : AdminStyles.body.copyWith(fontSize: 11),
+                              : AdminStyles.body(
+                                  context,
+                                ).copyWith(fontSize: 11),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -428,9 +442,9 @@ class ManagedContentCard extends StatelessWidget {
                           fontSize: platform ? 11 : 12,
                           fontWeight: FontWeight.w700,
                           color: platform && !available
-                              ? AppColors.textMuted
+                              ? Theme.of(context).colorScheme.outline
                               : platform
-                              ? AppColors.textPrimary
+                              ? Theme.of(context).colorScheme.onSurface
                               : AppColors.primary,
                         ),
                       ),
@@ -441,7 +455,7 @@ class ManagedContentCard extends StatelessWidget {
                     (item.completionPct ?? 0) / 100,
                     height: platform ? 4 : 6,
                     color: platform
-                        ? AppColors.successDarkGreen
+                        ? context.successForeground
                         : AppColors.primary,
                   ),
                   const SizedBox(height: 8),
@@ -457,10 +471,10 @@ class ManagedContentCard extends StatelessWidget {
                             fontFamily: AppFonts.inter,
                             fontSize: platform ? 11 : 12,
                             color: available
-                                ? AppColors.successDarkGreen
+                                ? context.successForeground
                                 : platform
-                                ? AppColors.textMuted
-                                : AppColors.navy,
+                                ? Theme.of(context).colorScheme.outline
+                                : Theme.of(context).colorScheme.onSurface,
                           ),
                         ),
                       ),
@@ -482,12 +496,14 @@ class ManagedContentCard extends StatelessWidget {
                               activeThumbColor: Colors.white,
                               activeTrackColor:
                                   busy || (!platform && !item.platformEnabled)
-                                  ? AppColors.border
+                                  ? Theme.of(context).colorScheme.outlineVariant
                                   : platform
-                                  ? AppColors.successDarkGreen
+                                  ? context.successForeground
                                   : AppColors.primary,
                               inactiveThumbColor: Colors.white,
-                              inactiveTrackColor: AppColors.border,
+                              inactiveTrackColor: Theme.of(
+                                context,
+                              ).colorScheme.outlineVariant,
                               trackOutlineColor: const WidgetStatePropertyAll(
                                 Colors.transparent,
                               ),
@@ -506,9 +522,11 @@ class ManagedContentCard extends StatelessWidget {
                       width: double.infinity,
                       child: OutlinedButton.icon(
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.successDarkGreen,
-                          backgroundColor: AppColors.successBgSoft,
-                          side: const BorderSide(color: AppColors.border),
+                          foregroundColor: context.successForeground,
+                          backgroundColor: context.softSuccessSurface,
+                          side: BorderSide(
+                            color: Theme.of(context).colorScheme.outlineVariant,
+                          ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
@@ -519,9 +537,9 @@ class ManagedContentCard extends StatelessWidget {
                           ),
                         ),
                         onPressed: busy ? null : onDetails,
-                        icon: const SvgIcon(
+                        icon: SvgIcon(
                           AppIcons.edit,
-                          color: AppColors.successDarkGreen,
+                          color: context.successForeground,
                           size: 16,
                         ),
                         label: const Text('Editar'),
@@ -540,14 +558,10 @@ class ManagedContentCard extends StatelessWidget {
 class _CoverFallback extends StatelessWidget {
   const _CoverFallback();
   @override
-  Widget build(BuildContext context) => const ColoredBox(
-    color: AppColors.successBgSoft,
+  Widget build(BuildContext context) => ColoredBox(
+    color: context.softSuccessSurface,
     child: Center(
-      child: SvgIcon(
-        AppIcons.book,
-        size: 44,
-        color: AppColors.successDarkGreen,
-      ),
+      child: SvgIcon(AppIcons.book, size: 44, color: context.successForeground),
     ),
   );
 }
@@ -561,10 +575,12 @@ class _CatalogSkeleton extends StatelessWidget {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(
+        SizedBox(
           height: 110,
           width: double.infinity,
-          child: ColoredBox(color: AppColors.chipBg),
+          child: ColoredBox(
+            color: Theme.of(context).colorScheme.surfaceContainerHigh,
+          ),
         ),
         Padding(
           padding: const EdgeInsets.all(16),
@@ -590,7 +606,9 @@ class _CatalogSkeleton extends StatelessWidget {
                 SizedBox(
                   height: height,
                   width: double.infinity,
-                  child: const ColoredBox(color: AppColors.chipBg),
+                  child: ColoredBox(
+                    color: Theme.of(context).colorScheme.surfaceContainerHigh,
+                  ),
                 ),
                 SizedBox(height: gap),
               ],

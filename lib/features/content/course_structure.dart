@@ -169,11 +169,11 @@ class _CourseStructureState extends ConsumerState<CourseStructure> {
     body: ListView(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 104),
       children: [
-        const Text('Módulos do curso', style: AdminStyles.cardTitle),
+        Text('Módulos do curso', style: AdminStyles.cardTitle(context)),
         const SizedBox(height: 8),
-        const Text(
+        Text(
           'Adicione um módulo e abra suas aulas para organizar o conteúdo do curso.',
-          style: AdminStyles.body,
+          style: AdminStyles.body(context),
         ),
         if (_busy && _modules.isEmpty) const DataSkeleton(),
         if (_error)
@@ -199,13 +199,16 @@ class _CourseStructureState extends ConsumerState<CourseStructure> {
                           children: [
                             Text(
                               'MÓDULO ${index + 1}',
-                              style: AdminStyles.body.copyWith(
-                                color: AppColors.successDarkGreen,
+                              style: AdminStyles.body(context).copyWith(
+                                color: context.successForeground,
                                 fontSize: 11,
                               ),
                             ),
                             const SizedBox(height: 6),
-                            Text(module.title, style: AdminStyles.cardTitle),
+                            Text(
+                              module.title,
+                              style: AdminStyles.cardTitle(context),
+                            ),
                           ],
                         ),
                       ),
@@ -213,8 +216,10 @@ class _CourseStructureState extends ConsumerState<CourseStructure> {
                       IconButton.outlined(
                         tooltip: 'Renomear módulo',
                         style: IconButton.styleFrom(
-                          foregroundColor: AppColors.successDarkGreen,
-                          side: const BorderSide(color: AppColors.border),
+                          foregroundColor: context.successForeground,
+                          side: BorderSide(
+                            color: Theme.of(context).colorScheme.outlineVariant,
+                          ),
                           minimumSize: const Size(44, 44),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
@@ -223,10 +228,10 @@ class _CourseStructureState extends ConsumerState<CourseStructure> {
                         onPressed: _busy || widget.disabled
                             ? null
                             : () => _module(module),
-                        icon: const SvgIcon(
+                        icon: SvgIcon(
                           AppIcons.edit,
                           size: 18,
-                          color: AppColors.successDarkGreen,
+                          color: context.successForeground,
                         ),
                       ),
                     ],
@@ -245,10 +250,10 @@ class _CourseStructureState extends ConsumerState<CourseStructure> {
                                       ModuleManagementScreen(module: module),
                                 ),
                               ),
-                        icon: const SvgIcon(
+                        icon: SvgIcon(
                           AppIcons.book,
                           size: 18,
-                          color: AppColors.successDarkGreen,
+                          color: context.successForeground,
                         ),
                         label: const Text('Gerenciar aulas'),
                       ),
@@ -300,8 +305,8 @@ class ModuleManagementScreen extends StatelessWidget {
       data: AdminStyles.formTheme(Theme.of(context)).copyWith(
         textButtonTheme: TextButtonThemeData(
           style: TextButton.styleFrom(
-            textStyle: AdminStyles.fieldLabel,
-            foregroundColor: AppColors.successDarkGreen,
+            textStyle: AdminStyles.fieldLabel(context),
+            foregroundColor: context.successForeground,
             minimumSize: const Size(0, 44),
           ),
         ),
@@ -432,11 +437,11 @@ class _ModuleLessonsState extends ConsumerState<ModuleLessons> {
     body: ListView(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 104),
       children: [
-        Text(widget.module.title, style: AdminStyles.formTitle),
+        Text(widget.module.title, style: AdminStyles.formTitle(context)),
         const SizedBox(height: 8),
-        const Text(
+        Text(
           'Cada aula pode combinar texto de apoio com vídeo, áudio, PDF, quiz, imagem ou animação.',
-          style: AdminStyles.body,
+          style: AdminStyles.body(context),
         ),
         const SizedBox(height: 20),
         if (_loading && _items.isEmpty) const DataSkeleton(),
@@ -454,12 +459,12 @@ class _ModuleLessonsState extends ConsumerState<ModuleLessons> {
                 children: [
                   Text(
                     'AULA ${index + 1} · ${lessonTypeLabels[lesson.kind] ?? lesson.kind}',
-                    style: AdminStyles.body.copyWith(
-                      color: AppColors.successDarkGreen,
-                    ),
+                    style: AdminStyles.body(
+                      context,
+                    ).copyWith(color: context.successForeground),
                   ),
                   const SizedBox(height: 8),
-                  Text(lesson.title, style: AdminStyles.cardTitle),
+                  Text(lesson.title, style: AdminStyles.cardTitle(context)),
                   const SizedBox(height: 8),
                   Wrap(
                     alignment: WrapAlignment.spaceBetween,

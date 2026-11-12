@@ -67,10 +67,10 @@ class _CertificatesSectionState extends ConsumerState<CertificatesSection> {
             ),
         if (pages.any((page) => page.isLoading)) const DataSkeleton(),
         if (total == 0)
-          const AppCard(
+          AppCard(
             child: Text(
               'Conclua um curso e emita seu primeiro certificado.',
-              style: AdminStyles.body,
+              style: AdminStyles.body(context),
             ),
           ),
         for (final certificate in items)
@@ -83,10 +83,7 @@ class _CertificatesSectionState extends ConsumerState<CertificatesSection> {
               ),
               child: Row(
                 children: [
-                  const SvgIcon(
-                    AppIcons.award,
-                    color: AppColors.successDarkGreen,
-                  ),
+                  SvgIcon(AppIcons.award, color: context.successForeground),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -94,12 +91,12 @@ class _CertificatesSectionState extends ConsumerState<CertificatesSection> {
                       children: [
                         Text(
                           certificate.courseTitle,
-                          style: AdminStyles.cardTitle,
+                          style: AdminStyles.cardTitle(context),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           '${employeeDate(certificate.issuedAt.toLocal())} · ID: ${certificate.code}',
-                          style: AdminStyles.fieldLabel.copyWith(
+                          style: AdminStyles.fieldLabel(context).copyWith(
                             fontSize: widget.compact ? 11 : 12,
                             fontWeight: FontWeight.w400,
                           ),
@@ -110,7 +107,7 @@ class _CertificatesSectionState extends ConsumerState<CertificatesSection> {
                   IconButton(
                     style: widget.compact
                         ? IconButton.styleFrom(
-                            backgroundColor: AppColors.successBgSoft,
+                            backgroundColor: context.softSuccessSurface,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),
                             ),
@@ -126,9 +123,9 @@ class _CertificatesSectionState extends ConsumerState<CertificatesSection> {
                             height: 20,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : const SvgIcon(
+                        : SvgIcon(
                             AppIcons.download,
-                            color: AppColors.successDarkGreen,
+                            color: context.successForeground,
                             size: 20,
                           ),
                   ),

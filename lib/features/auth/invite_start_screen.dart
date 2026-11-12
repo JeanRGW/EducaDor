@@ -99,7 +99,7 @@ class _InviteStartScreenState extends ConsumerState<InviteStartScreen> {
               widget.link == null
                   ? 'Abra o link completo ou peça um novo convite a quem enviou.'
                   : 'Continue para confirmar seu acesso. Depois, você poderá aceitar o convite e criar sua senha.',
-              style: AdminStyles.body,
+              style: AdminStyles.body(context),
             ),
             const SizedBox(height: 24),
             if (widget.link != null)
@@ -109,7 +109,10 @@ class _InviteStartScreenState extends ConsumerState<InviteStartScreen> {
               ),
             if (_error != null) ...[
               const SizedBox(height: 16),
-              Text(_error!, style: const TextStyle(color: AppColors.danger)),
+              Text(
+                _error!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
             ],
           ],
         ),

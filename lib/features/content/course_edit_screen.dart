@@ -211,19 +211,21 @@ class _CourseEditorState extends ConsumerState<_CourseEditor> {
       data: AdminStyles.formTheme(Theme.of(context)).copyWith(
         outlinedButtonTheme: OutlinedButtonThemeData(
           style: OutlinedButton.styleFrom(
-            foregroundColor: AppColors.successDarkGreen,
+            foregroundColor: context.successForeground,
             minimumSize: const Size(0, 44),
-            side: const BorderSide(color: AppColors.border),
+            side: BorderSide(
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(8),
             ),
-            textStyle: AdminStyles.fieldLabel,
+            textStyle: AdminStyles.fieldLabel(context),
           ),
         ),
         textButtonTheme: TextButtonThemeData(
           style: TextButton.styleFrom(
-            foregroundColor: AppColors.successDarkGreen,
-            textStyle: AdminStyles.fieldLabel,
+            foregroundColor: context.successForeground,
+            textStyle: AdminStyles.fieldLabel(context),
             minimumSize: const Size(0, 44),
           ),
         ),
@@ -233,13 +235,15 @@ class _CourseEditorState extends ConsumerState<_CourseEditor> {
         child: Column(
           children: [
             Material(
-              color: AppColors.surface,
+              color: Theme.of(context).colorScheme.surface,
               child: TabBar(
-                labelStyle: AdminStyles.fieldLabel,
-                unselectedLabelStyle: AdminStyles.fieldLabel,
-                labelColor: AppColors.successDarkGreen,
-                unselectedLabelColor: AppColors.textSecondary,
-                indicatorColor: AppColors.successDarkGreen,
+                labelStyle: AdminStyles.fieldLabel(context),
+                unselectedLabelStyle: AdminStyles.fieldLabel(context),
+                labelColor: context.successForeground,
+                unselectedLabelColor: Theme.of(
+                  context,
+                ).colorScheme.onSurfaceVariant,
+                indicatorColor: context.successForeground,
                 tabs: const [
                   Tab(text: 'Dados do curso'),
                   Tab(text: 'Módulos e aulas'),
@@ -257,9 +261,9 @@ class _CourseEditorState extends ConsumerState<_CourseEditor> {
                           child: ListView(
                             padding: const EdgeInsets.all(20),
                             children: [
-                              const Text(
+                              Text(
                                 'Informações do curso',
-                                style: AdminStyles.cardTitle,
+                                style: AdminStyles.cardTitle(context),
                               ),
                               const SizedBox(height: 16),
                               ManagementField(
@@ -277,9 +281,9 @@ class _CourseEditorState extends ConsumerState<_CourseEditor> {
                                 lines: 3,
                                 enabled: !_busy,
                               ),
-                              const Text(
+                              Text(
                                 'Imagem de capa',
-                                style: AdminStyles.fieldLabel,
+                                style: AdminStyles.fieldLabel(context),
                               ),
                               const SizedBox(height: 8),
                               ClipRRect(
@@ -302,12 +306,12 @@ class _CourseEditorState extends ConsumerState<_CourseEditor> {
                                         )
                                       : Container(
                                           height: 100,
-                                          color: AppColors.successBgSoft,
-                                          child: const Center(
+                                          color: context.softSuccessSurface,
+                                          child: Center(
                                             child: SvgIcon(
                                               AppIcons.book,
                                               size: 32,
-                                              color: AppColors.successDarkGreen,
+                                              color: context.successForeground,
                                             ),
                                           ),
                                         ),
@@ -338,9 +342,9 @@ class _CourseEditorState extends ConsumerState<_CourseEditor> {
                               const SizedBox(height: 16),
                               const Divider(),
                               const SizedBox(height: 16),
-                              const Text(
+                              Text(
                                 'Responsável e acesso',
-                                style: AdminStyles.cardTitle,
+                                style: AdminStyles.cardTitle(context),
                               ),
                               const SizedBox(height: 16),
                               ManagementSelector(
@@ -373,9 +377,9 @@ class _CourseEditorState extends ConsumerState<_CourseEditor> {
                                 icon: AppIcons.companies,
                                 onPressed: _busy ? null : _audience,
                               ),
-                              const Text(
+                              Text(
                                 'A alteração de público é aplicada ao confirmar a seleção.',
-                                style: AdminStyles.body,
+                                style: AdminStyles.body(context),
                               ),
                               const SizedBox(height: 20),
                               const SizedBox(height: 24),
@@ -392,10 +396,14 @@ class _CourseEditorState extends ConsumerState<_CourseEditor> {
                         Container(
                           width: double.infinity,
                           padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
-                          decoration: const BoxDecoration(
-                            color: AppColors.surface,
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.surface,
                             border: Border(
-                              top: BorderSide(color: AppColors.border),
+                              top: BorderSide(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.outlineVariant,
+                              ),
                             ),
                           ),
                           child: SafeArea(

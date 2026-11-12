@@ -107,9 +107,13 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
               SliverToBoxAdapter(
                 child: Container(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  decoration: const BoxDecoration(
-                    color: AppColors.surface,
-                    border: Border(bottom: BorderSide(color: AppColors.border)),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface,
+                    border: Border(
+                      bottom: BorderSide(
+                        color: Theme.of(context).colorScheme.outlineVariant,
+                      ),
+                    ),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -118,10 +122,10 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
                         'Pesquise por nome, departamento...',
                         key: ValueKey(identity),
                         compact: true,
-                        prefixIcon: const SvgIcon(
+                        prefixIcon: SvgIcon(
                           AppIcons.search,
                           size: 18,
-                          color: Color(0xFF475569),
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                         onChanged: (value) {
                           _debounce?.cancel();
@@ -148,29 +152,34 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
                               'Todos os funcionários${counts == null ? '' : ' (${counts.totalCount})'}',
                             ),
                             shape: const StadiumBorder(),
-                            backgroundColor: AppColors.successBg,
-                            side: const BorderSide(
-                              color: AppColors.successDarkGreen,
-                            ),
-                            labelStyle: AdminStyles.fieldLabel.copyWith(
-                              fontWeight: FontWeight.w500,
-                              color: AppColors.successDarkGreen,
-                            ),
+                            backgroundColor: context.successSurface,
+                            side: BorderSide(color: context.successForeground),
+                            labelStyle: AdminStyles.fieldLabel(context)
+                                .copyWith(
+                                  fontWeight: FontWeight.w500,
+                                  color: context.successForeground,
+                                ),
                             visualDensity: VisualDensity.compact,
                           ),
                           Semantics(
                             enabled: false,
                             label: 'De licença, disponível em breve',
-                            child: const Tooltip(
+                            child: Tooltip(
                               message:
                                   'Situação de licença ainda não disponível.',
                               child: Chip(
                                 label: Text(
                                   'De licença',
-                                  style: CompanyStyles.caption,
+                                  style: CompanyStyles.caption(context),
                                 ),
-                                backgroundColor: AppColors.background,
-                                side: BorderSide(color: AppColors.border),
+                                backgroundColor: Theme.of(
+                                  context,
+                                ).scaffoldBackgroundColor,
+                                side: BorderSide(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.outlineVariant,
+                                ),
                                 visualDensity: VisualDensity.compact,
                                 shape: StadiumBorder(),
                               ),
@@ -206,7 +215,7 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
                           padding: EdgeInsets.only(bottom: 12),
                           child: Text(
                             'Exibindo ${employees.length} de ${counts.filteredCount} funcionários${_search.isEmpty ? '.' : ' encontrados.'}',
-                            style: CompanyStyles.caption,
+                            style: CompanyStyles.caption(context),
                           ),
                         ),
                       if (!loading && !hasError && employees.isEmpty)
@@ -215,7 +224,7 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
                             _search.isEmpty
                                 ? 'Nenhum funcionário cadastrado.'
                                 : 'Nenhum funcionário encontrado.',
-                            style: AdminStyles.body,
+                            style: AdminStyles.body(context),
                           ),
                         ),
                     ],
@@ -294,13 +303,15 @@ class CompanyEmployeeCard extends StatelessWidget {
                 children: [
                   Text(
                     employee.fullName,
-                    style: AdminStyles.cardTitle.copyWith(fontSize: 16),
+                    style: AdminStyles.cardTitle(
+                      context,
+                    ).copyWith(fontSize: 16),
                   ),
                   Text(
                     employee.department.isEmpty
                         ? 'Sem departamento'
                         : employee.department,
-                    style: CompanyStyles.caption,
+                    style: CompanyStyles.caption(context),
                   ),
                 ],
               ),
@@ -328,8 +339,8 @@ class CompanyEmployeeCard extends StatelessWidget {
             Expanded(
               child: Text(
                 'Progresso de Conclusão',
-                style: CompanyStyles.caption.copyWith(
-                  color: const Color(0xFF475569),
+                style: CompanyStyles.caption(context).copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
             ),
@@ -338,10 +349,9 @@ class CompanyEmployeeCard extends StatelessWidget {
               employee.hasCompletion
                   ? '${employee.completionPct.round()}%'
                   : 'Sem dados',
-              style: CompanyStyles.caption.copyWith(
-                fontWeight: FontWeight.w700,
-                color: AppColors.primary,
-              ),
+              style: CompanyStyles.caption(
+                context,
+              ).copyWith(fontWeight: FontWeight.w700, color: AppColors.primary),
             ),
           ],
         ),
@@ -350,7 +360,7 @@ class CompanyEmployeeCard extends StatelessWidget {
           employee.lastActivityAt == null
               ? 'Nenhuma atividade registrada'
               : 'Última atividade: ${_activityLabel(employee.lastActivityAt!)}',
-          style: CompanyStyles.caption,
+          style: CompanyStyles.caption(context),
         ),
       ],
     ),

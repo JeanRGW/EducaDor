@@ -136,10 +136,10 @@ class _InvitePersonScreenState extends ConsumerState<InvitePersonScreen> {
           leading: IconButton(
             tooltip: 'Voltar',
             onPressed: _leave,
-            icon: const SvgIcon(
+            icon: SvgIcon(
               AppIcons.arrowBack,
               size: 20,
-              color: AppColors.successDarkGreen,
+              color: context.successForeground,
             ),
           ),
           title: Text(switch (widget.role) {
@@ -153,7 +153,7 @@ class _InvitePersonScreenState extends ConsumerState<InvitePersonScreen> {
           children: [
             Text(
               'A pessoa receberá acesso ao aceitar o link compartilhado com ela.',
-              style: AdminStyles.body,
+              style: AdminStyles.body(context),
             ),
             const SizedBox(height: 20),
             FormFieldLabel(

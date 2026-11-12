@@ -31,9 +31,9 @@ class EmployeeProgressScreen extends ConsumerWidget {
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(16),
             children: [
-              const Text(
+              Text(
                 'Acompanhe os cursos concluídos e seus certificados.',
-                style: AdminStyles.body,
+                style: AdminStyles.body(context),
               ),
               const SizedBox(height: 16),
               EmployeeResult(
@@ -54,16 +54,16 @@ class EmployeeProgressScreen extends ConsumerWidget {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
+                                Text(
                                   'Taxa de conclusão',
-                                  style: AdminStyles.cardTitle,
+                                  style: AdminStyles.cardTitle(context),
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
                                   data.completion == null
                                       ? 'Nenhum curso disponível'
                                       : '${data.completedCourseCount} de ${data.courseCount} cursos disponíveis concluídos',
-                                  style: AdminStyles.body,
+                                  style: AdminStyles.body(context),
                                 ),
                               ],
                             ),
@@ -130,15 +130,18 @@ class _InProgressState extends ConsumerState<_InProgress> {
                     padding: const EdgeInsets.only(bottom: 12),
                     child: LearningCard(
                       course: course,
-                      progressColor: AppColors.successDarkGreen,
+                      progressColor: context.successForeground,
                     ),
                   ),
               ],
             ),
           ),
         if (total == 0)
-          const AppCard(
-            child: Text('Nenhum curso em andamento.', style: AdminStyles.body),
+          AppCard(
+            child: Text(
+              'Nenhum curso em andamento.',
+              style: AdminStyles.body(context),
+            ),
           ),
         if (total != null &&
             items.length < total &&

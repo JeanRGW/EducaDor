@@ -117,7 +117,7 @@ class _CourseState extends ConsumerState<_Course> {
         appBar: AppBar(
           title: const Text('Detalhes'),
           toolbarHeight: 52,
-          titleTextStyle: AdminStyles.cardTitle.copyWith(fontSize: 16),
+          titleTextStyle: AdminStyles.cardTitle(context).copyWith(fontSize: 16),
           leading: IconButton(
             tooltip: 'Voltar',
             onPressed: () =>
@@ -173,10 +173,11 @@ class _CourseState extends ConsumerState<_Course> {
                                   bottom: 20,
                                   child: Text(
                                     data.title,
-                                    style: AdminStyles.pageTitle.copyWith(
-                                      fontSize: 22,
-                                      color: Colors.white,
-                                    ),
+                                    style: AdminStyles.pageTitle(context)
+                                        .copyWith(
+                                          fontSize: 22,
+                                          color: Colors.white,
+                                        ),
                                   ),
                                 ),
                               ],
@@ -188,21 +189,22 @@ class _CourseState extends ConsumerState<_Course> {
                                 children: [
                                   Text(
                                     'Disponível para ${ref.watch(sessionProvider).value?.active?.companyName ?? 'sua empresa'}',
-                                    style: AdminStyles.fieldLabel.copyWith(
-                                      color: AppColors.successDarkGreen,
-                                    ),
+                                    style: AdminStyles.fieldLabel(context)
+                                        .copyWith(
+                                          color: context.successForeground,
+                                        ),
                                   ),
                                   if (data.description?.isNotEmpty == true) ...[
                                     const SizedBox(height: 16),
                                     Text(
                                       data.description!,
-                                      style: AdminStyles.body,
+                                      style: AdminStyles.body(context),
                                     ),
                                   ],
                                   const SizedBox(height: 20),
-                                  const Text(
+                                  Text(
                                     'Conteúdos',
-                                    style: AdminStyles.cardTitle,
+                                    style: AdminStyles.cardTitle(context),
                                   ),
                                 ],
                               ),
@@ -251,7 +253,7 @@ class _CourseState extends ConsumerState<_Course> {
                               padding: const EdgeInsets.only(bottom: 8),
                               child: Text(
                                 lesson.moduleTitle,
-                                style: AdminStyles.fieldLabel,
+                                style: AdminStyles.fieldLabel(context),
                               ),
                             ),
                           AppCard(
@@ -260,7 +262,7 @@ class _CourseState extends ConsumerState<_Course> {
                                 lesson.playable &&
                                     !lesson.completed &&
                                     lesson.positionSec > 0
-                                ? AppColors.successBgSoft
+                                ? context.softSuccessSurface
                                 : null,
                             padding: const EdgeInsets.all(12),
                             onTap: lesson.playable ? () => _open(lesson) : null,
@@ -273,10 +275,10 @@ class _CourseState extends ConsumerState<_Course> {
                                       ? AppIcons.playCircle
                                       : AppIcons.lock,
                                   color: !lesson.playable
-                                      ? AppColors.textMuted
+                                      ? Theme.of(context).colorScheme.outline
                                       : lesson.completed
-                                      ? AppColors.success
-                                      : AppColors.successDarkGreen,
+                                      ? context.successForeground
+                                      : context.successForeground,
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
@@ -286,11 +288,16 @@ class _CourseState extends ConsumerState<_Course> {
                                     children: [
                                       Text(
                                         lesson.title,
-                                        style: AdminStyles.cardTitle.copyWith(
-                                          color: lesson.playable
-                                              ? AppColors.textPrimary
-                                              : AppColors.textMuted,
-                                        ),
+                                        style: AdminStyles.cardTitle(context)
+                                            .copyWith(
+                                              color: lesson.playable
+                                                  ? Theme.of(
+                                                      context,
+                                                    ).colorScheme.onSurface
+                                                  : Theme.of(
+                                                      context,
+                                                    ).colorScheme.outline,
+                                            ),
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
@@ -301,11 +308,16 @@ class _CourseState extends ConsumerState<_Course> {
                                             : lesson.positionSec > 0
                                             ? 'Em andamento · retomar aos ${lesson.positionSec}s'
                                             : 'Disponível',
-                                        style: AdminStyles.body.copyWith(
-                                          color: lesson.playable
-                                              ? AppColors.textSecondary
-                                              : AppColors.textMuted,
-                                        ),
+                                        style: AdminStyles.body(context)
+                                            .copyWith(
+                                              color: lesson.playable
+                                                  ? Theme.of(context)
+                                                        .colorScheme
+                                                        .onSurfaceVariant
+                                                  : Theme.of(
+                                                      context,
+                                                    ).colorScheme.outline,
+                                            ),
                                       ),
                                     ],
                                   ),

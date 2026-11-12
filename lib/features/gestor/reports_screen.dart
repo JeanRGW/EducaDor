@@ -210,8 +210,8 @@ class _GestorReportsScreenState extends ConsumerState<GestorReportsScreen> {
           automaticallyImplyLeading: false,
           titleSpacing: 16,
           toolbarHeight: 52,
-          backgroundColor: AppColors.surface,
-          titleTextStyle: AdminStyles.pageTitle,
+          backgroundColor: Theme.of(context).colorScheme.surface,
+          titleTextStyle: AdminStyles.pageTitle(context),
           title: const Text('Relatórios e Análises'),
           actions: [
             IconButton(
@@ -223,10 +223,10 @@ class _GestorReportsScreenState extends ConsumerState<GestorReportsScreen> {
                       height: 20,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const SvgIcon(
+                  : SvgIcon(
                       AppIcons.fileDownload,
                       size: 20,
-                      color: AppColors.textMuted,
+                      color: Theme.of(context).colorScheme.outline,
                     ),
             ),
           ],
@@ -239,15 +239,19 @@ class _GestorReportsScreenState extends ConsumerState<GestorReportsScreen> {
             children: [
               Container(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                decoration: const BoxDecoration(
-                  color: AppColors.surface,
-                  border: Border(bottom: BorderSide(color: AppColors.border)),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface,
+                  border: Border(
+                    bottom: BorderSide(
+                      color: Theme.of(context).colorScheme.outlineVariant,
+                    ),
+                  ),
                 ),
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(minHeight: 32),
                   child: AppCard(
                     borderRadius: 8,
-                    color: AppColors.background,
+                    color: Theme.of(context).scaffoldBackgroundColor,
                     padding: EdgeInsets.zero,
                     onTap: _exporting ? null : _pickPeriod,
                     child: Padding(
@@ -257,22 +261,26 @@ class _GestorReportsScreenState extends ConsumerState<GestorReportsScreen> {
                       ),
                       child: Row(
                         children: [
-                          const SvgIcon(
+                          SvgIcon(
                             AppIcons.calendar,
                             size: 16,
-                            color: Color(0xFF475569),
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
                           ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               '${formatDate(_period.from)} - ${formatDate(_period.to)}',
-                              style: AdminStyles.fieldText,
+                              style: AdminStyles.fieldText(context),
                             ),
                           ),
-                          const SvgIcon(
+                          SvgIcon(
                             AppIcons.chevronDown,
                             size: 16,
-                            color: Color(0xFF475569),
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
                           ),
                         ],
                       ),
@@ -304,9 +312,9 @@ class _GestorReportsScreenState extends ConsumerState<GestorReportsScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
+                            Text(
                               'Conclusão pela Empresa',
-                              style: AdminStyles.cardTitle,
+                              style: AdminStyles.cardTitle(context),
                             ),
                             const SizedBox(height: 8),
                             for (final company in companies)
@@ -327,18 +335,21 @@ class _GestorReportsScreenState extends ConsumerState<GestorReportsScreen> {
                                       Expanded(
                                         child: Text(
                                           company.company,
-                                          style: AdminStyles.body.copyWith(
-                                            fontSize: 12,
-                                          ),
+                                          style: AdminStyles.body(
+                                            context,
+                                          ).copyWith(fontSize: 12),
                                         ),
                                       ),
                                       const SizedBox(width: 8),
                                       Text(
                                         'Sem dados',
-                                        style: AdminStyles.emptyState.copyWith(
-                                          color: AppColors.textMuted,
-                                          fontWeight: FontWeight.w500,
-                                        ),
+                                        style: AdminStyles.emptyState(context)
+                                            .copyWith(
+                                              color: Theme.of(
+                                                context,
+                                              ).colorScheme.outline,
+                                              fontWeight: FontWeight.w500,
+                                            ),
                                       ),
                                     ],
                                   ),
@@ -347,13 +358,13 @@ class _GestorReportsScreenState extends ConsumerState<GestorReportsScreen> {
                         ),
                       ),
                     if (companies.isEmpty && pages.first.asData != null)
-                      const AppCard(
+                      AppCard(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               'Conclusão pela Empresa',
-                              style: AdminStyles.cardTitle,
+                              style: AdminStyles.cardTitle(context),
                             ),
                             SizedBox(height: 12),
                             _ReportEmptyState('Nenhuma empresa cadastrada.'),
@@ -381,9 +392,9 @@ class _GestorReportsScreenState extends ConsumerState<GestorReportsScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
+                            Text(
                               'Conteúdo mais popular',
-                              style: AdminStyles.cardTitle,
+                              style: AdminStyles.cardTitle(context),
                             ),
                             const SizedBox(height: 12),
                             if (data.popularContent.isEmpty)
@@ -417,9 +428,9 @@ class _GestorReportsScreenState extends ConsumerState<GestorReportsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Engajamento mensal dos usuários',
-            style: AdminStyles.cardTitle,
+            style: AdminStyles.cardTitle(context),
           ),
           const SizedBox(height: 16),
           rows.every((row) => row.activeUsers == 0)
@@ -458,7 +469,7 @@ class _ReportEmptyState extends StatelessWidget {
     child: Text(
       text,
       textAlign: TextAlign.center,
-      style: AdminStyles.emptyState,
+      style: AdminStyles.emptyState(context),
     ),
   );
 }
@@ -478,8 +489,8 @@ class _PopularRow extends StatelessWidget {
           width: 24,
           height: 24,
           alignment: Alignment.center,
-          decoration: const BoxDecoration(
-            color: AppColors.background,
+          decoration: BoxDecoration(
+            color: Theme.of(context).scaffoldBackgroundColor,
             shape: BoxShape.circle,
           ),
           child: Text(
@@ -499,15 +510,17 @@ class _PopularRow extends StatelessWidget {
             children: [
               Text(
                 entry.title,
-                style: AdminStyles.body.copyWith(color: AppColors.textPrimary),
+                style: AdminStyles.body(
+                  context,
+                ).copyWith(color: Theme.of(context).colorScheme.onSurface),
               ),
               const SizedBox(height: 2),
               Text(
                 '${formatCount(entry.completions)} conclusões',
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: AppFonts.inter,
                   fontSize: 11,
-                  color: AppColors.textMuted,
+                  color: Theme.of(context).colorScheme.outline,
                 ),
               ),
             ],

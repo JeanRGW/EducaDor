@@ -99,13 +99,13 @@ class WelcomeScreen extends StatelessWidget {
                         width: double.infinity,
                         padding: const EdgeInsets.fromLTRB(28, 60, 28, 76),
                         decoration: BoxDecoration(
-                          color: AppColors.surface,
+                          color: Theme.of(context).colorScheme.surface,
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Text(
+                            Text(
                               'BEM-VINDO!',
                               textAlign: TextAlign.center,
                               style: TextStyle(
@@ -113,20 +113,28 @@ class WelcomeScreen extends StatelessWidget {
                                 fontSize: 32,
                                 fontWeight: FontWeight.w700,
                                 height: 1.2,
-                                color: Color(0xFF333333),
+                                color:
+                                    Theme.of(context).brightness ==
+                                        Brightness.dark
+                                    ? Theme.of(context).colorScheme.onSurface
+                                    : const Color(0xFF333333),
                               ),
                             ),
                             const SizedBox(height: 28),
                             ConstrainedBox(
                               constraints: const BoxConstraints(maxWidth: 280),
-                              child: const Text(
+                              child: Text(
                                 'Estamos felizes em ter você aqui.\nVamos juntos aprender a\ncuidar da sua saúde!',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontFamily: AppFonts.inter,
                                   fontSize: 16,
                                   height: 1.45,
-                                  color: Color(0xFF333333),
+                                  color:
+                                      Theme.of(context).brightness ==
+                                          Brightness.dark
+                                      ? Theme.of(context).colorScheme.onSurface
+                                      : const Color(0xFF333333),
                                 ),
                               ),
                             ),
@@ -224,26 +232,34 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
-  static const _fieldStyle = TextStyle(
+  TextStyle get _fieldStyle => TextStyle(
     fontFamily: AppFonts.inter,
     fontSize: 14,
     height: 1.4,
-    color: AppColors.textPrimary,
+    color: Theme.of(context).colorScheme.onSurface,
   );
 
   InputDecoration _decoration(String hint, String icon) => InputDecoration(
     hintText: hint,
-    hintStyle: _fieldStyle.copyWith(color: AppColors.textMuted),
+    hintStyle: _fieldStyle.copyWith(
+      color: Theme.of(context).colorScheme.onSurfaceVariant,
+    ),
     isDense: true,
     contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-    fillColor: AppColors.background,
+    fillColor: Theme.of(context).brightness == Brightness.dark
+        ? Theme.of(context).scaffoldBackgroundColor
+        : Theme.of(context).scaffoldBackgroundColor,
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: AppColors.border),
+      borderSide: BorderSide(
+        color: Theme.of(context).colorScheme.outlineVariant,
+      ),
     ),
     enabledBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: AppColors.border),
+      borderSide: BorderSide(
+        color: Theme.of(context).colorScheme.outlineVariant,
+      ),
     ),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
@@ -251,7 +267,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     ),
     prefixIcon: Padding(
       padding: const EdgeInsets.only(left: 14, right: 12),
-      child: SvgIcon(icon, size: 18, color: AppColors.textMuted),
+      child: SvgIcon(
+        icon,
+        size: 18,
+        color: Theme.of(context).colorScheme.outline,
+      ),
     ),
     prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
   );
@@ -261,7 +281,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     return Theme(
       data: Theme.of(context).copyWith(visualDensity: VisualDensity.standard),
       child: Scaffold(
-        backgroundColor: AppColors.surface,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         body: SafeArea(
           child: Align(
             alignment: Alignment.topCenter,
@@ -279,24 +299,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            const Text(
+                            Text(
                               'Entrar no EducaDOR',
                               style: TextStyle(
                                 fontFamily: AppFonts.outfit,
                                 fontSize: 24,
                                 fontWeight: FontWeight.w700,
                                 height: 1.2,
-                                color: AppColors.textPrimary,
+                                color: Theme.of(context).colorScheme.onSurface,
                               ),
                             ),
                             const SizedBox(height: 6),
-                            const Text(
+                            Text(
                               'Use seu e-mail e a senha criada ao aceitar o convite.',
                               style: TextStyle(
                                 fontFamily: AppFonts.inter,
                                 fontSize: 14,
                                 height: 1.3,
-                                color: Color(0xFF475569),
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
                               ),
                             ),
                             const SizedBox(height: 24),
@@ -305,7 +327,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             TextFormField(
                               controller: _email,
                               enabled: !_loading,
-                              style: _fieldStyle,
+                              style: _fieldStyle.copyWith(
+                                color: Theme.of(context).colorScheme.onSurface,
+                              ),
                               keyboardType: TextInputType.emailAddress,
                               textInputAction: TextInputAction.next,
                               autofillHints: const [AutofillHints.username],
@@ -321,7 +345,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               controller: _password,
                               enabled: !_loading,
                               obscureText: _obscure,
-                              style: _fieldStyle,
+                              style: _fieldStyle.copyWith(
+                                color: Theme.of(context).colorScheme.onSurface,
+                              ),
                               textInputAction: TextInputAction.done,
                               autofillHints: const [AutofillHints.password],
                               onFieldSubmitted: (_) => _submit(),
@@ -353,7 +379,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                             ? AppIcons.eyeOff
                                             : AppIcons.eye,
                                         size: 18,
-                                        color: AppColors.textMuted,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.outline,
                                       ),
                                     ),
                                   ),
@@ -364,7 +392,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               child: TextButton(
                                 onPressed: () => context.go('/recover'),
                                 style: TextButton.styleFrom(
-                                  foregroundColor: AppColors.successDarkGreen,
+                                  foregroundColor: context.successForeground,
                                   padding: EdgeInsets.zero,
                                   textStyle: const TextStyle(
                                     fontFamily: AppFonts.inter,
@@ -403,12 +431,12 @@ class _LoginFieldLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Text(
     label.toUpperCase(),
-    style: const TextStyle(
+    style: TextStyle(
       fontFamily: AppFonts.inter,
       fontSize: 12,
       fontWeight: FontWeight.w600,
       height: 1.4,
-      color: Color(0xFF475569),
+      color: Theme.of(context).colorScheme.onSurfaceVariant,
     ),
   );
 }

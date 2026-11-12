@@ -45,10 +45,10 @@ class ManagementPage extends StatelessWidget {
             onPressed: busy
                 ? null
                 : () => leaveManagementPage(context, fallbackLocation),
-            icon: const SvgIcon(
+            icon: SvgIcon(
               AppIcons.arrowBack,
               size: 20,
-              color: AppColors.successDarkGreen,
+              color: context.successForeground,
             ),
           ),
         ),
@@ -94,7 +94,7 @@ class ManagementField extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (labelAbove) ...[
-          Text(label, style: AdminStyles.fieldLabel),
+          Text(label, style: AdminStyles.fieldLabel(context)),
           const SizedBox(height: 6),
         ],
         TextFormField(
@@ -138,7 +138,7 @@ class ManagementSelector extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Text(label, style: AdminStyles.fieldLabel),
+      Text(label, style: AdminStyles.fieldLabel(context)),
       const SizedBox(height: 6),
       SizedBox(
         width: double.infinity,
@@ -147,9 +147,11 @@ class ManagementSelector extends StatelessWidget {
           style: OutlinedButton.styleFrom(
             minimumSize: const Size(0, 48),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-            foregroundColor: AppColors.successDarkGreen,
-            backgroundColor: AppColors.surface,
-            side: const BorderSide(color: AppColors.border),
+            foregroundColor: context.successForeground,
+            backgroundColor: Theme.of(context).colorScheme.surface,
+            side: BorderSide(
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(8),
             ),
@@ -160,16 +162,18 @@ class ManagementSelector extends StatelessWidget {
                 icon,
                 size: 18,
                 color: onPressed == null
-                    ? AppColors.textMuted
-                    : AppColors.successDarkGreen,
+                    ? Theme.of(context).colorScheme.outline
+                    : context.successForeground,
               ),
               const SizedBox(width: 10),
-              Expanded(child: Text(value, style: AdminStyles.fieldText)),
+              Expanded(
+                child: Text(value, style: AdminStyles.fieldText(context)),
+              ),
               const SizedBox(width: 8),
-              const SvgIcon(
+              SvgIcon(
                 AppIcons.chevronDown,
                 size: 16,
-                color: AppColors.textMuted,
+                color: Theme.of(context).colorScheme.outline,
               ),
             ],
           ),
