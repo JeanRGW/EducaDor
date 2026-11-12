@@ -270,7 +270,8 @@ void main() {
         of: find.text('Modo escuro'),
         matching: find.byType(SwitchListTile),
       );
-      await tester.ensureVisible(find.text('Modo escuro'));
+      await tester.ensureVisible(toggle);
+      await tester.pumpAndSettle();
       expect(tester.widget<SwitchListTile>(toggle).value, isFalse);
       await tester.tap(find.text('Modo escuro'));
       await tester.pumpAndSettle();

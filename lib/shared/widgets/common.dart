@@ -191,7 +191,9 @@ class ProgressBar extends StatelessWidget {
       child: LinearProgressIndicator(
         value: value.clamp(0.0, 1.0),
         minHeight: height,
-        backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+        backgroundColor: context.isDark
+            ? Theme.of(context).colorScheme.surfaceContainerHigh
+            : AppColors.chipBg,
         valueColor: AlwaysStoppedAnimation<Color>(color),
       ),
     );
