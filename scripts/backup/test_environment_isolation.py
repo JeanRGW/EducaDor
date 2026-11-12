@@ -12,7 +12,7 @@ import publish
 SECRETS = ('BACKUP_DATABASE_URL', 'BACKUP_SIGNING_PRIVATE_KEY', 'BACKUP_HMAC_KEY_HEX',
            'BACKUP_S3_SECRET_ACCESS_KEY', 'BACKUP_PUBLIC_KEY')
 AWS = {'PATH': '/usr/bin', 'AWS_CONFIG_FILE': '/tmp/config', 'AWS_SHARED_CREDENTIALS_FILE': '/tmp/creds',
-       'AWS_ACCESS_KEY_ID': 'test', 'AWS_SECRET_ACCESS_KEY': 'test'}
+       'AWS_ACCESS_KEY_ID': 'test', 'AWS_SECRET_ACCESS_KEY': 'test', 'AWS_DEFAULT_REGION': 'us-east-005'}
 
 
 class IsolationTest(unittest.TestCase):
@@ -27,6 +27,7 @@ class IsolationTest(unittest.TestCase):
              patch.object(publish.subprocess, 'run', side_effect=run):
             publish.inventory()
         self.assertTrue(set(captured['env']) <= set(AWS))
+        self.assertEqual(captured['env']['AWS_DEFAULT_REGION'], 'us-east-005')
         self.assertFalse(set(captured['env']) & set(SECRETS))
         self.assertNotIn('GNUPGHOME', captured['env'])
 

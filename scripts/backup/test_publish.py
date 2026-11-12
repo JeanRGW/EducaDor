@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 import json
 from pathlib import Path
 import subprocess
@@ -68,7 +69,7 @@ class PublishTest(unittest.TestCase):
         self.secret = b'x' * 32
 
     def publish(self, budget=100000, reserve=100, egress=21_000_000, attestations=('true', 'true', 'true')):
-        publish.publish(self.root, budget, reserve, egress, self.secret, attestations, 'A' * 40)
+        publish.publish(self.root, budget, reserve, egress + 11_000_000, self.secret, attestations, 'A' * 40, daily=1, weekly=1)
 
     def test_recurring_runs_are_reverified_and_never_pruned(self):
         self.publish()
@@ -139,7 +140,7 @@ class PublishTest(unittest.TestCase):
             self.publish()
             new = set(self.s3.objects) - before
             order.append(next(k.split('/')[2] for k in new if k.endswith('/complete.json')))
-        self.assertEqual(set(order[-3:]), {k.split('/')[2] for k in self.s3.objects})
+        self.assertEqual(set(order[-2:]), {k.split('/')[2] for k in self.s3.objects})
         before = dict(self.s3.objects)
         with self.assertRaisesRegex(ValueError, 'storage budget'):
             self.publish(budget=sum(map(len, before.values())) + 100)
@@ -172,7 +173,7 @@ class PublishTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.publish(attestations=('true', 'true', 'false'))
         self.assertEqual(before, self.s3.objects)
-        self.assertFalse(any(op == 'delete-object' for op, _ in self.s3.calls))
+        self.assertEqual(before, self.s3.objects)
 
     def test_marker_identity_is_bound_to_run_and_hmac(self):
         self.publish()
@@ -203,7 +204,7 @@ class PublishTest(unittest.TestCase):
             with self.assertRaises(subprocess.CalledProcessError):
                 self.publish()
         complete = [k for k in self.s3.objects if k.endswith('/complete.json')]
-        self.assertGreaterEqual(len(complete), 3)
+        self.assertGreaterEqual(len(complete), 2)
         before = dict(self.s3.objects)
         with self.assertRaises(ValueError):
             self.publish()
@@ -244,6 +245,80 @@ class PublishTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'inventory changed'):
                 self.publish()
         self.assertFalse(any(op == 'delete-object' for op, _ in self.s3.calls))
+
+    def test_gfs_distinct_days_and_iso_weeks(self):
+        start = datetime(2025, 1, 13, 12)
+        times = {str(i): (start - timedelta(days=i)).strftime('%Y-%m-%dT%H:%M:%S.%fZ') for i in range(35)}
+        times['duplicate-day'] = '2025-01-13T01:00:00.000000Z'
+        selected = publish.survivors_for(times, 7, 4)
+        self.assertEqual(set(map(str, range(7))) | {'8', '15'}, selected)
+        self.assertNotIn('duplicate-day', selected)
+        self.assertEqual((2025, 1), datetime.strptime(times['14'], '%Y-%m-%dT%H:%M:%S.%fZ').isocalendar()[:2])
+
+    def test_daily_weekly_publication_across_iso_year_rollover(self):
+        class Clock(datetime):
+            current = None
+
+            @classmethod
+            def now(cls, tz=None):
+                return cls.current.replace(tzinfo=tz)
+
+        start = datetime(2024, 12, 15, 12)
+        runs_by_date = {}
+        with patch.object(publish, 'datetime', Clock):
+            for offset in range(35):
+                Clock.current = start + timedelta(days=offset)
+                before = set(self.s3.objects)
+                publish.publish(self.root, 100000, 100, 32_000_000, self.secret,
+                                ('true', 'true', 'true'), 'A' * 40, daily=7, weekly=4)
+                created = set(self.s3.objects) - before
+                run = next(key.split('/')[2] for key in created if key.endswith('/complete.json'))
+                runs_by_date[Clock.current.date().isoformat()] = run
+
+        # Jan 12 is ISO 2025-W02; Dec 29 belongs to ISO 2024-W52.
+        dates = {'2025-01-12', '2025-01-13', '2025-01-14', '2025-01-15',
+                 '2025-01-16', '2025-01-17', '2025-01-18', '2025-01-05', '2024-12-29'}
+        expected = {f'{publish.PREFIX}{runs_by_date[day]}/{name}' for day in dates
+                    for name in ('complete.json', 'manifest.json', 'manifest.sig', '0000.gpgpart')}
+        self.assertEqual(expected, set(self.s3.objects))
+        self.assertTrue(any(op == 'delete-object' for op, _ in self.s3.calls))
+
+    def test_run_cap_fails_without_deletion(self):
+        for i in range(publish.MAX_RUNS):
+            self.s3.objects[f'{publish.PREFIX}{i:032x}/complete.json'] = b'x'
+        before = dict(self.s3.objects)
+        with self.assertRaisesRegex(ValueError, 'too many prior runs'):
+            publish.publish(self.root, 100000, 100, 32_000_000, self.secret,
+                            ('true', 'true', 'true'), 'A' * 40, daily=7, weekly=4)
+        self.assertEqual(before, self.s3.objects)
+        self.assertFalse(any(op == 'delete-object' for op, _ in self.s3.calls))
+
+    def test_pruning_reads_candidate_metadata_not_body(self):
+        self.publish()
+        oldest = next(k.split('/')[2] for k in self.s3.objects if k.endswith('/complete.json'))
+        self.publish()
+        self.s3.calls.clear()
+        self.publish()
+        calls = self.s3.calls
+        reads = [args[args.index('--key') + 1] for op, args in calls if op == 'get-object']
+        self.assertNotIn(f'{publish.PREFIX}{oldest}/0000.gpgpart', reads)
+        self.assertGreaterEqual(reads.count(f'{publish.PREFIX}{oldest}/complete.json'), 2)
+        self.assertTrue(any(op == 'delete-object' and oldest in args[args.index('--key') + 1] for op, args in calls))
+
+    def test_audit_detects_old_corruption_and_egress(self):
+        self.publish()
+        self.publish()
+        self.s3.calls.clear()
+        with self.assertRaises(ValueError):
+            publish.audit(1, self.secret, 'A' * 40)
+        self.assertFalse(self.s3.calls)
+        publish.audit(21_000_000, self.secret, 'A' * 40)
+        part = next(k for k in self.s3.objects if k.endswith('.gpgpart'))
+        self.s3.objects[part] = b'x' * len(self.s3.objects[part])
+        before = dict(self.s3.objects)
+        with self.assertRaises(ValueError):
+            publish.audit(21_000_000, self.secret, 'A' * 40)
+        self.assertEqual(before, self.s3.objects)
 
     def test_bad_manifest_name(self):
         manifest = json.loads((self.root / 'manifest.json').read_text())

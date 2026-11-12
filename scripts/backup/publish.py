@@ -185,7 +185,29 @@ def egress_estimate(entries, manifest_size, signature_size=SIGNATURE_LIMIT, prio
             + prior_bytes + NETWORK_ALLOWANCE)
 
 
-def publish(directory, budget, reserve, egress_budget, secret, attestations, signer):
+def survivors_for(times, daily, weekly):
+    if daily < 1 or weekly < 1 or daily > MAX_RUNS or weekly > MAX_RUNS:
+        raise ValueError('invalid retention')
+    days, weeks, survivors = set(), set(), set()
+    for run in sorted(times, key=times.get, reverse=True):
+        timestamp = datetime.strptime(times[run], '%Y-%m-%dT%H:%M:%S.%fZ')
+        day, week = timestamp.date(), timestamp.isocalendar()[:2]
+        if day not in days and len(days) < daily:
+            days.add(day)
+            survivors.add(run)
+        if week not in weeks and len(weeks) < weekly:
+            weeks.add(week)
+            survivors.add(run)
+    return survivors
+
+
+def verify_parts(run, entries, root):
+    for entry in entries:
+        if archive.digest(get(PREFIX + run + '/' + entry['name'], entry['size'], root)) != entry['sha256']:
+            raise ValueError('prior part mismatch')
+
+
+def publish(directory, budget, reserve, egress_budget, secret, attestations, signer, daily=7, weekly=4):
     directory = Path(directory)
     manifest_path = directory / 'manifest.json'
     if manifest_path.is_symlink() or manifest_path.stat().st_size > MANIFEST_LIMIT:
@@ -202,13 +224,16 @@ def publish(directory, budget, reserve, egress_budget, secret, attestations, sig
         path = directory / entry['name']
         if path.is_symlink() or path.stat().st_size != entry['size'] or archive.digest(path.read_bytes()) != entry['sha256']:
             raise ValueError('invalid local part')
-    if (not 0 < budget <= 1_000_000_000 or reserve <= 0 or reserve >= budget or len(secret) < 32
+    survivors_for({}, daily, weekly)
+    if (not 0 < budget <= 9_000_000_000 or reserve <= 0 or reserve >= budget or len(secret) < 32
             or attestations != ('true', 'true', 'true')):
         raise ValueError('invalid budget, key or operator attestations')
     needed = sum(e['size'] for e in entries) + len(manifest) + len(sig) + MARKER_LIMIT
     if needed + reserve > budget:
         raise ValueError('insufficient reserved storage budget')
-    if egress_budget < 2 * egress_estimate(entries, len(manifest), len(sig), budget - reserve - needed):
+    metadata = MAX_RUNS * (MARKER_LIMIT + MANIFEST_LIMIT + SIGNATURE_LIMIT)
+    if egress_budget < (needed + min(archive.MAX_TOTAL, budget - reserve - needed)
+                        + 2 * metadata + 2 * NETWORK_ALLOWANCE):
         raise ValueError('insufficient egress budget')
     # This listing cannot see incomplete multipart uploads. The reserve must include them;
     # operators must independently prohibit/inspect them and all other writers.
@@ -231,15 +256,14 @@ def publish(directory, budget, reserve, egress_budget, secret, attestations, sig
         raise ValueError('run collision')
     with tempfile.TemporaryDirectory(prefix='backup-publish-') as tmp:
         root = Path(tmp)
-        # A marker is only a candidate, including after interrupted publication.
-        # Verify the signed inventory and all current ciphertext before accepting it.
-        times = {}
+        # Authenticate every candidate before selecting retention; only the newest
+        # previous archive is read in full on this path.
+        times, prior_entries = {}, {}
         for previous in sorted(runs):
-            previous_entries, times[previous] = confirmed(previous, objects, secret, signer, root, require_v3=True)
-            previous_base = PREFIX + previous + '/'
-            for entry in previous_entries:
-                if archive.digest(get(previous_base + entry['name'], entry['size'], root)) != entry['sha256']:
-                    raise ValueError('prior part mismatch')
+            prior_entries[previous], times[previous] = confirmed(previous, objects, secret, signer, root, require_v3=True)
+        if times:
+            newest_previous = max(times, key=times.get)
+            verify_parts(newest_previous, prior_entries[newest_previous], root)
         created = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ')
         if len(set(times.values())) != len(times) or any(t >= created for t in times.values()):
             raise ValueError('ambiguous or non-monotonic creation time')
@@ -274,12 +298,15 @@ def publish(directory, budget, reserve, egress_budget, secret, attestations, sig
         if after != expected:
             raise ValueError('inventory changed during publication')
         # Stateless ordering is safe only under the separately attested no-rollback model.
-        survivors = {run} | set(sorted(runs, key=times.get, reverse=True)[:2])
-        for survivor in sorted(survivors):
-            verified, _ = confirmed(survivor, expected, secret, signer, root, require_v3=True)
-            for entry in verified:
-                if archive.digest(get(PREFIX + survivor + '/' + entry['name'], entry['size'], root)) != entry['sha256']:
-                    raise ValueError('survivor part mismatch')
+        all_times = dict(times, **{run: created})
+        survivors = {run} | survivors_for(all_times, daily, weekly)
+        if times:
+            survivors.add(newest_previous)
+        # Reauthenticate deletion candidates before any deletion.
+        for old in sorted(runs - survivors):
+            _, verified_time = confirmed(old, expected, secret, signer, root, require_v3=True)
+            if verified_time != times[old]:
+                raise ValueError('marker changed before pruning')
         if inventory() != expected:
             raise ValueError('inventory changed before pruning')
         # Delete only known obsolete keys. Interruption leaves unknown/incomplete runs,
@@ -297,6 +324,37 @@ def publish(directory, budget, reserve, egress_budget, secret, attestations, sig
                 del expected[key]
                 if inventory() != expected:
                     raise ValueError('inventory changed after deletion')
+
+
+def audit(egress_budget, secret, signer):
+    if len(secret) < 32:
+        raise ValueError('invalid key')
+    if egress_budget < 2 * NETWORK_ALLOWANCE:
+        raise ValueError('insufficient egress budget')
+    objects = inventory()
+    if egress_budget < sum(objects.values()) + 2 * NETWORK_ALLOWANCE:
+        raise ValueError('insufficient egress budget')
+    runs = set()
+    for key in objects:
+        if not key.startswith(PREFIX):
+            raise ValueError('unknown bucket object')
+        segments = key[len(PREFIX):].split('/')
+        if len(segments) != 2 or not RUN.fullmatch(segments[0]):
+            raise ValueError('unknown bucket object')
+        runs.add(segments[0])
+    if len(runs) > MAX_RUNS:
+        raise ValueError('too many runs')
+    with tempfile.TemporaryDirectory(prefix='backup-audit-') as tmp:
+        root = Path(tmp)
+        times = []
+        for run in sorted(runs):
+            entries, timestamp = confirmed(run, objects, secret, signer, root, require_v3=True)
+            times.append(timestamp)
+            verify_parts(run, entries, root)
+        if len(set(times)) != len(times) or any(t >= datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ') for t in times):
+            raise ValueError('ambiguous or non-monotonic creation time')
+        if inventory() != objects:
+            raise ValueError('inventory changed during audit')
 
 
 def retrieve(run, destination, egress_budget, secret, signer):
@@ -336,8 +394,13 @@ def main():
         if len(sys.argv) not in (2, 4) or (len(sys.argv) == 4 and sys.argv[1] != 'retrieve'):
             raise ValueError('expected archive directory or retrieve RUN DIRECTORY')
         endpoint = os.environ['BACKUP_S3_ENDPOINT']
-        if not re.fullmatch(r'https://[a-z0-9-]+\.storage\.supabase\.co/storage/v1/s3/?', endpoint):
-            raise ValueError('invalid endpoint')
+        match = re.fullmatch(r'https://s3\.([a-z0-9-]+)\.backblazeb2\.com/?', endpoint)
+        if not match or os.environ.get('AWS_DEFAULT_REGION') != match.group(1):
+            raise ValueError('invalid endpoint or mismatched region')
+        if len(sys.argv) == 2 and sys.argv[1] == 'audit':
+            audit(int(os.environ['BACKUP_EGRESS_BUDGET_BYTES']),
+                  bytes.fromhex(os.environ['BACKUP_HMAC_KEY_HEX']), os.environ['BACKUP_SIGNER_FINGERPRINT'])
+            return
         if len(sys.argv) == 4:
             retrieve(sys.argv[2], sys.argv[3], int(os.environ['BACKUP_EGRESS_BUDGET_BYTES']),
                      bytes.fromhex(os.environ['BACKUP_HMAC_KEY_HEX']), os.environ['BACKUP_SIGNER_FINGERPRINT'])
@@ -349,7 +412,9 @@ def main():
                 (os.environ.get('BACKUP_EXCLUSIVE_WRITER_ATTESTED'),
                  os.environ.get('BACKUP_MULTIPART_RESERVE_ATTESTED'),
                  os.environ.get('BACKUP_NO_ROLLBACK_CLOCK_ATTESTED')),
-                os.environ['BACKUP_SIGNER_FINGERPRINT'])
+                os.environ['BACKUP_SIGNER_FINGERPRINT'],
+                int(os.environ.get('BACKUP_DAILY_RETENTION', '7')),
+                int(os.environ.get('BACKUP_WEEKLY_RETENTION', '4')))
     except (ValueError, KeyError, TypeError, OSError, subprocess.CalledProcessError) as error:
         print(f'Backup publication failed ({type(error).__name__}).', file=sys.stderr)
         sys.exit(1)

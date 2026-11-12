@@ -23,7 +23,7 @@ class EndToEndTest(ArchiveTest):
             return data
         with patch.object(publish, 'inventory', inventory), patch.object(publish, 'put', put), patch.object(publish, 'get', get):
             secret = b'x' * 32
-            publish.publish(self.parts, 100000, 100, 21_000_000, secret, ('true', 'true', 'true'), self.signer)
+            publish.publish(self.parts, 100000, 100, 32_000_000, secret, ('true', 'true', 'true'), self.signer)
             run = next(iter(objects)).split('/')[2]
             target = self.root / 'retrieved'
             def retrieve():
