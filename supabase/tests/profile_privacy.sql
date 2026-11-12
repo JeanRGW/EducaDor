@@ -31,9 +31,6 @@ insert into public.company_memberships(user_id,company_id,role) values
  ('a9000000-0000-4000-8000-000000000002','b9000000-0000-4000-8000-000000000001','funcionario'),
  ('a9000000-0000-4000-8000-000000000003','b9000000-0000-4000-8000-000000000002','funcionario');
 insert into public.platform_gestors(user_id) values ('a9000000-0000-4000-8000-000000000001');
-insert into auth.sessions(id,user_id,created_at,updated_at,not_after) values
- ('a9000000-0000-4000-8000-000000000004','a9000000-0000-4000-8000-000000000001',now(),now(),now() + interval '1 day'),
- ('a9000000-0000-4000-8000-000000000006','a9000000-0000-4000-8000-000000000002',now(),now(),now() + interval '1 day');
 set local role authenticated;
 select set_config('request.jwt.claims','{"sub":"a9000000-0000-4000-8000-000000000001","session_id":"a9000000-0000-4000-8000-000000000004","aal":"aal1"}',true);
 select public.select_context('empresa','b9000000-0000-4000-8000-000000000001');
