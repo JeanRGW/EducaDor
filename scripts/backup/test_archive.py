@@ -54,6 +54,44 @@ class ArchiveTest(unittest.TestCase):
         with self.assertRaises((ValueError, OSError)):
             archive.unpack(self.parts, self.output, self.signer)
 
+    def test_passphrase_protected_recipient(self):
+        passfile = self.root / 'passphrase'
+        passfile.write_text('throwaway secret\n')
+        passfile.chmod(0o600)
+        private_home = self.root / 'private-home'
+        private_home.mkdir(mode=0o700)
+        private_env = dict(os.environ, GNUPGHOME=str(private_home))
+        subprocess.run(['gpg', '--batch', '--pinentry-mode', 'loopback', '--passphrase-file', str(passfile),
+                        '--quick-generate-key', 'Protected <protected@example.invalid>', 'rsa2048', 'encr', '0'],
+                       env=private_env, check=True, capture_output=True)
+        keys = subprocess.check_output(['gpg', '--batch', '--with-colons', '--list-keys'], env=private_env)
+        recipient = next(line.split(':')[9] for line in keys.decode().splitlines() if line.startswith('fpr:'))
+        public = subprocess.check_output(['gpg', '--export', recipient], env=private_env)
+        subprocess.run(['gpg', '--batch', '--import'], input=public, check=True, capture_output=True)
+        target = self.root / 'protected-parts'
+        archive.pack(self.dump, target, recipient, self.signer)
+        signer_public = subprocess.check_output(['gpg', '--export', self.signer])
+        subprocess.run(['gpg', '--batch', '--import'], input=signer_public, env=private_env, check=True, capture_output=True)
+        subprocess.run(['gpgconf', '--kill', 'gpg-agent'], env=private_env, check=True)
+        with patch.dict(os.environ, {'GNUPGHOME': str(private_home)}, clear=False):
+            with patch.dict(os.environ):
+                os.environ.pop('BACKUP_GPG_PASSPHRASE_FILE', None)
+                with self.assertRaisesRegex(archive.MissingPassphraseError, 'BACKUP_GPG_PASSPHRASE_FILE'):
+                    archive.unpack(target, self.output, self.signer)
+            link = self.root / 'pass-link'
+            link.symlink_to(passfile)
+            for path in (link, passfile):
+                if path == passfile:
+                    passfile.chmod(0o644)
+                with patch.dict(os.environ, {'BACKUP_GPG_PASSPHRASE_FILE': str(path)}):
+                    with self.assertRaises((OSError, ValueError)):
+                        archive.unpack(target, self.output, self.signer)
+            passfile.chmod(0o600)
+            with patch.dict(os.environ, {'BACKUP_GPG_PASSPHRASE_FILE': str(passfile)}):
+                archive.unpack(target, self.output, self.signer)
+            self.assertEqual(self.output.read_bytes(), self.dump.read_bytes())
+        subprocess.run(['gpgconf', '--kill', 'gpg-agent'], env=private_env, check=True)
+
     def test_tamper_and_truncation(self):
         part = self.parts / '0000.gpgpart'
         original = part.read_bytes()
@@ -71,7 +109,7 @@ class ArchiveTest(unittest.TestCase):
         manifest = json.loads((self.parts / 'manifest.json').read_text())
         manifest['parts'][0]['sha256'] = archive.digest(data)
         self.sign_manifest(json.dumps(manifest).encode())
-        with self.assertRaises(subprocess.CalledProcessError):
+        with self.assertRaises(archive.MissingPassphraseError):
             archive.unpack(self.parts, self.output, self.signer)
         self.assertFalse(self.output.exists())
 
