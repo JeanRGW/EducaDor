@@ -36,7 +36,7 @@ class RestoreTest(ArchiveTest):
         sql('source', b"CREATE TABLE proof (value text); INSERT INTO proof VALUES ('restored safely');")
         self.dump.write_bytes(subprocess.check_output(['docker', 'exec', name, 'pg_dump', '-U', 'postgres', 'source']))
         parts = self.root / 'database-parts'
-        archive.pack(self.dump, parts, self.fingerprint)
-        archive.unpack(parts, self.output)
+        archive.pack(self.dump, parts, self.fingerprint, self.signer)
+        archive.unpack(parts, self.output, self.signer)
         sql('restored', self.output.read_bytes())
         self.assertEqual(sql('restored', b'SELECT value FROM proof;').strip(), b'restored safely')
