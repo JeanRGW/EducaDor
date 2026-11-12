@@ -473,8 +473,12 @@ void main() {
       expect(find.text('Notificações não configuradas.'), findsOneWidget);
       expect(find.text('Segurança e MFA'), findsOneWidget);
       expect(find.text('Português (Brasil)'), findsOneWidget);
-      expect(find.text('Em breve'), findsNWidgets(2));
-      expect(tester.widget<Switch>(find.byType(Switch)).onChanged, isNull);
+      expect(find.text('Em breve'), findsOneWidget);
+      final darkSwitch = find.ancestor(
+        of: find.text('Modo escuro'),
+        matching: find.byType(SwitchListTile),
+      );
+      expect(tester.widget<SwitchListTile>(darkSwitch).onChanged, isNotNull);
     },
   );
   setUpAll(() async {
@@ -775,7 +779,11 @@ void main() {
       await _show(tester, const EmployeeProfileScreen());
       expect(find.text('Operações'), findsOneWidget);
       expect(find.text('50'), findsOneWidget);
-      expect(tester.widget<Switch>(find.byType(Switch)).onChanged, isNull);
+      final darkSwitch = find.ancestor(
+        of: find.text('Modo escuro'),
+        matching: find.byType(SwitchListTile),
+      );
+      expect(tester.widget<SwitchListTile>(darkSwitch).onChanged, isNotNull);
       expect(find.text('English'), findsNothing);
       expect(find.text('Trocar perfil'), findsOneWidget);
     },

@@ -24,6 +24,19 @@ void main() {
     );
   });
 
+  test('system mode persists alongside explicit modes', () async {
+    SharedPreferences.setMockInitialValues({});
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+    await container
+        .read(themePreferenceProvider.notifier)
+        .setMode(ThemeMode.system);
+    final restored = ProviderContainer();
+    addTearDown(restored.dispose);
+    await restored.read(themePreferenceProvider.notifier).load();
+    expect(restored.read(themePreferenceProvider), ThemeMode.system);
+  });
+
   test('preference persists and can be restored', () async {
     SharedPreferences.setMockInitialValues({});
     final first = ProviderContainer();

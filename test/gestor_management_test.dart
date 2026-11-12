@@ -966,7 +966,9 @@ void main() {
     await tester.pumpAndSettle();
     expect(
       tester.widget<Text>(find.text('Módulos do curso')).style,
-      AdminStyles.cardTitle,
+      AdminStyles.cardTitleFor(
+        Theme.of(tester.element(find.text('Módulos do curso'))).colorScheme,
+      ),
     );
     expect(find.text('Módulo original'), findsOneWidget);
     expect(tester.takeException(), isNull);

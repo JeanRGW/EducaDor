@@ -43,6 +43,54 @@ void main() {
     }
   });
 
+  test('dark theme keeps component sizing and shapes from light', () {
+    final light = AppTheme.light;
+    final dark = AppTheme.dark;
+    expect(
+      dark.filledButtonTheme.style?.minimumSize?.resolve({}),
+      light.filledButtonTheme.style?.minimumSize?.resolve({}),
+    );
+    expect(
+      dark.outlinedButtonTheme.style?.minimumSize?.resolve({}),
+      light.outlinedButtonTheme.style?.minimumSize?.resolve({}),
+    );
+    expect(
+      dark.filledButtonTheme.style?.shape?.resolve({}),
+      light.filledButtonTheme.style?.shape?.resolve({}),
+    );
+    expect(dark.floatingActionButtonTheme.shape, isA<CircleBorder>());
+    expect(
+      dark.progressIndicatorTheme.linearTrackColor,
+      dark.colorScheme.surfaceContainerHigh,
+    );
+    expect(dark.appBarTheme.toolbarHeight, light.appBarTheme.toolbarHeight);
+    expect(
+      dark.inputDecorationTheme.contentPadding,
+      light.inputDecorationTheme.contentPadding,
+    );
+    expect(
+      dark.textTheme.headlineSmall?.fontSize,
+      light.textTheme.headlineSmall?.fontSize,
+    );
+  });
+
+  test('semantic palette adapts per brightness and matches light values', () {
+    final light = AppTheme.light.colorScheme;
+    final dark = AppTheme.dark.colorScheme;
+    expect(light.successSurface, AppColors.successBg);
+    expect(light.successForeground, AppColors.successDarkGreen);
+    expect(light.dangerSurface, AppColors.dangerBg);
+    expect(dark.successSurface, isNot(AppColors.successBg));
+    expect(
+      contrast(dark.successForeground, dark.successSurface),
+      greaterThanOrEqualTo(4.5),
+    );
+    expect(
+      contrast(dark.dangerForeground, dark.dangerSurface),
+      greaterThanOrEqualTo(4.5),
+    );
+  });
+
   test('light theme stays light', () {
     expect(AppTheme.light.brightness, Brightness.light);
     expect(AppTheme.light.scaffoldBackgroundColor, AppColors.background);

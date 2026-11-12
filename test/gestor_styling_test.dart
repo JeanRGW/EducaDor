@@ -138,7 +138,9 @@ void main() {
       expect(decoration.color, AppColors.successBg);
       expect(
         tester.widget<Text>(find.text('Marina Silva')).style,
-        AdminStyles.pageTitle,
+        AdminStyles.pageTitleFor(
+          Theme.of(tester.element(find.text('Marina Silva'))).colorScheme,
+        ),
       );
       expect(find.text('Gestor da plataforma'), findsOneWidget);
       expect(find.text('Convidar gestor da plataforma'), findsNothing);
@@ -240,7 +242,10 @@ void main() {
       await _show(tester, const AddTrailScreen());
       final form = find.byType(TextFormField).first;
       final theme = Theme.of(tester.element(form));
-      expect(theme.appBarTheme.titleTextStyle, AdminStyles.formTitle);
+      expect(
+        theme.appBarTheme.titleTextStyle,
+        AdminStyles.formTitleFor(theme.colorScheme),
+      );
       expect(theme.inputDecorationTheme.hintStyle!.fontSize, 13);
       final border =
           theme.inputDecorationTheme.enabledBorder! as OutlineInputBorder;

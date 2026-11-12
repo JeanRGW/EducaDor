@@ -298,7 +298,9 @@ void main() {
           final page = tester.widget<ProfilePage>(find.byType(ProfilePage));
           expect(
             tester.widget<Text>(find.text(page.name)).style,
-            AdminStyles.pageTitle,
+            AdminStyles.pageTitleFor(
+              Theme.of(tester.element(find.text(page.name))).colorScheme,
+            ),
           );
           expect(tester.getSize(find.byType(AvatarBadge)), const Size(72, 72));
           final settings = find.byType(ProfileAccountSettings);
