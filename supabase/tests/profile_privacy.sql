@@ -16,6 +16,9 @@ insert into auth.users(id,email) values
  ('a9000000-0000-4000-8000-000000000001','manager-privacy@example.test'),
  ('a9000000-0000-4000-8000-000000000002','employee-privacy@example.test'),
  ('a9000000-0000-4000-8000-000000000003','other-privacy@example.test');
+insert into auth.sessions(id,user_id,not_after) values
+ ('a9000000-0000-4000-8000-000000000004','a9000000-0000-4000-8000-000000000001',now() + interval '1 hour'),
+ ('a9000000-0000-4000-8000-000000000006','a9000000-0000-4000-8000-000000000002',now() + interval '1 hour');
 insert into public.profiles(id,full_name,email,phone,birth_date,address,gender) values
  ('a9000000-0000-4000-8000-000000000001','Manager','manager-privacy@example.test','manager phone','1990-01-01','manager address','female'),
  ('a9000000-0000-4000-8000-000000000002','Employee','employee-privacy@example.test','employee phone','1991-01-01','employee address','male'),
