@@ -104,7 +104,7 @@ class EmployeeHomeScreen extends ConsumerWidget {
                                   : '${(data.completion! * 100).round()}% concluído',
                               style: AdminStyles.fieldLabel(
                                 context,
-                              ).copyWith(color: AppColors.primary),
+                              ).copyWith(color: context.colors.primary),
                               textAlign: TextAlign.right,
                             ),
                           ),
@@ -113,7 +113,7 @@ class EmployeeHomeScreen extends ConsumerWidget {
                       const SizedBox(height: 12),
                       ProgressBar(
                         data.completion ?? 0,
-                        color: AppColors.primary,
+                        color: context.colors.primary,
                         height: 10,
                       ),
                       const SizedBox(height: 10),

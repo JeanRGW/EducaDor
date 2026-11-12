@@ -46,7 +46,7 @@ class EmployeeProgressScreen extends ConsumerWidget {
                         children: [
                           DonutChart(
                             data.completion ?? 0,
-                            color: AppColors.primary,
+                            color: context.colors.primary,
                             size: 90,
                           ),
                           const SizedBox(width: 16),

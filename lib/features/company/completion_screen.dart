@@ -226,8 +226,8 @@ class _CompanyCompletionScreenState
                                 department.key,
                                 department.value!,
                                 compact: true,
-                                color: AppColors.primary,
-                                valueColor: AppColors.primary,
+                                color: context.colors.primary,
+                                valueColor: context.colors.primary,
                               )
                             else
                               Padding(

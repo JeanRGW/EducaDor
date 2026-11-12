@@ -116,7 +116,7 @@ class _CatalogState extends ConsumerState<_Catalog> {
                                       ? 10
                                       : 11,
                                   color: _tab == index
-                                      ? AppColors.primary
+                                      ? context.colors.primary
                                       : Theme.of(context).colorScheme.outline,
                                 ),
                               ),
@@ -209,7 +209,7 @@ class _CatalogState extends ConsumerState<_Catalog> {
                         selected: _filter,
                         outlined: true,
                         solidSelection: true,
-                        activeColor: AppColors.primary,
+                        activeColor: context.colors.primary,
                         onSelected: (index) => setState(() {
                           _filter = index;
                           _offset = 0;

@@ -110,12 +110,12 @@ class LearningCover extends StatelessWidget {
 class LearningCard extends StatelessWidget {
   final LearningItem course;
   final bool compact;
-  final Color progressColor;
+  final Color? progressColor;
   const LearningCard({
     super.key,
     required this.course,
     this.compact = false,
-    this.progressColor = AppColors.primary,
+    this.progressColor,
   });
   @override
   Widget build(BuildContext context) => AppCard(
@@ -181,7 +181,7 @@ class LearningCard extends StatelessWidget {
                 style: AdminStyles.fieldLabel(context).copyWith(
                   color: course.state == 'completed'
                       ? Theme.of(context).colorScheme.successForeground
-                      : progressColor,
+                      : progressColor ?? context.colors.primary,
                 ),
               ),
           ],

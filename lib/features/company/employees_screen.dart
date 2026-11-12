@@ -294,7 +294,7 @@ class CompanyEmployeeCard extends StatelessWidget {
             CompanyAvatar(
               initials: employee.initials,
               size: 36,
-              foregroundColor: AppColors.primary,
+              foregroundColor: context.colors.primary,
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -331,7 +331,7 @@ class CompanyEmployeeCard extends StatelessWidget {
         ProgressBar(
           employee.hasCompletion ? employee.completionPct / 100 : 0,
           height: 6,
-          color: AppColors.primary,
+          color: context.colors.primary,
         ),
         const SizedBox(height: 4),
         Row(
@@ -349,9 +349,10 @@ class CompanyEmployeeCard extends StatelessWidget {
               employee.hasCompletion
                   ? '${employee.completionPct.round()}%'
                   : 'Sem dados',
-              style: CompanyStyles.caption(
-                context,
-              ).copyWith(fontWeight: FontWeight.w700, color: AppColors.primary),
+              style: CompanyStyles.caption(context).copyWith(
+                fontWeight: FontWeight.w700,
+                color: context.colors.primary,
+              ),
             ),
           ],
         ),

@@ -258,11 +258,13 @@ class _PendingInviteCard extends StatelessWidget {
       icon: SvgIcon(
         AppIcons.key,
         size: 16,
-        color: busy ? Theme.of(context).colorScheme.outline : AppColors.primary,
+        color: busy
+            ? Theme.of(context).colorScheme.outline
+            : context.colors.primary,
       ),
       label: Text(busy ? 'Gerando...' : 'Gerar novo link'),
       style: OutlinedButton.styleFrom(
-        foregroundColor: AppColors.primary,
+        foregroundColor: context.colors.primary,
         side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
         minimumSize: const Size(0, 40),
         padding: const EdgeInsets.symmetric(horizontal: 12),

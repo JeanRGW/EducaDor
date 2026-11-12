@@ -190,7 +190,7 @@ class CompanyDashboardScreen extends ConsumerWidget {
                           style: TextStyle(
                             fontFamily: AppFonts.inter,
                             fontSize: 11,
-                            color: AppColors.primary,
+                            color: context.colors.primary,
                           ),
                         ),
                       ],

@@ -26,7 +26,7 @@ abstract class CompanyStyles {
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
-        foregroundColor: AppColors.primary,
+        foregroundColor: base.colorScheme.primary,
         side: BorderSide(color: base.colorScheme.outlineVariant),
         minimumSize: const Size(0, 44),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),

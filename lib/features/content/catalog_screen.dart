@@ -445,7 +445,7 @@ class ManagedContentCard extends StatelessWidget {
                               ? Theme.of(context).colorScheme.outline
                               : platform
                               ? Theme.of(context).colorScheme.onSurface
-                              : AppColors.primary,
+                              : context.colors.primary,
                         ),
                       ),
                     ],
@@ -456,7 +456,7 @@ class ManagedContentCard extends StatelessWidget {
                     height: platform ? 4 : 6,
                     color: platform
                         ? context.successForeground
-                        : AppColors.primary,
+                        : context.colors.primary,
                   ),
                   const SizedBox(height: 8),
                   Row(

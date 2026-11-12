@@ -90,10 +90,7 @@ class _ContextSelectionScreenState
                       style: const TextStyle(fontWeight: FontWeight.w700),
                     ),
                   ),
-                  const SvgIcon(
-                    AppIcons.chevronRight,
-                    color: AppColors.primary,
-                  ),
+                  SvgIcon(AppIcons.chevronRight, color: context.colors.primary),
                 ],
               ),
             ),

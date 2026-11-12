@@ -95,7 +95,7 @@ class SectionHeader extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                     color: compact
                         ? context.successForeground
-                        : AppColors.primary,
+                        : context.colors.primary,
                   ),
                 ),
               ),
@@ -174,15 +174,10 @@ class AvatarBadge extends StatelessWidget {
 
 class ProgressBar extends StatelessWidget {
   final double value; // 0..1
-  final Color color;
+  final Color? color;
   final double height;
 
-  const ProgressBar(
-    this.value, {
-    super.key,
-    this.color = AppColors.primary,
-    this.height = 8,
-  });
+  const ProgressBar(this.value, {super.key, this.color, this.height = 8});
 
   @override
   Widget build(BuildContext context) {
@@ -194,7 +189,9 @@ class ProgressBar extends StatelessWidget {
         backgroundColor: context.isDark
             ? Theme.of(context).colorScheme.surfaceContainerHigh
             : AppColors.chipBg,
-        valueColor: AlwaysStoppedAnimation<Color>(color),
+        valueColor: AlwaysStoppedAnimation<Color>(
+          color ?? context.colors.primary,
+        ),
       ),
     );
   }
@@ -374,8 +371,8 @@ class SearchField extends StatelessWidget {
         focusedBorder: compact
             ? OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(
-                  color: AppColors.primary,
+                borderSide: BorderSide(
+                  color: context.colors.primary,
                   width: 1.6,
                 ),
               )
@@ -426,7 +423,7 @@ class StatCard extends StatelessWidget {
                   ),
                 ),
               ),
-              SvgIcon(icon, size: 17, color: AppColors.primary),
+              SvgIcon(icon, size: 17, color: context.colors.primary),
             ],
           ),
           const SizedBox(height: 8),
@@ -539,7 +536,7 @@ class FormFieldLabel extends StatelessWidget {
         child: DropdownButton<String>(
           value: selected,
           isExpanded: true,
-          icon: const SvgIcon(AppIcons.chevronDown, color: AppColors.primary),
+          icon: SvgIcon(AppIcons.chevronDown, color: context.colors.primary),
           style: TextStyle(
             color: Theme.of(context).colorScheme.onSurface,
             fontSize: 15,

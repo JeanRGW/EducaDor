@@ -323,7 +323,7 @@ class _GestorReportsScreenState extends ConsumerState<GestorReportsScreen> {
                                   company.company,
                                   company.percent!,
                                   compact: true,
-                                  color: AppColors.primary,
+                                  color: context.colors.primary,
                                 )
                               else
                                 Padding(
@@ -495,11 +495,11 @@ class _PopularRow extends StatelessWidget {
           ),
           child: Text(
             '$rank',
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: AppFonts.inter,
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: AppColors.primary,
+              color: context.colors.primary,
             ),
           ),
         ),

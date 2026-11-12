@@ -83,9 +83,13 @@ class _InviteStartScreenState extends ConsumerState<InviteStartScreen> {
           shrinkWrap: true,
           padding: const EdgeInsets.all(24),
           children: [
-            const Align(
+            Align(
               alignment: Alignment.centerLeft,
-              child: SvgIcon(AppIcons.mail, size: 40, color: AppColors.primary),
+              child: SvgIcon(
+                AppIcons.mail,
+                size: 40,
+                color: context.colors.primary,
+              ),
             ),
             const SizedBox(height: 24),
             Text(

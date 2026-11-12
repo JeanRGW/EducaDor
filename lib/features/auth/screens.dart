@@ -263,7 +263,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     ),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: AppColors.primary, width: 1.6),
+      borderSide: BorderSide(color: context.colors.primary, width: 1.6),
     ),
     prefixIcon: Padding(
       padding: const EdgeInsets.only(left: 14, right: 12),

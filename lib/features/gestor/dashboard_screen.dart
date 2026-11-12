@@ -129,7 +129,7 @@ class GestorDashboardScreen extends ConsumerWidget {
             if (data != null) ...[
               _metrics(data),
               const SizedBox(height: 20),
-              _growth(data.growth),
+              _growth(context, data.growth),
               const Padding(
                 padding: EdgeInsets.only(top: 24, bottom: 12),
                 child: Text(
@@ -204,7 +204,7 @@ class GestorDashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _growth(List<GrowthMonth> rows) {
+  Widget _growth(BuildContext context, List<GrowthMonth> rows) {
     final max = rows.fold<int>(
       1,
       (max, row) => math.max(max, math.max(row.companies, row.users)),
@@ -213,12 +213,12 @@ class GestorDashboardScreen extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Wrap(
+          Wrap(
             alignment: WrapAlignment.spaceBetween,
             spacing: 12,
             runSpacing: 4,
             children: [
-              Text(
+              const Text(
                 'Crescimento da Empresa / Usuários',
                 style: TextStyle(
                   fontFamily: AppFonts.outfit,
@@ -232,7 +232,7 @@ class GestorDashboardScreen extends ConsumerWidget {
                   fontFamily: AppFonts.inter,
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
-                  color: AppColors.primary,
+                  color: context.colors.primary,
                 ),
               ),
             ],
@@ -320,7 +320,7 @@ class _DashboardStatCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              SvgIcon(metric.icon, size: 16, color: AppColors.primary),
+              SvgIcon(metric.icon, size: 16, color: context.colors.primary),
             ],
           ),
           const SizedBox(height: 10),
@@ -373,7 +373,7 @@ class _ActivityRow extends StatelessWidget {
             ),
             child: SvgIcon(
               activity.kind == 'company' ? AppIcons.building : AppIcons.book,
-              color: AppColors.primary,
+              color: context.colors.primary,
               size: 16,
             ),
           ),
