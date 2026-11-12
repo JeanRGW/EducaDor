@@ -1,0 +1,128 @@
+name: Hosted restore drill
+
+# Manual and destructive: this replaces all application and Auth rows in the
+# target project. It is limited to main, a protected environment and an explicit
+# confirmation. Run with dry_run=true first.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Confirm this destructive restore drill
+        type: boolean
+        required: true
+        default: false
+      dry_run:
+        description: Only verify the archive and report COPY row counts
+        type: boolean
+        required: true
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hosted-restore-drill
+  cancel-in-progress: false
+
+jobs:
+  restore-drill:
+    if: github.ref == 'refs/heads/main' && inputs.confirm == true
+    environment: backup-production
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      BACKUP_S3_ENDPOINT: ${{ vars.BACKUP_S3_ENDPOINT || 'https://s3.us-east-005.backblazeb2.com' }}
+      AWS_DEFAULT_REGION: ${{ vars.AWS_DEFAULT_REGION || 'us-east-005' }}
+      BACKUP_SIGNER_FINGERPRINT: ${{ vars.BACKUP_SIGNER_FINGERPRINT }}
+      BACKUP_PUBLIC_KEY: ${{ vars.BACKUP_PUBLIC_KEY }}
+      BACKUP_SIGNING_PUBLIC_KEY: ${{ vars.BACKUP_SIGNING_PUBLIC_KEY }}
+      BACKUP_EXPECTED_PROJECT_REF: ${{ vars.BACKUP_EXPECTED_PROJECT_REF }}
+      AWS_EC2_METADATA_DISABLED: 'true'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      # awscli 1.36.40 fails on Python 3.14 argparse; keep a supported interpreter.
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.12'
+      - name: Install pinned AWS CLI (transitive dependencies require review)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m venv "$RUNNER_TEMP/restore-aws-venv"
+          "$RUNNER_TEMP/restore-aws-venv/bin/pip" install --disable-pip-version-check 'awscli==1.36.40' >/dev/null
+      - name: Install PostgreSQL 17 client
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo install -d -m 0755 /usr/share/postgresql-common/pgdg
+          curl --fail --silent --show-error --location https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo tee /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc >/dev/null
+          test "$(gpg --show-keys --with-colons /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc | awk -F: '$1 == "fpr" { print $10; exit }')" = B97B0AFCAA1A47F044F244A07FCC7D46ACCC4CF8
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(. /etc/os-release && echo "$VERSION_CODENAME")-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list >/dev/null
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-17
+          PGBIN=/usr/lib/postgresql/17/bin
+          PSQL="$PGBIN/psql"
+          if [ ! -x "$PSQL" ]; then
+            echo "PostgreSQL 17 client not found at $PSQL." >&2
+            exit 1
+          fi
+          "$PSQL" --version
+          "$PSQL" --version | grep -E '^psql \(PostgreSQL\) 17\.'
+          echo "$PGBIN" >> "$GITHUB_PATH"
+      - name: Prepare private scratch
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -m 700 "$RUNNER_TEMP/educador-restore"
+      - name: Verify archive and restore data atomically
+        env:
+          BACKUP_HMAC_KEY_HEX: ${{ secrets.BACKUP_HMAC_KEY_HEX }}
+          BACKUP_GPG_PRIVATE_KEY: ${{ secrets.BACKUP_GPG_PRIVATE_KEY }}
+          BACKUP_GPG_PASSPHRASE: ${{ secrets.BACKUP_GPG_PASSPHRASE }}
+          PGDATABASE: ${{ secrets.BACKUP_DATABASE_URL }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.BACKUP_S3_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_S3_SECRET_ACCESS_KEY }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          work="$RUNNER_TEMP/educador-restore"
+          export GNUPGHOME="$work/gnupg"
+          mkdir -m 700 "$GNUPGHOME"
+          printf '%s' "$BACKUP_PUBLIC_KEY" | env -i PATH="$PATH" HOME="$HOME" GNUPGHOME="$GNUPGHOME" gpg --batch --quiet --import 2>/dev/null
+          printf '%s' "$BACKUP_SIGNING_PUBLIC_KEY" | env -i PATH="$PATH" HOME="$HOME" GNUPGHOME="$GNUPGHOME" gpg --batch --quiet --import 2>/dev/null
+          printf '%s' "$BACKUP_GPG_PRIVATE_KEY" > "$work/private-key.asc"
+          chmod 600 "$work/private-key.asc"
+          env -i PATH="$PATH" HOME="$HOME" GNUPGHOME="$GNUPGHOME" gpg --batch --quiet --import "$work/private-key.asc" 2>/dev/null
+          rm -f "$work/private-key.asc"
+          unset BACKUP_GPG_PRIVATE_KEY
+          if [ -z "${BACKUP_SIGNER_FINGERPRINT:-}" ] || ! env -i PATH="$PATH" HOME="$HOME" GNUPGHOME="$GNUPGHOME" gpg --batch --list-keys "$BACKUP_SIGNER_FINGERPRINT" >/dev/null 2>&1; then
+            echo 'Missing signing public key for the expected fingerprint.' >&2
+            exit 1
+          fi
+          # archive.py accepts only a current-user-owned mode-0600 passphrase file.
+          printf '%s' "$BACKUP_GPG_PASSPHRASE" > "$work/passphrase"
+          chmod 600 "$work/passphrase"
+          unset BACKUP_GPG_PASSPHRASE
+          export BACKUP_GPG_PASSPHRASE_FILE="$work/passphrase"
+          export PATH="$RUNNER_TEMP/restore-aws-venv/bin:$PATH"
+          export AWS_CONFIG_FILE="$work/aws-config" AWS_SHARED_CREDENTIALS_FILE="$work/aws-credentials"
+          export AWS_MAX_ATTEMPTS=1 AWS_RETRY_MODE=standard AWS_PAGER=''
+          unset AWS_PROFILE AWS_DEFAULT_PROFILE AWS_SESSION_TOKEN AWS_SECURITY_TOKEN AWS_CA_BUNDLE
+          printf '[default]\ns3 =\n    addressing_style = path\n' > "$AWS_CONFIG_FILE"
+          touch "$AWS_SHARED_CREDENTIALS_FILE"
+          args=()
+          if [ "$DRY_RUN" = "true" ]; then
+            args+=(--dry-run)
+          fi
+          python3 scripts/backup/hosted_restore.py "${args[@]}"
+      - name: Remove scratch
+        if: always()
+        shell: bash
+        run: |
+          if [ -d "$RUNNER_TEMP/educador-restore/gnupg" ]; then
+            GNUPGHOME="$RUNNER_TEMP/educador-restore/gnupg" gpgconf --kill gpg-agent || true
+          fi
+          rm -rf "$RUNNER_TEMP/educador-restore"

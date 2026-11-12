@@ -32,6 +32,7 @@ The backup workflow is activated and gated as described below.
 | `ci.yml` | PR/push | `flutter analyze`, `flutter test`, `flutter build web` (no deploy) |
 | `deploy-pages.yml` | `main` | build web with `--dart-define` secrets → Pages deploy |
 | `backup.yml` | daily cron / manual | DB-only `pg_dump` → B2 `educador-backups` (`s3.us-east-005.backblazeb2.com`), daily 7 + weekly 4; enabled, each run gated by `BACKUP_ENABLED` (manual also needs confirm), no object bytes |
+| `restore-drill.yml` | manual only | destructive hosted restore drill; verifies the newest authenticated archive, wipes and reloads `public`+`auth` in one transaction, dry-run first; see [backup recovery](14-backup-recovery.md) |
 | `keepalive.yml` | daily cron | light authed query to reset Supabase 7-day pause timer |
 
 Public staging inputs (`SUPABASE_URL`, `SUPABASE_ANON_KEY` publishable key, `CLOUDFLARE_ACCOUNT_ID`) may be versioned; use environment-specific public values for other projects. True secrets (Actions, never in repo): `CLOUDFLARE_API_TOKEN, SUPABASE_DB_URL` (with password). Function secrets (Supabase dashboard): `FCM_SERVICE_ACCOUNT_JSON, STORAGE_S3_*`; the managed Supabase service-role key stays server-side. Future PR previews must use an explicitly approved staging target; preview automation is not implemented at this baseline.
