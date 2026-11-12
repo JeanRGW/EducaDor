@@ -27,7 +27,7 @@ void main() {
             newCompanyCount: 3,
             userCount: 1840,
             activeUserCount: 1312,
-            completionPct: 0.68,
+            completionPct: 68,
             growth: [
               for (var i = 0; i < 6; i++)
                 GrowthMonth(
@@ -119,7 +119,7 @@ void main() {
             employeeCount: 128,
             activeCourseCount: 9,
             certificateCount: 41,
-            completionPct: 0.74,
+            completionPct: 74,
             engagement: [
               for (var i = 0; i < 6; i++)
                 EngagementMonth(
