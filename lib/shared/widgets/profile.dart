@@ -261,52 +261,120 @@ class _ProfileAccountSettingsState
           icon: AppIcons.globe,
           status: 'Português (Brasil)',
         ),
-        SwitchListTile(
-          title: const Text('Seguir aparência do sistema'),
-          subtitle: const Text('Usa o tema claro ou escuro do seu dispositivo'),
-          secondary: const SvgIcon(AppIcons.globe, size: 20),
-          value: ref.watch(themePreferenceProvider) == ThemeMode.system,
-          onChanged: (enabled) async {
-            try {
-              await ref
-                  .read(themePreferenceProvider.notifier)
-                  .setMode(enabled ? ThemeMode.system : ThemeMode.light);
-            } catch (_) {
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                      'Não foi possível salvar a aparência. Tente novamente.',
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Material(
+            color: Theme.of(context).colorScheme.surface,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(
+                color: Theme.of(context).colorScheme.outlineVariant,
+              ),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: ListTileTheme.merge(
+              minLeadingWidth: 20,
+              horizontalTitleGap: 12,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SwitchListTile(
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 4,
                     ),
+                    title: Text(
+                      'Seguir aparência do sistema',
+                      style: AdminStyles.body(context).copyWith(
+                        color: Theme.of(context).colorScheme.onSurface,
+                        fontSize: 14,
+                      ),
+                    ),
+                    subtitle: Text(
+                      'Usa o tema claro ou escuro do seu dispositivo',
+                      style: AdminStyles.body(context).copyWith(
+                        fontSize: 12,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    secondary: SvgIcon(
+                      AppIcons.contrast,
+                      size: 20,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                    value:
+                        ref.watch(themePreferenceProvider) == ThemeMode.system,
+                    onChanged: (enabled) async {
+                      try {
+                        await ref
+                            .read(themePreferenceProvider.notifier)
+                            .setMode(
+                              enabled ? ThemeMode.system : ThemeMode.light,
+                            );
+                      } catch (_) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Não foi possível salvar a aparência. Tente novamente.',
+                              ),
+                            ),
+                          );
+                        }
+                      }
+                    },
                   ),
-                );
-              }
-            }
-          },
-        ),
-        SwitchListTile(
-          title: const Text('Modo escuro'),
-          secondary: const SvgIcon(AppIcons.moon, size: 20),
-          value: ref.watch(themePreferenceProvider) == ThemeMode.dark,
-          onChanged: ref.watch(themePreferenceProvider) == ThemeMode.system
-              ? null
-              : (enabled) async {
-                  try {
-                    await ref
-                        .read(themePreferenceProvider.notifier)
-                        .setMode(enabled ? ThemeMode.dark : ThemeMode.light);
-                  } catch (_) {
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Não foi possível salvar a aparência. Tente novamente.',
-                          ),
-                        ),
-                      );
-                    }
-                  }
-                },
+                  Divider(
+                    height: 1,
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                  ),
+                  SwitchListTile(
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 4,
+                    ),
+                    title: Text(
+                      'Modo escuro',
+                      style: AdminStyles.body(context).copyWith(
+                        color: Theme.of(context).colorScheme.onSurface,
+                        fontSize: 14,
+                      ),
+                    ),
+                    secondary: SvgIcon(
+                      AppIcons.moon,
+                      size: 20,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                    value: ref.watch(themePreferenceProvider) == ThemeMode.dark,
+                    onChanged:
+                        ref.watch(themePreferenceProvider) == ThemeMode.system
+                        ? null
+                        : (enabled) async {
+                            try {
+                              await ref
+                                  .read(themePreferenceProvider.notifier)
+                                  .setMode(
+                                    enabled
+                                        ? ThemeMode.dark
+                                        : ThemeMode.light,
+                                  );
+                            } catch (_) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Não foi possível salvar a aparência. Tente novamente.',
+                                    ),
+                                  ),
+                                );
+                              }
+                            }
+                          },
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
         ProfileMenuRow(
           label: 'Segurança e MFA',
