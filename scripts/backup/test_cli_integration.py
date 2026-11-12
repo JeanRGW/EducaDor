@@ -23,7 +23,7 @@ HOSTILE = ('AWS_PROFILE', 'AWS_DEFAULT_PROFILE', 'AWS_SESSION_TOKEN', 'AWS_SECUR
            'AWS_PAGER', 'HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'http_proxy', 'https_proxy',
            'all_proxy')
 FIXTURE_ENV = {
-    'AWS_ACCESS_KEY_ID': 'test', 'AWS_SECRET_ACCESS_KEY': 'test', 'AWS_DEFAULT_REGION': 'sa-east-1',
+    'AWS_ACCESS_KEY_ID': 'test', 'AWS_SECRET_ACCESS_KEY': 'test', 'AWS_DEFAULT_REGION': 'us-east-005',
     'AWS_EC2_METADATA_DISABLED': 'true', 'AWS_MAX_ATTEMPTS': '1', 'AWS_RETRY_MODE': 'standard',
     'AWS_PAGER': '', 'NO_PROXY': '127.0.0.1', 'no_proxy': '127.0.0.1',
 }
@@ -99,7 +99,7 @@ class CliIntegrationTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp, contextlib.ExitStack() as stack:
             root = Path(tmp)
             config = root / 'config'
-            config.write_text('[default]\nregion = sa-east-1\ns3 =\n    addressing_style = path\n')
+            config.write_text('[default]\nregion = us-east-005\ns3 =\n    addressing_style = path\n')
             credentials = root / 'credentials'
             credentials.write_text('')
             server = ThreadingHTTPServer(('127.0.0.1', 0), S3Fixture)
@@ -112,7 +112,7 @@ class CliIntegrationTest(unittest.TestCase):
             environment = {k: v for k, v in os.environ.items() if k not in HOSTILE}
             environment.update(FIXTURE_ENV)
             environment.update({
-                'BACKUP_S3_ENDPOINT': f'http://127.0.0.1:{server.server_port}/storage/v1/s3',
+                'BACKUP_S3_ENDPOINT': f'http://127.0.0.1:{server.server_port}',
                 'AWS_CONFIG_FILE': str(config), 'AWS_SHARED_CREDENTIALS_FILE': str(credentials),
             })
             stack.enter_context(patch.dict(os.environ, environment, clear=True))
@@ -122,7 +122,7 @@ class CliIntegrationTest(unittest.TestCase):
             self.assertEqual(publish.get('database/v1/test', 10, root), b'test bytes')
             self.assertEqual(set(publish.inventory()), {'first', 'second'})
             self.assertGreaterEqual(sum('list-type=2' in p for p in S3Fixture.paths), 2)
-            self.assertTrue(all(p.startswith('/storage/v1/s3/educador-backups') for p in S3Fixture.paths))
+            self.assertTrue(all(p.startswith('/educador-backups') for p in S3Fixture.paths))
             S3Fixture.fail_list = True
             with self.assertRaises(subprocess.CalledProcessError):
                 publish.inventory()
