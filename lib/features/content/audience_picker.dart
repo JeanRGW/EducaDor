@@ -17,7 +17,7 @@ Future<ContentAudience?> pickContentAudience(
   context: context,
   isScrollControlled: true,
   useSafeArea: true,
-  backgroundColor: AppColors.surface,
+  backgroundColor: Theme.of(context).colorScheme.surface,
   showDragHandle: true,
   builder: (_) => _AudiencePicker(initial: initial),
 );
@@ -95,12 +95,15 @@ class _AudiencePickerState extends ConsumerState<_AudiencePicker> {
             child: Row(
               children: [
                 Expanded(
-                  child: Text('Liberar para', style: AdminStyles.formTitle),
+                  child: Text(
+                    'Liberar para',
+                    style: AdminStyles.formTitle(context),
+                  ),
                 ),
                 TextButton(
                   style: TextButton.styleFrom(
-                    foregroundColor: AppColors.successDarkGreen,
-                    textStyle: AdminStyles.body,
+                    foregroundColor: context.successForeground,
+                    textStyle: AdminStyles.body(context),
                   ),
                   onPressed: () => Navigator.pop(context),
                   child: const Text('Cancelar'),
@@ -112,20 +115,20 @@ class _AudiencePickerState extends ConsumerState<_AudiencePicker> {
             child: ListView(
               children: [
                 SwitchListTile(
-                  title: const Text(
+                  title: Text(
                     'Todas as empresas',
-                    style: AdminStyles.body,
+                    style: AdminStyles.body(context),
                   ),
-                  subtitle: const Text(
+                  subtitle: Text(
                     'Inclui também as empresas cadastradas no futuro.',
                     style: TextStyle(
                       fontFamily: AppFonts.inter,
                       fontSize: 11,
-                      color: AppColors.textMuted,
+                      color: Theme.of(context).colorScheme.outline,
                     ),
                   ),
                   activeThumbColor: Colors.white,
-                  activeTrackColor: AppColors.successDarkGreen,
+                  activeTrackColor: context.successForeground,
                   value: _all,
                   onChanged: (value) {
                     setState(() => _all = value);
@@ -138,10 +141,10 @@ class _AudiencePickerState extends ConsumerState<_AudiencePicker> {
                     child: SearchField(
                       'Pesquisar empresa',
                       compact: true,
-                      prefixIcon: const SvgIcon(
+                      prefixIcon: SvgIcon(
                         AppIcons.search,
                         size: 26,
-                        color: Color(0xFF475569),
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                       onChanged: _searchChanged,
                     ),
@@ -150,32 +153,36 @@ class _AudiencePickerState extends ConsumerState<_AudiencePicker> {
                     padding: const EdgeInsets.all(12),
                     child: Text(
                       '${_selected.length} empresas selecionadas',
-                      style: AdminStyles.body.copyWith(fontSize: 12),
+                      style: AdminStyles.body(context).copyWith(fontSize: 12),
                     ),
                   ),
                 ],
                 if (_all)
-                  const Padding(
+                  Padding(
                     padding: EdgeInsets.all(32),
                     child: Center(
                       child: SvgIcon(
                         AppIcons.companies,
                         size: 40,
-                        color: AppColors.successDarkGreen,
+                        color: context.successForeground,
                       ),
                     ),
                   )
                 else ...[
                   if (_loading && _companies == null)
                     for (var i = 0; i < 3; i++)
-                      const Padding(
+                      Padding(
                         padding: EdgeInsets.symmetric(
                           horizontal: 20,
                           vertical: 10,
                         ),
                         child: SizedBox(
                           height: 36,
-                          child: ColoredBox(color: AppColors.chipBg),
+                          child: ColoredBox(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.surfaceContainerHigh,
+                          ),
                         ),
                       ),
                   if (_error)
@@ -187,9 +194,12 @@ class _AudiencePickerState extends ConsumerState<_AudiencePicker> {
                     ),
                   for (final company in _companies ?? <CompanyOption>[])
                     CheckboxListTile(
-                      activeColor: AppColors.successDarkGreen,
+                      activeColor: context.successForeground,
                       dense: true,
-                      title: Text(company.name, style: AdminStyles.body),
+                      title: Text(
+                        company.name,
+                        style: AdminStyles.body(context),
+                      ),
                       subtitle: company.active
                           ? null
                           : const Text('Empresa inativa'),

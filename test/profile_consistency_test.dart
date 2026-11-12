@@ -1,4 +1,5 @@
 import 'package:educador/app/theme.dart';
+import 'package:educador/app/theme_preference.dart';
 import 'package:educador/core/router.dart';
 import 'package:educador/data/models/models.dart';
 import 'package:educador/data/repositories/company_providers.dart';
@@ -15,6 +16,7 @@ import 'package:educador/shared/widgets/profile.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 const _user = User(
   id: 'user',
@@ -261,6 +263,25 @@ void main() {
   });
 
   for (final role in Role.values) {
+    testWidgets('$role can change the shared theme preference', (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final container = await _show(tester, role);
+      final toggle = find.ancestor(
+        of: find.text('Modo escuro'),
+        matching: find.byType(SwitchListTile),
+      );
+      await tester.ensureVisible(toggle);
+      await tester.pumpAndSettle();
+      expect(tester.widget<SwitchListTile>(toggle).value, isFalse);
+      await tester.tap(find.text('Modo escuro'));
+      await tester.pumpAndSettle();
+      expect(container.read(themePreferenceProvider), ThemeMode.dark);
+      expect(tester.widget<SwitchListTile>(toggle).value, isTrue);
+      expect(
+        (await SharedPreferences.getInstance()).getString(themePreferenceKey),
+        'dark',
+      );
+    });
     for (final (width, scale) in [(390.0, 1.0), (320.0, 1.8), (1200.0, 1.0)]) {
       testWidgets(
         '$role profile shares layout at width $width and text scale $scale',
@@ -278,7 +299,9 @@ void main() {
           final page = tester.widget<ProfilePage>(find.byType(ProfilePage));
           expect(
             tester.widget<Text>(find.text(page.name)).style,
-            AdminStyles.pageTitle,
+            AdminStyles.pageTitleFor(
+              Theme.of(tester.element(find.text(page.name))).colorScheme,
+            ),
           );
           expect(tester.getSize(find.byType(AvatarBadge)), const Size(72, 72));
           final settings = find.byType(ProfileAccountSettings);
@@ -286,7 +309,6 @@ void main() {
           for (final (label, icon, status) in [
             ('Editar dados pessoais', AppIcons.manageAccount, null),
             ('Idioma', AppIcons.globe, 'Português (Brasil)'),
-            ('Modo escuro', AppIcons.moon, 'Em breve'),
             ('Segurança e MFA', AppIcons.security, null),
             ('Suporte e ajuda', AppIcons.help, 'Em breve'),
             ('Trocar perfil', AppIcons.profile, null),

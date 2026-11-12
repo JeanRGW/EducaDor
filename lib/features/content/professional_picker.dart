@@ -17,7 +17,7 @@ Future<ProfessionalOption?> pickProfessional(
   context: context,
   isScrollControlled: true,
   useSafeArea: true,
-  backgroundColor: AppColors.surface,
+  backgroundColor: Theme.of(context).colorScheme.surface,
   showDragHandle: true,
   builder: (_) => _ProfessionalPicker(initial: initial),
 );
@@ -113,13 +113,13 @@ class _ProfessionalPickerState extends ConsumerState<_ProfessionalPicker> {
                 Expanded(
                   child: Text(
                     'Profissional Responsável',
-                    style: AdminStyles.formTitle,
+                    style: AdminStyles.formTitle(context),
                   ),
                 ),
                 TextButton(
                   style: TextButton.styleFrom(
-                    foregroundColor: AppColors.successDarkGreen,
-                    textStyle: AdminStyles.body,
+                    foregroundColor: context.successForeground,
+                    textStyle: AdminStyles.body(context),
                   ),
                   onPressed: () => Navigator.pop(context),
                   child: const Text('Cancelar'),
@@ -132,10 +132,10 @@ class _ProfessionalPickerState extends ConsumerState<_ProfessionalPicker> {
             child: SearchField(
               'Pesquisar profissional',
               compact: true,
-              prefixIcon: const SvgIcon(
+              prefixIcon: SvgIcon(
                 AppIcons.search,
                 size: 26,
-                color: Color(0xFF475569),
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
               onChanged: _searchChanged,
             ),
@@ -152,14 +152,18 @@ class _ProfessionalPickerState extends ConsumerState<_ProfessionalPicker> {
                 children: [
                   if (_loading && _people == null)
                     for (var i = 0; i < 3; i++)
-                      const Padding(
+                      Padding(
                         padding: EdgeInsets.symmetric(
                           horizontal: 20,
                           vertical: 10,
                         ),
                         child: SizedBox(
                           height: 36,
-                          child: ColoredBox(color: AppColors.chipBg),
+                          child: ColoredBox(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.surfaceContainerHigh,
+                          ),
                         ),
                       ),
                   if (_error)
@@ -171,9 +175,12 @@ class _ProfessionalPickerState extends ConsumerState<_ProfessionalPicker> {
                     ),
                   for (final person in _people ?? <ProfessionalOption>[])
                     RadioListTile<String>(
-                      activeColor: AppColors.successDarkGreen,
+                      activeColor: context.successForeground,
                       dense: true,
-                      title: Text(person.name, style: AdminStyles.body),
+                      title: Text(
+                        person.name,
+                        style: AdminStyles.body(context),
+                      ),
                       value: person.id,
                     ),
                   if (_hasMore && !_error)

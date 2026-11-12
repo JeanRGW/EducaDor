@@ -563,7 +563,11 @@ void main() {
       );
       expect(
         tester.widget<Text>(find.text('Total de funcionários')).style,
-        AdminStyles.fieldLabel,
+        AdminStyles.fieldLabelFor(
+          Theme.of(
+            tester.element(find.text('Total de funcionários')),
+          ).colorScheme,
+        ),
       );
       final employeeMetric = find.ancestor(
         of: find.text('Total de funcionários'),

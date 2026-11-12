@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../app/theme.dart';
 import '../../shared/widgets/common.dart';
 
 const monthNames = [
@@ -90,7 +89,9 @@ class DataSkeleton extends StatelessWidget {
             SizedBox(
               height: height,
               width: double.infinity,
-              child: const ColoredBox(color: AppColors.chipBg),
+              child: ColoredBox(
+                color: Theme.of(context).colorScheme.surfaceContainerHigh,
+              ),
             ),
             const SizedBox(height: 8),
           ],

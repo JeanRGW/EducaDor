@@ -168,9 +168,13 @@ class _CompanyCompletionScreenState
             children: [
               Container(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                decoration: const BoxDecoration(
-                  color: AppColors.surface,
-                  border: Border(bottom: BorderSide(color: AppColors.border)),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface,
+                  border: Border(
+                    bottom: BorderSide(
+                      color: Theme.of(context).colorScheme.outlineVariant,
+                    ),
+                  ),
                 ),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
@@ -178,23 +182,25 @@ class _CompanyCompletionScreenState
                     vertical: 8,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColors.background,
+                    color: Theme.of(context).scaffoldBackgroundColor,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.border),
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.outlineVariant,
+                    ),
                   ),
-                  child: const Row(
+                  child: Row(
                     children: [
                       Expanded(
                         child: Text(
                           'Conclusão atual · sem filtro de período',
-                          style: AdminStyles.fieldLabel,
+                          style: AdminStyles.fieldLabel(context),
                         ),
                       ),
                       SizedBox(width: 8),
                       SvgIcon(
                         AppIcons.calendar,
                         size: 16,
-                        color: Color(0xFF475569),
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ],
                   ),
@@ -209,9 +215,9 @@ class _CompanyCompletionScreenState
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             'Conclusão por departamento',
-                            style: AdminStyles.cardTitle,
+                            style: AdminStyles.cardTitle(context),
                           ),
                           const SizedBox(height: 10),
                           for (final department in departments)
@@ -220,8 +226,8 @@ class _CompanyCompletionScreenState
                                 department.key,
                                 department.value!,
                                 compact: true,
-                                color: AppColors.primary,
-                                valueColor: AppColors.primary,
+                                color: context.colors.primary,
+                                valueColor: context.colors.primary,
                               )
                             else
                               Padding(
@@ -230,7 +236,7 @@ class _CompanyCompletionScreenState
                                 ),
                                 child: Text(
                                   '${department.key}: sem dados de conclusão',
-                                  style: AdminStyles.body,
+                                  style: AdminStyles.body(context),
                                 ),
                               ),
                           if (loading) const DataSkeleton(),
@@ -252,9 +258,9 @@ class _CompanyCompletionScreenState
                               },
                             ),
                           if (!loading && !hasError && departments.isEmpty)
-                            const Text(
+                            Text(
                               'Nenhum dado de conclusão por departamento.',
-                              style: AdminStyles.body,
+                              style: AdminStyles.body(context),
                             ),
                           if (!loading &&
                               !hasError &&
@@ -267,13 +273,13 @@ class _CompanyCompletionScreenState
                       ),
                     ),
                     const SizedBox(height: 16),
-                    const AppCard(
+                    AppCard(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             'Indicadores Regulatórios',
-                            style: AdminStyles.cardTitle,
+                            style: AdminStyles.cardTitle(context),
                           ),
                           SizedBox(height: 12),
                           _Indicator(
@@ -285,7 +291,7 @@ class _CompanyCompletionScreenState
                           SizedBox(height: 8),
                           Text(
                             'Indicadores disponíveis em breve.',
-                            style: CompanyStyles.caption,
+                            style: CompanyStyles.caption(context),
                           ),
                         ],
                       ),
@@ -331,9 +337,9 @@ class _CompanyCompletionScreenState
                       },
                     ),
                     const SizedBox(height: 8),
-                    const Text(
+                    Text(
                       'O CSV contém a conclusão atual dos funcionários desta empresa.',
-                      style: CompanyStyles.caption,
+                      style: CompanyStyles.caption(context),
                     ),
                   ],
                 ),
@@ -355,7 +361,9 @@ class _Indicator extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(12),
     decoration: BoxDecoration(
-      color: highlighted ? AppColors.successBg : AppColors.background,
+      color: highlighted
+          ? context.successSurface
+          : Theme.of(context).scaffoldBackgroundColor,
       borderRadius: BorderRadius.circular(8),
     ),
     child: Row(
@@ -363,15 +371,15 @@ class _Indicator extends StatelessWidget {
         Expanded(
           child: Text(
             label,
-            style: AdminStyles.body.copyWith(
+            style: AdminStyles.body(context).copyWith(
               color: highlighted
-                  ? AppColors.successDarkGreen
-                  : const Color(0xFF475569),
+                  ? context.successForeground
+                  : Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
         ),
         const SizedBox(width: 12),
-        Text('—', style: AdminStyles.cardTitle),
+        Text('—', style: AdminStyles.cardTitle(context)),
       ],
     ),
   );

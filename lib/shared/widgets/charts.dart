@@ -19,7 +19,13 @@ class LineChart extends StatelessWidget {
   Widget build(BuildContext context) {
     return CustomPaint(
       size: Size(double.infinity, height),
-      painter: _LinePainter(data, secondaryData),
+      painter: _LinePainter(
+        data,
+        secondaryData,
+        Theme.of(context).colorScheme.primary,
+        Theme.of(context).colorScheme.secondary,
+        Theme.of(context).colorScheme.outline,
+      ),
     );
   }
 }
@@ -27,7 +33,16 @@ class LineChart extends StatelessWidget {
 class _LinePainter extends CustomPainter {
   final List<MapEntry<String, double>> data;
   final List<MapEntry<String, double>>? secondaryData;
-  _LinePainter(this.data, this.secondaryData);
+  final Color lineColor;
+  final Color secondaryColor;
+  final Color labelColor;
+  _LinePainter(
+    this.data,
+    this.secondaryData,
+    this.lineColor,
+    this.secondaryColor,
+    this.labelColor,
+  );
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -55,7 +70,7 @@ class _LinePainter extends CustomPainter {
     canvas.drawPath(
       line,
       Paint()
-        ..color = AppColors.chartBlue
+        ..color = lineColor
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2
         ..strokeCap = StrokeCap.round
@@ -77,7 +92,7 @@ class _LinePainter extends CustomPainter {
       canvas.drawPath(
         path,
         Paint()
-          ..color = AppColors.accentTeal
+          ..color = secondaryColor
           ..style = PaintingStyle.stroke
           ..strokeWidth = 2,
       );
@@ -91,9 +106,9 @@ class _LinePainter extends CustomPainter {
     for (var i = 0; i < data.length; i++) {
       tp.text = TextSpan(
         text: data[i].key,
-        style: const TextStyle(
+        style: TextStyle(
           fontFamily: AppFonts.inter,
-          color: AppColors.textMuted,
+          color: labelColor,
           fontSize: 10,
         ),
       );
@@ -104,21 +119,20 @@ class _LinePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _LinePainter old) =>
-      old.data != data || old.secondaryData != secondaryData;
+      old.data != data ||
+      old.secondaryData != secondaryData ||
+      old.lineColor != lineColor ||
+      old.secondaryColor != secondaryColor ||
+      old.labelColor != labelColor;
 }
 
 /// Vertical bar chart.
 class BarChart extends StatelessWidget {
   final List<MapEntry<String, double>> data;
   final double height;
-  final Color color;
+  final Color? color;
 
-  const BarChart(
-    this.data, {
-    super.key,
-    this.height = 140,
-    this.color = AppColors.chartBlue,
-  });
+  const BarChart(this.data, {super.key, this.height = 140, this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -135,7 +149,7 @@ class BarChart extends StatelessWidget {
                   Container(
                     height: (height - 22) * data[i].value,
                     decoration: BoxDecoration(
-                      color: color,
+                      color: color ?? Theme.of(context).colorScheme.primary,
                       borderRadius: const BorderRadius.vertical(
                         top: Radius.circular(2),
                       ),
@@ -146,8 +160,8 @@ class BarChart extends StatelessWidget {
                     fit: BoxFit.scaleDown,
                     child: Text(
                       data[i].key,
-                      style: const TextStyle(
-                        color: AppColors.textMuted,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.outline,
                         fontSize: 9,
                       ),
                     ),
@@ -168,16 +182,16 @@ class DonutChart extends StatelessWidget {
   final double value; // 0..1
   final double size;
   final double strokeWidth;
-  final Color color;
-  final Color trackColor;
+  final Color? color;
+  final Color? trackColor;
 
   const DonutChart(
     this.value, {
     super.key,
     this.size = 96,
     this.strokeWidth = 10,
-    this.color = AppColors.primary,
-    this.trackColor = AppColors.chipBg,
+    this.color,
+    this.trackColor,
   });
 
   @override
@@ -186,7 +200,12 @@ class DonutChart extends StatelessWidget {
       width: size,
       height: size,
       child: CustomPaint(
-        painter: _DonutPainter(value, strokeWidth, color, trackColor),
+        painter: _DonutPainter(
+          value,
+          strokeWidth,
+          color ?? Theme.of(context).colorScheme.primary,
+          trackColor ?? Theme.of(context).colorScheme.surfaceContainerHighest,
+        ),
         child: Center(
           child: Text(
             '${(value * 100).round()}%',
@@ -194,7 +213,7 @@ class DonutChart extends StatelessWidget {
               fontFamily: AppFonts.outfit,
               fontSize: 18,
               fontWeight: FontWeight.w800,
-              color: color,
+              color: color ?? Theme.of(context).colorScheme.primary,
             ),
           ),
         ),
@@ -247,7 +266,7 @@ class _DonutPainter extends CustomPainter {
 class ReportBarRow extends StatelessWidget {
   final String label;
   final double value;
-  final Color color;
+  final Color? color;
   final bool compact;
   final Color? valueColor;
 
@@ -255,7 +274,7 @@ class ReportBarRow extends StatelessWidget {
     this.label,
     this.value, {
     super.key,
-    this.color = AppColors.chartBlue,
+    this.color,
     this.compact = false,
     this.valueColor,
   });
@@ -276,7 +295,9 @@ class ReportBarRow extends StatelessWidget {
                     fontFamily: AppFonts.inter,
                     fontSize: compact ? 12 : 14,
                     fontWeight: compact ? FontWeight.w400 : FontWeight.w600,
-                    color: compact ? const Color(0xFF475569) : null,
+                    color: compact
+                        ? Theme.of(context).colorScheme.onSurfaceVariant
+                        : null,
                   ),
                 ),
               ),
@@ -298,9 +319,11 @@ class ReportBarRow extends StatelessWidget {
               value: value / 100,
               minHeight: compact ? 8 : 9,
               backgroundColor: compact
-                  ? AppColors.background
-                  : AppColors.border,
-              valueColor: AlwaysStoppedAnimation<Color>(color),
+                  ? Theme.of(context).scaffoldBackgroundColor
+                  : Theme.of(context).colorScheme.outlineVariant,
+              valueColor: AlwaysStoppedAnimation<Color>(
+                color ?? Theme.of(context).colorScheme.primary,
+              ),
             ),
           ),
         ],

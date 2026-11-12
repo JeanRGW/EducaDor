@@ -37,10 +37,7 @@ class LogoLockup extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        mark,
-        if (showText) text,
-      ],
+      children: [mark, if (showText) text],
     );
   }
 }

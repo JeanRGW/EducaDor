@@ -50,10 +50,10 @@ class NotificationSettingsTile extends ConsumerWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Material(
-        color: AppColors.surface,
+        color: Theme.of(context).colorScheme.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
-          side: const BorderSide(color: AppColors.border),
+          side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
         ),
         clipBehavior: Clip.antiAlias,
         child: Column(
@@ -67,29 +67,29 @@ class NotificationSettingsTile extends ConsumerWidget {
                   horizontal: 14,
                   vertical: 4,
                 ),
-                secondary: const SvgIcon(
+                secondary: SvgIcon(
                   AppIcons.bell,
                   size: 20,
-                  color: AppColors.textSecondary,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
                 activeThumbColor: Colors.white,
-                activeTrackColor: AppColors.successDarkGreen,
-                inactiveThumbColor: AppColors.textMuted,
-                inactiveTrackColor: AppColors.background,
+                activeTrackColor: context.successForeground,
+                inactiveThumbColor: Theme.of(context).colorScheme.outline,
+                inactiveTrackColor: Theme.of(context).scaffoldBackgroundColor,
                 title: Text(
                   'Notificações',
-                  style: AdminStyles.body.copyWith(
-                    color: AppColors.textPrimary,
+                  style: AdminStyles.body(context).copyWith(
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 14,
                   ),
                 ),
                 subtitle: Text(
                   description,
-                  style: AdminStyles.body.copyWith(
+                  style: AdminStyles.body(context).copyWith(
                     fontSize: 12,
                     color: status == PushStatus.error
-                        ? AppColors.danger
-                        : AppColors.textSecondary,
+                        ? context.dangerForeground
+                        : Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
                 value:
@@ -118,7 +118,7 @@ class NotificationSettingsTile extends ConsumerWidget {
                         .read(notificationControllerProvider.notifier)
                         .refresh(),
                     style: TextButton.styleFrom(
-                      foregroundColor: AppColors.successDarkGreen,
+                      foregroundColor: context.successForeground,
                       padding: EdgeInsets.zero,
                       minimumSize: const Size(48, 40),
                     ),

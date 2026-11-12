@@ -9,32 +9,37 @@ import '../../shared/widgets/common.dart';
 import '../gestor/widgets.dart' show DataSkeleton, DataErrorCard;
 
 abstract class EmployeeStyles {
-  static ThemeData theme(ThemeData base) =>
-      AdminStyles.formTheme(base).copyWith(
-        textTheme: base.textTheme.copyWith(bodyMedium: AdminStyles.body),
-        appBarTheme: base.appBarTheme.copyWith(
-          backgroundColor: AppColors.surface,
-          titleSpacing: 16,
-          titleTextStyle: AdminStyles.pageTitle,
-          shape: const Border(bottom: BorderSide(color: AppColors.border)),
-        ),
-        filledButtonTheme: FilledButtonThemeData(
-          style: FilledButton.styleFrom(
-            backgroundColor: AppColors.primary,
-            foregroundColor: Colors.white,
-            minimumSize: const Size(0, 48),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-        ),
-        textButtonTheme: TextButtonThemeData(
-          style: TextButton.styleFrom(
-            foregroundColor: AppColors.successDarkGreen,
-            minimumSize: const Size(0, 44),
-          ),
-        ),
-      );
+  static ThemeData theme(
+    ThemeData base,
+  ) => AdminStyles.formTheme(base).copyWith(
+    textTheme: base.textTheme.copyWith(
+      bodyMedium: AdminStyles.bodyFor(
+        base.colorScheme,
+      ).copyWith(color: base.colorScheme.onSurfaceVariant),
+    ),
+    appBarTheme: base.appBarTheme.copyWith(
+      backgroundColor: base.colorScheme.surface,
+      titleSpacing: 16,
+      titleTextStyle: AdminStyles.pageTitleFor(
+        base.colorScheme,
+      ).copyWith(color: base.colorScheme.onSurface),
+      shape: Border(bottom: BorderSide(color: base.colorScheme.outlineVariant)),
+    ),
+    filledButtonTheme: FilledButtonThemeData(
+      style: FilledButton.styleFrom(
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        minimumSize: const Size(0, 48),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    ),
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(
+        foregroundColor: base.colorScheme.successForeground,
+        minimumSize: const Size(0, 44),
+      ),
+    ),
+  );
 }
 
 class EmployeeResult<T> extends StatelessWidget {
@@ -79,32 +84,38 @@ class LearningCover extends StatelessWidget {
       height: height,
       width: width,
       child: url == null
-          ? _fallback()
+          ? _fallback(context)
           : Image.network(
               url!,
               fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => _fallback(),
+              errorBuilder: (_, _, _) => _fallback(context),
               loadingBuilder: (_, child, progress) => progress == null
                   ? child
-                  : const ColoredBox(color: AppColors.chipBg),
+                  : ColoredBox(
+                      color: Theme.of(context).colorScheme.surfaceContainerHigh,
+                    ),
             ),
     ),
   );
-  Widget _fallback() => const ColoredBox(
-    color: AppColors.successBg,
-    child: SvgIcon(AppIcons.book, color: AppColors.successDarkGreen, size: 32),
+  Widget _fallback(BuildContext context) => ColoredBox(
+    color: context.successSurface,
+    child: SvgIcon(
+      AppIcons.book,
+      color: Theme.of(context).colorScheme.successForeground,
+      size: 32,
+    ),
   );
 }
 
 class LearningCard extends StatelessWidget {
   final LearningItem course;
   final bool compact;
-  final Color progressColor;
+  final Color? progressColor;
   const LearningCard({
     super.key,
     required this.course,
     this.compact = false,
-    this.progressColor = AppColors.primary,
+    this.progressColor,
   });
   @override
   Widget build(BuildContext context) => AppCard(
@@ -122,7 +133,7 @@ class LearningCard extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             course.title,
-            style: AdminStyles.cardTitle.copyWith(fontSize: 12),
+            style: AdminStyles.cardTitle(context).copyWith(fontSize: 12),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
@@ -135,11 +146,11 @@ class LearningCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(course.title, style: AdminStyles.cardTitle),
+                    Text(course.title, style: AdminStyles.cardTitle(context)),
                     const SizedBox(height: 4),
                     Text(
                       '${course.lessonCount} ${course.lessonCount == 1 ? 'aula' : 'aulas'}',
-                      style: AdminStyles.body,
+                      style: AdminStyles.body(context),
                     ),
                   ],
                 ),
@@ -156,10 +167,10 @@ class LearningCard extends StatelessWidget {
                   'in_progress' => 'Em andamento',
                   _ => 'Disponível',
                 },
-                style: AdminStyles.fieldLabel.copyWith(
+                style: AdminStyles.fieldLabel(context).copyWith(
                   color: compact
-                      ? AppColors.successDarkGreen
-                      : AppColors.textSecondary,
+                      ? Theme.of(context).colorScheme.successForeground
+                      : Theme.of(context).colorScheme.onSurfaceVariant,
                   fontWeight: FontWeight.w400,
                 ),
               ),
@@ -167,10 +178,10 @@ class LearningCard extends StatelessWidget {
             if (!compact)
               Text(
                 '${(course.progress * 100).round()}%',
-                style: AdminStyles.fieldLabel.copyWith(
+                style: AdminStyles.fieldLabel(context).copyWith(
                   color: course.state == 'completed'
-                      ? AppColors.successDarkGreen
-                      : progressColor,
+                      ? Theme.of(context).colorScheme.successForeground
+                      : progressColor ?? context.colors.primary,
                 ),
               ),
           ],

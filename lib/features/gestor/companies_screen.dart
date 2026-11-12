@@ -70,12 +70,12 @@ class _CompaniesScreenState extends ConsumerState<CompaniesScreen> {
       appBar: AppBar(
         automaticallyImplyLeading: false,
         titleSpacing: 32,
-        backgroundColor: AppColors.surface,
-        titleTextStyle: const TextStyle(
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        titleTextStyle: TextStyle(
           fontFamily: AppFonts.outfit,
           fontSize: 20,
           fontWeight: FontWeight.w700,
-          color: AppColors.textPrimary,
+          color: Theme.of(context).colorScheme.onSurface,
           height: 1.2,
         ),
         title: const Text('Empresas Registradas'),
@@ -101,10 +101,10 @@ class _CompaniesScreenState extends ConsumerState<CompaniesScreen> {
             SearchField(
               'Pesquise o nome da empresa',
               compact: true,
-              prefixIcon: const SvgIcon(
+              prefixIcon: SvgIcon(
                 AppIcons.search,
                 size: 18,
-                color: Color(0xFF475569),
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
               onChanged: (value) {
                 _debounce?.cancel();
@@ -210,7 +210,9 @@ class _CompanyCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
-                color: company.active ? AppColors.activeBg : AppColors.dangerBg,
+                color: company.active
+                    ? context.activeSurface
+                    : context.dangerSurface,
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Text(
@@ -220,8 +222,8 @@ class _CompanyCard extends StatelessWidget {
                   fontSize: 10,
                   fontWeight: FontWeight.w600,
                   color: company.active
-                      ? AppColors.successDarkGreen
-                      : AppColors.danger,
+                      ? context.successForeground
+                      : context.dangerForeground,
                   height: 1.4,
                 ),
               ),
@@ -231,10 +233,10 @@ class _CompanyCard extends StatelessWidget {
         if (company.cnpj.trim().isNotEmpty)
           Text(
             'CNPJ: ${company.cnpj.trim()}',
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: AppFonts.inter,
               fontSize: 11,
-              color: AppColors.textMuted,
+              color: Theme.of(context).colorScheme.outline,
               height: 1.4,
             ),
           ),
@@ -247,22 +249,22 @@ class _CompanyCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   if (company.responsibleName.trim().isNotEmpty) ...[
-                    const Text(
+                    Text(
                       'Pessoa responsável',
                       style: TextStyle(
                         fontFamily: AppFonts.inter,
                         fontSize: 11,
-                        color: AppColors.textMuted,
+                        color: Theme.of(context).colorScheme.outline,
                         height: 1.4,
                       ),
                     ),
                     Text(
                       company.responsibleName.trim(),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: AppFonts.inter,
                         fontSize: 13,
                         fontWeight: FontWeight.w400,
-                        color: Color(0xFF475569),
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                         height: 1.4,
                       ),
                     ),
@@ -274,30 +276,30 @@ class _CompanyCard extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                const Text(
+                Text(
                   'Funcionários',
                   style: TextStyle(
                     fontFamily: AppFonts.inter,
                     fontSize: 11,
-                    color: AppColors.textMuted,
+                    color: Theme.of(context).colorScheme.outline,
                     height: 1.4,
                   ),
                 ),
                 Row(
                   children: [
-                    const SvgIcon(
+                    SvgIcon(
                       AppIcons.key,
                       size: 14,
-                      color: AppColors.successDarkGreen,
+                      color: context.successForeground,
                     ),
                     const SizedBox(width: 4),
                     Text(
                       formatCount(company.employeeCount),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: AppFonts.inter,
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
+                        color: Theme.of(context).colorScheme.onSurface,
                         height: 1.3,
                       ),
                     ),
@@ -310,10 +312,10 @@ class _CompanyCard extends StatelessWidget {
         const SizedBox(height: 14),
         Text(
           'Registro: ${company.registeredAt.isEmpty ? '—' : formatDate(DateTime.parse(company.registeredAt))}',
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: AppFonts.inter,
             fontSize: 11,
-            color: AppColors.textMuted,
+            color: Theme.of(context).colorScheme.outline,
             height: 1.4,
           ),
         ),
@@ -321,9 +323,11 @@ class _CompanyCard extends StatelessWidget {
         OutlinedButtonTheme(
           data: OutlinedButtonThemeData(
             style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.successDarkGreen,
+              foregroundColor: context.successForeground,
               minimumSize: const Size(0, 44),
-              side: const BorderSide(color: AppColors.border),
+              side: BorderSide(
+                color: Theme.of(context).colorScheme.outlineVariant,
+              ),
               textStyle: const TextStyle(
                 fontFamily: AppFonts.inter,
                 fontSize: 12,

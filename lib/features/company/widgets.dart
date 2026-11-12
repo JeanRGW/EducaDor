@@ -9,29 +9,29 @@ abstract class CompanyStyles {
     ThemeData base,
   ) => AdminStyles.formTheme(base).copyWith(
     textTheme: AdminStyles.formTheme(base).textTheme.copyWith(
-      bodyMedium: AdminStyles.body,
-      labelLarge: AdminStyles.fieldLabel,
+      bodyMedium: AdminStyles.bodyFor(base.colorScheme),
+      labelLarge: AdminStyles.fieldLabelFor(base.colorScheme),
     ),
     appBarTheme: AdminStyles.formTheme(base).appBarTheme.copyWith(
-      titleTextStyle: AdminStyles.pageTitle,
+      titleTextStyle: AdminStyles.pageTitleFor(base.colorScheme),
       titleSpacing: 16,
       shape: const Border(),
     ),
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
-        foregroundColor: AppColors.successDarkGreen,
+        foregroundColor: base.colorScheme.successForeground,
         minimumSize: const Size(0, 44),
-        textStyle: AdminStyles.fieldLabel,
+        textStyle: AdminStyles.fieldLabelFor(base.colorScheme),
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
-        foregroundColor: AppColors.primary,
-        side: const BorderSide(color: AppColors.border),
+        foregroundColor: base.colorScheme.primary,
+        side: BorderSide(color: base.colorScheme.outlineVariant),
         minimumSize: const Size(0, 44),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        textStyle: AdminStyles.fieldLabel,
+        textStyle: AdminStyles.fieldLabelFor(base.colorScheme),
       ),
     ),
     filledButtonTheme: FilledButtonThemeData(
@@ -41,15 +41,15 @@ abstract class CompanyStyles {
         minimumSize: const Size(0, 44),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        textStyle: AdminStyles.fieldLabel,
+        textStyle: AdminStyles.fieldLabelFor(base.colorScheme),
       ),
     ),
   );
 
-  static const caption = TextStyle(
+  static TextStyle caption(BuildContext context) => TextStyle(
     fontFamily: AppFonts.inter,
     fontSize: 11,
-    color: AppColors.textMuted,
+    color: Theme.of(context).colorScheme.outline,
     height: 1.4,
   );
 }
@@ -67,13 +67,13 @@ class CompanyAvatar extends StatelessWidget {
   final String initials;
   final double size;
   final bool outlined;
-  final Color foregroundColor;
+  final Color? foregroundColor;
   const CompanyAvatar({
     super.key,
     required this.initials,
     this.size = 40,
     this.outlined = false,
-    this.foregroundColor = AppColors.successDarkGreen,
+    this.foregroundColor,
   });
 
   @override
@@ -82,10 +82,13 @@ class CompanyAvatar extends StatelessWidget {
     height: size,
     alignment: Alignment.center,
     decoration: BoxDecoration(
-      color: AppColors.successBg,
+      color: context.successSurface,
       shape: BoxShape.circle,
       border: outlined
-          ? Border.all(color: AppColors.successDarkGreen, width: 2)
+          ? Border.all(
+              color: foregroundColor ?? context.successForeground,
+              width: 2,
+            )
           : null,
     ),
     child: Text(
@@ -95,7 +98,7 @@ class CompanyAvatar extends StatelessWidget {
         fontFamily: AppFonts.outfit,
         fontSize: size * 0.34,
         fontWeight: FontWeight.w700,
-        color: foregroundColor,
+        color: foregroundColor ?? context.successForeground,
       ),
     ),
   );
@@ -110,14 +113,16 @@ class CompanyBadge extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
     decoration: BoxDecoration(
-      color: warning ? AppColors.dangerBg : AppColors.activeBg,
+      color: warning ? context.dangerSurface : context.activeSurface,
       borderRadius: BorderRadius.circular(6),
     ),
     child: Text(
       label,
-      style: CompanyStyles.caption.copyWith(
+      style: CompanyStyles.caption(context).copyWith(
         fontWeight: FontWeight.w600,
-        color: warning ? AppColors.danger : AppColors.successDarkGreen,
+        color: warning
+            ? context.dangerForeground
+            : Theme.of(context).colorScheme.successForeground,
       ),
     ),
   );
@@ -137,7 +142,7 @@ class CompanyErrorCard extends StatelessWidget {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(message, style: AdminStyles.body),
+        Text(message, style: AdminStyles.body(context)),
         TextButton(onPressed: retry, child: const Text('Tentar novamente')),
       ],
     ),

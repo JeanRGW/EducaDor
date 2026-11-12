@@ -50,15 +50,15 @@ class EmployeeHomeScreen extends ConsumerWidget {
                   children: [
                     Text(
                       'Olá, ${session?.user.fullName.trim().split(' ').first ?? 'você'}!',
-                      style: AdminStyles.formTitle,
+                      style: AdminStyles.formTitle(context),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     Text(
                       session?.active?.companyName ?? '',
-                      style: AdminStyles.fieldLabel.copyWith(
-                        color: AppColors.successDarkGreen,
-                      ),
+                      style: AdminStyles.fieldLabel(
+                        context,
+                      ).copyWith(color: context.successForeground),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -89,10 +89,10 @@ class EmployeeHomeScreen extends ConsumerWidget {
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Expanded(
+                          Expanded(
                             child: Text(
                               'Seu progresso de aprendizado',
-                              style: AdminStyles.cardTitle,
+                              style: AdminStyles.cardTitle(context),
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -102,9 +102,9 @@ class EmployeeHomeScreen extends ConsumerWidget {
                               data.completion == null
                                   ? 'Sem cursos disponíveis'
                                   : '${(data.completion! * 100).round()}% concluído',
-                              style: AdminStyles.fieldLabel.copyWith(
-                                color: AppColors.primary,
-                              ),
+                              style: AdminStyles.fieldLabel(
+                                context,
+                              ).copyWith(color: context.colors.primary),
                               textAlign: TextAlign.right,
                             ),
                           ),
@@ -113,13 +113,13 @@ class EmployeeHomeScreen extends ConsumerWidget {
                       const SizedBox(height: 12),
                       ProgressBar(
                         data.completion ?? 0,
-                        color: AppColors.primary,
+                        color: context.colors.primary,
                         height: 10,
                       ),
                       const SizedBox(height: 10),
                       Text(
                         '${data.completedCourseCount} de ${data.courseCount} cursos disponíveis concluídos',
-                        style: AdminStyles.body,
+                        style: AdminStyles.body(context),
                       ),
                     ],
                   ),
@@ -131,10 +131,10 @@ class EmployeeHomeScreen extends ConsumerWidget {
                 retry: () =>
                     ref.invalidate(learningCatalogProvider(continuingQuery)),
                 builder: (page) => page.items.isEmpty
-                    ? const AppCard(
+                    ? AppCard(
                         child: Text(
                           'Escolha um curso para começar.',
-                          style: AdminStyles.body,
+                          style: AdminStyles.body(context),
                         ),
                       )
                     : LearningCard(course: page.items.first),
@@ -150,10 +150,10 @@ class EmployeeHomeScreen extends ConsumerWidget {
                 retry: () =>
                     ref.invalidate(learningCatalogProvider(recommendedQuery)),
                 builder: (page) => page.items.isEmpty
-                    ? const AppCard(
+                    ? AppCard(
                         child: Text(
                           'Nenhum novo curso disponível no momento.',
-                          style: AdminStyles.body,
+                          style: AdminStyles.body(context),
                         ),
                       )
                     : LayoutBuilder(

@@ -19,8 +19,8 @@ class OrderControls extends StatelessWidget {
             AppIcons.chevronDown,
             size: 18,
             color: onUp == null
-                ? AppColors.textMuted
-                : AppColors.successDarkGreen,
+                ? Theme.of(context).colorScheme.outline
+                : context.successForeground,
           ),
         ),
       ),
@@ -31,8 +31,8 @@ class OrderControls extends StatelessWidget {
           AppIcons.chevronDown,
           size: 18,
           color: onDown == null
-              ? AppColors.textMuted
-              : AppColors.successDarkGreen,
+              ? Theme.of(context).colorScheme.outline
+              : context.successForeground,
         ),
       ),
     ],

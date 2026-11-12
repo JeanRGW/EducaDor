@@ -82,16 +82,16 @@ class _MfaChallengeScreenState extends ConsumerState<MfaChallengeScreen> {
             const SizedBox(height: 20),
             PrimaryButton(
               busy ? 'Verificando...' : 'Verificar',
-              color: AppColors.successDarkGreen,
+              color: context.successForeground,
               onPressed: busy || code.text.length != 6 ? null : verify,
             ),
           ],
         ),
       ),
       const SizedBox(height: 16),
-      const Text(
+      Text(
         'Sem acesso ao autenticador? Entre em contato com o suporte da plataforma.',
-        style: AdminStyles.body,
+        style: AdminStyles.body(context),
       ),
       const SizedBox(height: 8),
       TextButton(
@@ -279,20 +279,20 @@ class _SecuritySettingsScreenState
                 factors!.isEmpty
                     ? 'Proteja seu próximo acesso'
                     : 'Autenticador conectado',
-                style: AdminStyles.formTitle,
+                style: AdminStyles.formTitle(context),
               ),
               const SizedBox(height: 8),
               Text(
                 factors!.isEmpty
                     ? 'Além da senha, você usará um código temporário do aplicativo ao entrar.'
                     : 'Um código do aplicativo será solicitado ao entrar. Mantenha acesso ao seu autenticador.',
-                style: AdminStyles.body,
+                style: AdminStyles.body(context),
               ),
               const SizedBox(height: 20),
               if (factors!.isEmpty)
                 PrimaryButton(
                   busy ? 'Preparando...' : 'Ativar',
-                  color: AppColors.successDarkGreen,
+                  color: context.successForeground,
                   onPressed: busy
                       ? null
                       : () => run(() async {
@@ -323,16 +323,18 @@ class _SecuritySettingsScreenState
             children: [
               const _StepTitle(number: '1', title: 'Configure o autenticador'),
               const SizedBox(height: 12),
-              const Text(
+              Text(
                 'Escaneie o QR code com seu aplicativo autenticador.',
-                style: AdminStyles.body,
+                style: AdminStyles.body(context),
               ),
               const SizedBox(height: 20),
               Center(
                 child: DecoratedBox(
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    border: Border.all(color: AppColors.border),
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.outlineVariant,
+                    ),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Padding(
@@ -352,32 +354,34 @@ class _SecuritySettingsScreenState
               OutlinedButton.icon(
                 onPressed: busy ? null : () => openAuthenticator(setup.uri),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.successDarkGreen,
+                  foregroundColor: context.successForeground,
                   minimumSize: const Size.fromHeight(48),
                 ),
-                icon: const SvgIcon(
+                icon: SvgIcon(
                   AppIcons.key,
                   size: 18,
-                  color: AppColors.successDarkGreen,
+                  color: context.successForeground,
                 ),
                 label: const Text('Abrir autenticador'),
               ),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 'Neste dispositivo, tente abrir o aplicativo diretamente. Se ele não abrir, use o QR code ou a chave abaixo.',
-                style: AdminStyles.emptyState,
+                style: AdminStyles.emptyState(context),
               ),
               const Divider(height: 32),
-              const Text(
+              Text(
                 'Prefere configurar manualmente?',
-                style: AdminStyles.cardTitle,
+                style: AdminStyles.cardTitle(context),
               ),
               const SizedBox(height: 8),
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: AppColors.background,
-                  border: Border.all(color: AppColors.border),
+                  color: Theme.of(context).scaffoldBackgroundColor,
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                  ),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: SelectableText(
@@ -385,7 +389,7 @@ class _SecuritySettingsScreenState
                     RegExp(r'.{4}(?=.)'),
                     (match) => '${match[0]} ',
                   ),
-                  style: AdminStyles.fieldText.copyWith(
+                  style: AdminStyles.fieldText(context).copyWith(
                     fontFamily: 'monospace',
                     letterSpacing: 1.2,
                     height: 1.6,
@@ -400,14 +404,14 @@ class _SecuritySettingsScreenState
                   icon: SvgIcon(
                     copied ? AppIcons.check : AppIcons.copy,
                     size: 18,
-                    color: AppColors.successDarkGreen,
+                    color: context.successForeground,
                   ),
                   label: Text(copied ? 'Chave copiada' : 'Copiar chave'),
                 ),
               ),
-              const Text(
+              Text(
                 'Mantenha esta chave em segredo. Não envie capturas do QR code ou da chave.',
-                style: AdminStyles.emptyState,
+                style: AdminStyles.emptyState(context),
               ),
             ],
           ),
@@ -420,9 +424,9 @@ class _SecuritySettingsScreenState
             children: [
               const _StepTitle(number: '2', title: 'Confirme a ativação'),
               const SizedBox(height: 12),
-              const Text(
+              Text(
                 'Digite os 6 dígitos exibidos no aplicativo para concluir.',
-                style: AdminStyles.body,
+                style: AdminStyles.body(context),
               ),
               const SizedBox(height: 16),
               _CodeInput(
@@ -437,7 +441,7 @@ class _SecuritySettingsScreenState
               const SizedBox(height: 20),
               PrimaryButton(
                 busy ? 'Confirmando...' : 'Confirmar ativação',
-                color: AppColors.successDarkGreen,
+                color: context.successForeground,
                 onPressed: busy || code.text.length != 6
                     ? null
                     : () => confirmEnrollment(setup.id),
@@ -474,7 +478,7 @@ class _SecurityLayout extends StatelessWidget {
   Widget build(BuildContext context) => Theme(
     data: AdminStyles.formTheme(Theme.of(context)),
     child: Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(title),
         automaticallyImplyLeading: false,
@@ -521,36 +525,43 @@ class _SecurityIntro extends StatelessWidget {
       Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: AppColors.successBg,
+          color: context.successSurface,
           borderRadius: BorderRadius.circular(12),
         ),
-        child: const SvgIcon(
+        child: SvgIcon(
           AppIcons.shield,
-          color: AppColors.successDarkGreen,
+          color: context.successForeground,
           size: 24,
         ),
       ),
       const SizedBox(height: 16),
-      Semantics(header: true, child: Text(title, style: AdminStyles.pageTitle)),
+      Semantics(
+        header: true,
+        child: Text(title, style: AdminStyles.pageTitle(context)),
+      ),
       const SizedBox(height: 8),
-      Text(description, style: AdminStyles.body),
+      Text(description, style: AdminStyles.body(context)),
       if (status != null) ...[
         const SizedBox(height: 12),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(
-            color: enabled ? AppColors.successBg : AppColors.surface,
+            color: enabled
+                ? context.successSurface
+                : Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: enabled ? AppColors.successBg : AppColors.border,
+              color: enabled
+                  ? context.successSurface
+                  : Theme.of(context).colorScheme.outlineVariant,
             ),
           ),
           child: Text(
             status!,
-            style: AdminStyles.fieldLabel.copyWith(
+            style: AdminStyles.fieldLabel(context).copyWith(
               color: enabled
-                  ? AppColors.successDarkGreen
-                  : AppColors.textSecondary,
+                  ? context.successForeground
+                  : Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
         ),
@@ -572,19 +583,19 @@ class _StepTitle extends StatelessWidget {
           width: 28,
           height: 28,
           alignment: Alignment.center,
-          decoration: const BoxDecoration(
-            color: AppColors.successBg,
+          decoration: BoxDecoration(
+            color: context.successSurface,
             shape: BoxShape.circle,
           ),
           child: Text(
             number,
-            style: AdminStyles.cardTitle.copyWith(
-              color: AppColors.successDarkGreen,
-            ),
+            style: AdminStyles.cardTitle(
+              context,
+            ).copyWith(color: context.successForeground),
           ),
         ),
         const SizedBox(width: 10),
-        Expanded(child: Text(title, style: AdminStyles.formTitle)),
+        Expanded(child: Text(title, style: AdminStyles.formTitle(context))),
       ],
     ),
   );
@@ -605,7 +616,7 @@ class _CodeInput extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      const Text('Código de autenticação', style: AdminStyles.fieldLabel),
+      Text('Código de autenticação', style: AdminStyles.fieldLabel(context)),
       const SizedBox(height: 8),
       Semantics(
         label: 'Código de autenticação',
@@ -619,7 +630,9 @@ class _CodeInput extends StatelessWidget {
             FilteringTextInputFormatter.digitsOnly,
             LengthLimitingTextInputFormatter(6),
           ],
-          style: AdminStyles.fieldText.copyWith(fontSize: 20, letterSpacing: 6),
+          style: AdminStyles.fieldText(
+            context,
+          ).copyWith(fontSize: 20, letterSpacing: 6),
           decoration: const InputDecoration(hintText: '000000'),
           onChanged: onChanged,
           onSubmitted: onSubmitted,
@@ -645,7 +658,7 @@ class _SecurityLoading extends StatelessWidget {
             Container(
               height: 18,
               decoration: BoxDecoration(
-                color: AppColors.border,
+                color: Theme.of(context).colorScheme.outlineVariant,
                 borderRadius: BorderRadius.circular(4),
               ),
             ),
@@ -653,7 +666,7 @@ class _SecurityLoading extends StatelessWidget {
             Container(
               height: 12,
               decoration: BoxDecoration(
-                color: AppColors.chipBg,
+                color: Theme.of(context).colorScheme.surfaceContainerHigh,
                 borderRadius: BorderRadius.circular(4),
               ),
             ),
@@ -661,7 +674,7 @@ class _SecurityLoading extends StatelessWidget {
             Container(
               height: 48,
               decoration: BoxDecoration(
-                color: AppColors.chipBg,
+                color: Theme.of(context).colorScheme.surfaceContainerHigh,
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
@@ -682,7 +695,9 @@ class _SecurityError extends StatelessWidget {
       liveRegion: true,
       child: Text(
         message,
-        style: AdminStyles.body.copyWith(color: AppColors.danger),
+        style: AdminStyles.body(
+          context,
+        ).copyWith(color: context.dangerForeground),
       ),
     ),
   );

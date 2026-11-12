@@ -90,7 +90,7 @@ class _ContextSelectionScreenState
                       style: const TextStyle(fontWeight: FontWeight.w700),
                     ),
                   ),
-                  const SvgIcon(AppIcons.chevronRight, color: AppColors.primary),
+                  SvgIcon(AppIcons.chevronRight, color: context.colors.primary),
                 ],
               ),
             ),
@@ -136,8 +136,10 @@ class _AcceptInviteScreenState extends ConsumerState<AcceptInviteScreen> {
           await ref.read(invitationRepositoryProvider).accept(token);
         } catch (_) {
           if (mounted && widget.token == token) {
-            setState(() => _error =
-                'Convite inválido, expirado ou destinado a outro e-mail.');
+            setState(
+              () => _error =
+                  'Convite inválido, expirado ou destinado a outro e-mail.',
+            );
           }
           return;
         }
@@ -176,7 +178,10 @@ class _AcceptInviteScreenState extends ConsumerState<AcceptInviteScreen> {
           const SizedBox(height: 16),
           if (widget.token.isEmpty) const Text('Link de convite inválido.'),
           if (_error != null)
-            Text(_error!, style: const TextStyle(color: AppColors.danger)),
+            Text(
+              _error!,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
           const SizedBox(height: 16),
           if (auth.isLoading)
             const Center(child: CircularProgressIndicator())
@@ -254,9 +259,11 @@ class _SetPasswordScreenState extends ConsumerState<SetPasswordScreen> {
           await ref.read(authRepositoryProvider).updatePassword(_password.text);
         } catch (_) {
           if (mounted) {
-            setState(() => _error =
-                'Não foi possível confirmar a conclusão. A senha pode já ter '
-                'sido alterada. Tente novamente com a senha desejada.');
+            setState(
+              () => _error =
+                  'Não foi possível confirmar a conclusão. A senha pode já ter '
+                  'sido alterada. Tente novamente com a senha desejada.',
+            );
           }
           return;
         }
@@ -269,9 +276,11 @@ class _SetPasswordScreenState extends ConsumerState<SetPasswordScreen> {
       if (mounted) context.go(session?.homePath ?? '/login');
     } catch (_) {
       if (mounted) {
-        setState(() => _error =
-            'Senha salva. Não foi possível atualizar seus perfis. '
-            'Tente carregar novamente.');
+        setState(
+          () => _error =
+              'Senha salva. Não foi possível atualizar seus perfis. '
+              'Tente carregar novamente.',
+        );
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -285,40 +294,46 @@ class _SetPasswordScreenState extends ConsumerState<SetPasswordScreen> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     if (auth.value == null) {
-      return Scaffold(body: Center(child: PrimaryButton('Entrar',
-        onPressed: () => context.go('/login'))));
+      return Scaffold(
+        body: Center(
+          child: PrimaryButton('Entrar', onPressed: () => context.go('/login')),
+        ),
+      );
     }
     return Scaffold(
-    appBar: AppBar(title: const Text('Criar senha')),
-    body: ListView(
-      padding: const EdgeInsets.all(20),
-      children: [
-        const Text('Crie uma senha para acessar todos os seus perfis.'),
-        const SizedBox(height: 20),
-        TextField(
-          controller: _password,
-          enabled: !_busy && !_passwordUpdated,
-          obscureText: true,
-          decoration: const InputDecoration(labelText: 'Nova senha'),
-        ),
-        const SizedBox(height: 14),
-        TextField(
-          controller: _confirm,
-          enabled: !_busy && !_passwordUpdated,
-          obscureText: true,
-          decoration: const InputDecoration(labelText: 'Confirmar senha'),
-        ),
-        const SizedBox(height: 24),
-        if (_error != null)
-          Text(_error!, style: const TextStyle(color: AppColors.danger)),
-        PrimaryButton(
-          _passwordUpdated
-              ? (_busy ? 'Carregando...' : 'Carregar perfis novamente')
-              : (_busy ? 'Salvando...' : 'Salvar senha'),
-          onPressed: _busy ? null : _submit,
-        ),
-      ],
-    ),
+      appBar: AppBar(title: const Text('Criar senha')),
+      body: ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          const Text('Crie uma senha para acessar todos os seus perfis.'),
+          const SizedBox(height: 20),
+          TextField(
+            controller: _password,
+            enabled: !_busy && !_passwordUpdated,
+            obscureText: true,
+            decoration: const InputDecoration(labelText: 'Nova senha'),
+          ),
+          const SizedBox(height: 14),
+          TextField(
+            controller: _confirm,
+            enabled: !_busy && !_passwordUpdated,
+            obscureText: true,
+            decoration: const InputDecoration(labelText: 'Confirmar senha'),
+          ),
+          const SizedBox(height: 24),
+          if (_error != null)
+            Text(
+              _error!,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          PrimaryButton(
+            _passwordUpdated
+                ? (_busy ? 'Carregando...' : 'Carregar perfis novamente')
+                : (_busy ? 'Salvando...' : 'Salvar senha'),
+            onPressed: _busy ? null : _submit,
+          ),
+        ],
+      ),
     );
   }
 }
@@ -329,15 +344,27 @@ class SessionErrorScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) => Scaffold(
     appBar: AppBar(title: const Text('Conexão indisponível')),
-    body: Center(child: Padding(padding: const EdgeInsets.all(24),
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-        const Text('Não foi possível carregar seus perfis. Verifique a conexão e tente novamente.'),
-        const SizedBox(height: 20),
-        PrimaryButton('Tentar novamente', onPressed: () {
-          ref.invalidate(sessionProvider);
-          context.go('/splash');
-        }),
-      ]))),
+    body: Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Não foi possível carregar seus perfis. Verifique a conexão e tente novamente.',
+            ),
+            const SizedBox(height: 20),
+            PrimaryButton(
+              'Tentar novamente',
+              onPressed: () {
+                ref.invalidate(sessionProvider);
+                context.go('/splash');
+              },
+            ),
+          ],
+        ),
+      ),
+    ),
   );
 }
 
@@ -396,9 +423,13 @@ Future<void> showInviteLink(BuildContext context, String link) async {
                 await Clipboard.setData(ClipboardData(text: link));
               } catch (_) {
                 if (dialogContext.mounted && context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                    content: Text('Não foi possível copiar o link. Tente novamente.'),
-                  ));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Não foi possível copiar o link. Tente novamente.',
+                      ),
+                    ),
+                  );
                 }
                 return;
               }
