@@ -4,6 +4,7 @@ import test from 'node:test';
 
 const backup = readFileSync(new URL('../.github/workflows/backup.yml', import.meta.url), 'utf8');
 const ci = readFileSync(new URL('../.github/workflows/ci.yml', import.meta.url), 'utf8');
+const inventoryReport = readFileSync(new URL('../scripts/backup/inventory_report.py', import.meta.url), 'utf8');
 
 test('backup is activated on a daily schedule with confirmed manual dispatch', () => {
   assert.match(backup, /^  schedule:\n    - cron: '17 3 \* \* \*'$/m);
@@ -70,4 +71,23 @@ test('backup uses B2 path-style and phase-isolated credentials', () => {
   assert.match(backup, /secrets\.BACKUP_S3_ACCESS_KEY_ID/);
   assert.match(backup, /secrets\.BACKUP_SIGNING_PRIVATE_KEY/);
   assert.match(ci, /BACKUP_DOCKER_TEST=1 python3 -m unittest discover -s scripts\/backup -v/);
+});
+
+test('backup reports aggregate inventory after publish without deleting or downloading', () => {
+  const publishIndex = backup.indexOf('- name: Publish verified archive');
+  const reportIndex = backup.indexOf('- name: Report backup inventory');
+  const removeIndex = backup.indexOf('- name: Remove scratch');
+  assert.ok(publishIndex >= 0, 'missing publish step');
+  assert.ok(reportIndex > publishIndex, 'inventory report must follow publish');
+  assert.ok(removeIndex > reportIndex, 'inventory report must precede cleanup');
+  const reportStep = backup.slice(reportIndex, removeIndex);
+  assert.match(reportStep, /python3 scripts\/backup\/inventory_report\.py/);
+  assert.match(reportStep, /AWS_ACCESS_KEY_ID: \$\{\{ secrets\.BACKUP_S3_ACCESS_KEY_ID \}\}/);
+  assert.match(reportStep, /AWS_SECRET_ACCESS_KEY: \$\{\{ secrets\.BACKUP_S3_SECRET_ACCESS_KEY \}\}/);
+  assert.match(reportStep, /addressing_style = path/);
+  assert.match(reportStep, /AWS_MAX_ATTEMPTS=1 AWS_RETRY_MODE=standard/);
+  assert.doesNotMatch(reportStep, /BACKUP_HMAC_KEY_HEX|BACKUP_DATABASE_URL|BACKUP_SIGNING_PRIVATE_KEY/);
+  assert.doesNotMatch(reportStep, /delete-object|get-object|put-object/);
+  assert.doesNotMatch(inventoryReport, /delete-object|get-object|put-object/);
+  assert.doesNotMatch(inventoryReport, /print\([^)]*key/i, 'report must not print keys');
 });

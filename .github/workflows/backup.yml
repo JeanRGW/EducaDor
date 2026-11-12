@@ -23,7 +23,8 @@ concurrency:
 jobs:
   backup:
     # Activation is approved. A run still needs main, BACKUP_ENABLED == 'true'
-    # and, for manual dispatch, inputs.confirm == true.
+    # and, for manual dispatch, inputs.confirm == true. BACKUP_ENABLED must be a
+    # repository variable: a job-level if cannot read environment-scoped vars.
     if: >-
       github.ref == 'refs/heads/main' && vars.BACKUP_ENABLED == 'true' &&
       (github.event_name == 'schedule' || inputs.confirm == true)
@@ -170,6 +171,23 @@ jobs:
           printf '[default]\ns3 =\n    addressing_style = path\n' > "$AWS_CONFIG_FILE"
           touch "$AWS_SHARED_CREDENTIALS_FILE"
           python3 scripts/backup/publish.py "$work/archive"
+      - name: Report backup inventory
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.BACKUP_S3_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_S3_SECRET_ACCESS_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          work="$RUNNER_TEMP/educador-backup"
+          export PATH="$RUNNER_TEMP/backup-aws-venv/bin:$PATH"
+          export AWS_CONFIG_FILE="$work/aws-config" AWS_SHARED_CREDENTIALS_FILE="$work/aws-credentials"
+          export AWS_MAX_ATTEMPTS=1 AWS_RETRY_MODE=standard AWS_PAGER=''
+          unset AWS_PROFILE AWS_DEFAULT_PROFILE AWS_SESSION_TOKEN AWS_SECURITY_TOKEN AWS_CA_BUNDLE
+          printf '[default]\ns3 =\n    addressing_style = path\n' > "$AWS_CONFIG_FILE"
+          touch "$AWS_SHARED_CREDENTIALS_FILE"
+          # Read-only listing: aggregate counts only, never keys or run IDs.
+          python3 scripts/backup/inventory_report.py
       - name: Remove scratch
         if: always()
         shell: bash
