@@ -30,11 +30,13 @@ For experiments only, generate an encryption-capable GPG key on a trusted machin
 
 ```bash
 umask 077
-python3 scripts/backup/archive.py pack /secure/scratch/dump.sql /secure/scratch/archive --recipient FULL_UPPERCASE_FINGERPRINT
-python3 scripts/backup/archive.py unpack /secure/scratch/archive /secure/scratch/verified.sql
+python3 scripts/backup/archive.py pack /secure/scratch/dump.sql /secure/scratch/archive --recipient ENCRYPTION_FINGERPRINT --signer SIGNING_FINGERPRINT
+python3 scripts/backup/archive.py unpack /secure/scratch/archive /secure/scratch/verified.sql --signer SIGNING_FINGERPRINT
 ```
 
-It gzip-compresses, encrypts with GPG, then splits the ciphertext into 40,000,000-byte maximum parts (below 50 MB) and writes a manifest of sizes and SHA-256 hashes. Total encrypted size is capped at 600,000,000 bytes as a local resource limit, **not** a reservation or a claim that even one archive fits the provider quota. GPG checks ciphertext integrity on decrypt; hashes detect missing, truncated and altered chunks. The manifest is not signed: hashes alone do not authenticate the source, and public-key encryption alone does not establish who produced it. A replaced complete archive can still decrypt successfully. Never use this format for unattended remote retention without authenticated metadata and source verification. The output is only exposed after all parts, decryption and gzip verification succeed; destination overwrite is rejected. Unpacking does not limit decompressed output size; only process trusted, resource-bounded archives in a restricted scratch environment.
+This prototype requires Linux with `/proc` and `renameat2`. Encryption ignores GPG configuration and disables configured extra recipients; the specified encryption fingerprint is the only intended recipient. Version 2 signs the exact manifest with a separate signing key and verifies it against the independently trusted full primary signing fingerprint before reading ciphertext or decrypting. Version 1 unsigned archives are rejected. A signature authenticates the signer, not freshness: replay and compromised signing keys remain risks. Limits are enforced on actual source, compressed, ciphertext and decompressed bytes (600 MB each); parts are at most 40 MB. Linux directory descriptors, no-follow opens and atomic no-replace publication prevent pathname substitution and overwrite. Parent directories must exist and be trusted against untrusted writers. Scratch directories are private, but crashes or SIGKILL can leave plaintext behind: use encrypted scratch and arrange operator cleanup; secure deletion is not guaranteed.
+
+Generate a distinct signing key. Protect its private key and passphrase in a reviewed, restricted CI environment with approved access and rotation, never PR jobs; use an agent or protected file descriptor for passphrases, never command-line arguments or logs. The packer only needs the encryption public key, while the restore environment holds the encryption private key and independently verified signing public key. No CI signing-key integration is implemented or approved here; do not activate unattended backups until it is reviewed and tested.
 
 ## Disposable restore verification
 
