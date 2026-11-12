@@ -328,18 +328,20 @@ class _ProfileAccountSettingsState
         OutlinedButton.icon(
           onPressed: _signingOut ? null : _logout,
           style: OutlinedButton.styleFrom(
-            foregroundColor: AppColors.danger,
+            foregroundColor: context.dangerForeground,
             backgroundColor: Theme.of(context).colorScheme.surface,
-            side: BorderSide(color: AppColors.danger.withValues(alpha: 0.3)),
+            side: BorderSide(
+              color: context.dangerForeground.withValues(alpha: 0.3),
+            ),
             minimumSize: const Size.fromHeight(48),
             textStyle: AdminStyles.body(
               context,
             ).copyWith(fontSize: 14, fontWeight: FontWeight.w600),
           ),
-          icon: const SvgIcon(
+          icon: SvgIcon(
             AppIcons.logout,
             size: 20,
-            color: AppColors.danger,
+            color: context.dangerForeground,
           ),
           label: Text(_signingOut ? 'Saindo...' : 'Sair'),
         ),

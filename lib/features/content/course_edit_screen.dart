@@ -386,7 +386,7 @@ class _CourseEditorState extends ConsumerState<_CourseEditor> {
                               TextButton(
                                 onPressed: _busy ? null : _delete,
                                 style: TextButton.styleFrom(
-                                  foregroundColor: AppColors.danger,
+                                  foregroundColor: context.dangerForeground,
                                 ),
                                 child: const Text('Excluir curso'),
                               ),

@@ -262,7 +262,7 @@ class _CourseStructureState extends ConsumerState<CourseStructure> {
                             ? null
                             : () => _delete(module),
                         style: TextButton.styleFrom(
-                          foregroundColor: AppColors.danger,
+                          foregroundColor: context.dangerForeground,
                         ),
                         child: const Text('Excluir módulo'),
                       ),
@@ -495,7 +495,7 @@ class _ModuleLessonsState extends ConsumerState<ModuleLessons> {
                             ? null
                             : () => _delete(lesson),
                         style: TextButton.styleFrom(
-                          foregroundColor: AppColors.danger,
+                          foregroundColor: context.dangerForeground,
                         ),
                         child: const Text('Excluir aula'),
                       ),

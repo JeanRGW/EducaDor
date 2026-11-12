@@ -34,7 +34,10 @@ Future<bool> confirmContentDeletion(
             ),
             FilledButton(
               onPressed: () => Navigator.pop(context, true),
-              style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
+              style: FilledButton.styleFrom(
+                backgroundColor: context.colors.error,
+                foregroundColor: context.colors.onError,
+              ),
               child: Text('Excluir $label'),
             ),
           ],
