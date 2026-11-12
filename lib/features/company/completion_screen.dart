@@ -63,12 +63,26 @@ class _CompanyCompletionScreenState
     try {
       final repository = ref.read(employeeRepositoryProvider);
       if (!current()) return;
-      final page = await repository.page(companyId);
-      if (!mounted || !valid) return;
-      final employees = requireSingleSnapshot(
-        page.items,
-        total: page.filteredCount,
+      final employees = await collectStableExport<Employee>(
+        fetchPage: (after) =>
+            repository.completionExport(companyId, after: after),
+        keyOf: (employee) => employee.id,
+        fieldsOf: (employee) => [
+          employee.id,
+          employee.fullName,
+          employee.department,
+          employee.jobTitle,
+          employee.hasCompletion,
+          employee.completionPct,
+        ],
       );
+      employees.sort((a, b) {
+        final name = a.fullName.toLowerCase().compareTo(
+          b.fullName.toLowerCase(),
+        );
+        return name != 0 ? name : a.id.compareTo(b.id);
+      });
+      if (!mounted || !valid) return;
       if (employees.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Nenhum funcionário para exportar.')),
@@ -96,7 +110,17 @@ class _CompanyCompletionScreenState
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-              'Exportação indisponível para mais de 50 funcionários: não é possível garantir um retrato consistente.',
+              'Exportação limitada a 1.000 funcionários. Refine os dados e tente novamente.',
+            ),
+          ),
+        );
+      }
+    } on ExportChanged {
+      if (mounted && valid) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Os dados mudaram durante a exportação. Tente novamente.',
             ),
           ),
         );
@@ -338,7 +362,7 @@ class _CompanyCompletionScreenState
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'O CSV contém a conclusão atual dos funcionários desta empresa.',
+                      'O CSV contém até 1.000 funcionários desta empresa. A conclusão é lida duas vezes; se mudar, a exportação é cancelada.',
                       style: CompanyStyles.caption(context),
                     ),
                   ],

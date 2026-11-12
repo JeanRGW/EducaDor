@@ -186,15 +186,15 @@ class _Reports extends ReportRepository {
   final List<ReportPeriod> activityCalls = [];
   bool fail = false;
   bool empty = false;
-  Completer<List<CompanyCompletion>>? completionPending;
+  Completer<ExportPage<CompanyCompletion>>? exportPending;
   Completer<PlatformActivityReport>? activityPending;
   List<CompanyCompletion>? completionOverride;
-  final offsets = <int>[];
+  List<CompanyCompletion>? exportOverride;
+  final exportAfters = <String?>[];
+  int exportCalls = 0;
   @override
   Future<List<CompanyCompletion>> platformCompletion({int offset = 0}) async {
     completionCalls++;
-    offsets.add(offset);
-    if (completionPending != null) return completionPending!.future;
     if (completionOverride != null) return completionOverride!;
     if (fail) throw StateError('Offline');
     return empty
@@ -207,6 +207,34 @@ class _Reports extends ReportRepository {
             ),
             CompanyCompletion(companyId: 'b', company: 'Sem funcionários'),
           ];
+  }
+
+  @override
+  Future<ExportPage<CompanyCompletion>> platformCompletionExport({
+    String? after,
+  }) async {
+    exportCalls++;
+    exportAfters.add(after);
+    if (exportPending != null) return exportPending!.future;
+    if (fail) throw StateError('Offline');
+    final rows =
+        exportOverride ??
+        completionOverride ??
+        (empty
+            ? const <CompanyCompletion>[]
+            : const [
+                CompanyCompletion(
+                  companyId: 'a',
+                  company: 'Empresa real',
+                  percent: 37.5,
+                ),
+                CompanyCompletion(companyId: 'b', company: 'Sem funcionários'),
+              ]);
+    final start = after == null
+        ? 0
+        : rows.indexWhere((row) => row.companyId == after) + 1;
+    final end = (start + 50).clamp(0, rows.length);
+    return ExportPage(total: rows.length, items: rows.sublist(start, end));
   }
 
   @override
@@ -547,22 +575,27 @@ void main() {
       await _show(tester, const GestorReportsScreen(), reports: repo);
       final picker = _CsvPicker();
       FilePicker.platform = picker;
-      repo.completionPending = Completer<List<CompanyCompletion>>();
+      repo.exportPending = Completer<ExportPage<CompanyCompletion>>();
       await tester.tap(find.byTooltip('Exportar CSV'));
       await tester.pump();
       await tester.tap(find.byType(AppCard).first);
       await tester.pump();
       expect(find.byType(DateRangePickerDialog), findsNothing);
       final period = repo.activityCalls.first;
-      repo.completionPending!.complete(const [
-        CompanyCompletion(
-          companyId: 'a',
-          company: 'Empresa; "A"',
-          percent: 37.5,
+      repo.exportPending!.complete(
+        const ExportPage(
+          total: 1,
+          items: [
+            CompanyCompletion(
+              companyId: 'a',
+              company: 'Empresa; "A"',
+              percent: 37.5,
+            ),
+          ],
         ),
-      ]);
+      );
       await tester.pumpAndSettle();
-      expect(repo.offsets, [0, 0]);
+      expect(repo.exportAfters, [null, null]);
       expect(repo.activityCalls.last, period);
       expect(picker.files, hasLength(1));
       final csv = utf8.decode(picker.files.single.skip(3).toList());
@@ -587,11 +620,11 @@ void main() {
         if (duringActivity) {
           repo.activityPending = Completer<PlatformActivityReport>();
         } else {
-          repo.completionPending = Completer<List<CompanyCompletion>>();
+          repo.exportPending = Completer<ExportPage<CompanyCompletion>>();
         }
         await tester.tap(find.byTooltip('Exportar CSV'));
         await tester.pump();
-        expect(repo.completionCalls, 2);
+        expect(repo.exportCalls, duringActivity ? 2 : 1);
         router.go('/gestor/home');
         await tester.pumpAndSettle();
         router.go('/gestor/relatorios');
@@ -601,7 +634,7 @@ void main() {
             PlatformActivityReport(engagement: [], popularContent: []),
           );
         } else {
-          repo.completionPending!.complete([]);
+          repo.exportPending!.complete(const ExportPage(total: 0, items: []));
         }
         await tester.pumpAndSettle();
         expect(picker.files, isEmpty);
@@ -618,7 +651,7 @@ void main() {
         final (container, _) = await _reportShell(tester, repo);
         final picker = _CsvPicker();
         FilePicker.platform = picker;
-        repo.completionPending = Completer<List<CompanyCompletion>>();
+        repo.exportPending = Completer<ExportPage<CompanyCompletion>>();
         await tester.tap(find.byTooltip('Exportar CSV'));
         await tester.pump();
         final session = container.read(sessionProvider.notifier) as _Session;
@@ -629,7 +662,7 @@ void main() {
         }
         await tester.pump();
         final callsAfterChange = repo.activityCalls.length;
-        repo.completionPending!.complete([]);
+        repo.exportPending!.complete(const ExportPage(total: 0, items: []));
         await tester.pumpAndSettle();
         expect(picker.files, isEmpty);
         expect(repo.activityCalls, hasLength(callsAfterChange));
@@ -637,31 +670,64 @@ void main() {
     );
   }
 
-  for (final count in [49, 50]) {
-    testWidgets('gestor CSV handles $count company snapshot boundary', (
+  for (final count in [0, 49, 50, 51, 101]) {
+    testWidgets('gestor CSV exports $count companies across pages', (
       tester,
     ) async {
       final repo = _Reports();
       await _show(tester, const GestorReportsScreen(), reports: repo);
       final picker = _CsvPicker();
       FilePicker.platform = picker;
-      repo.completionOverride = List.generate(
+      repo.exportOverride = List.generate(
         count,
         (i) => CompanyCompletion(
-          companyId: '$i',
+          companyId: '$i'.padLeft(4, '0'),
           company: 'Empresa $i',
           percent: 10,
         ),
       );
       await tester.tap(find.byTooltip('Exportar CSV'));
       await tester.pumpAndSettle();
-      expect(picker.files.length, count == 49 ? 1 : 0);
-      if (count == 50) {
-        expect(find.textContaining('50 empresas ou mais'), findsOneWidget);
+      expect(picker.files, hasLength(1));
+      final csv = utf8.decode(picker.files.single.skip(3).toList());
+      if (count == 0) {
+        expect(csv, isNot(contains('"Empresa 0"')));
+      } else {
+        expect(csv, contains('"Empresa 0"'));
+        expect(csv, contains('"Empresa ${count - 1}"'));
       }
-      expect(repo.offsets, [0, 0]);
+      if (count > 100) {
+        expect(repo.exportAfters.take(3), [null, '0049', '0099']);
+      } else if (count > 50) {
+        expect(repo.exportAfters.take(2), [null, '0049']);
+      }
     });
   }
+
+  testWidgets('gestor CSV rejects more than 1.000 companies', (tester) async {
+    final repo = _Reports();
+    await _show(tester, const GestorReportsScreen(), reports: repo);
+    final picker = _CsvPicker();
+    FilePicker.platform = picker;
+    repo.exportOverride = List.generate(
+      1001,
+      (i) => CompanyCompletion(
+        companyId: '$i',
+        company: 'Empresa $i',
+        percent: 10,
+      ),
+    );
+    await tester.tap(find.byTooltip('Exportar CSV'));
+    await tester.pumpAndSettle();
+    expect(picker.files, isEmpty);
+    expect(
+      find.text(
+        'Exportação limitada a 1.000 empresas. Refine os dados e tente novamente.',
+      ),
+      findsOneWidget,
+    );
+    expect(repo.exportAfters, [null]);
+  });
 
   testWidgets(
     'reports load current completion independently of the date selector',

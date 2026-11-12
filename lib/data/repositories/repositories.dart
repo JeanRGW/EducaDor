@@ -281,6 +281,26 @@ class EmployeeRepository {
     );
   }
 
+  Future<ExportPage<Employee>> completionExport(
+    String companyId, {
+    String? after,
+  }) async {
+    final client =
+        _injectedClient ??
+        _client ??
+        (throw StateError('Configure o Supabase para carregar funcionários.'));
+    final data = await client.rpc(
+      'company_completion_export',
+      params: {'p_company': companyId, 'p_after': after},
+    ) as Map<String, dynamic>;
+    return ExportPage(
+      total: (data['total_count'] as num).toInt(),
+      items: (data['items'] as List<dynamic>)
+          .map((item) => _employee(item as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+
   Future<List<Employee>> all(String companyId) async {
     final client =
         _injectedClient ??
@@ -472,6 +492,26 @@ class ReportRepository {
         percent: (row['pct'] as num?)?.toDouble(),
       );
     }).toList();
+  }
+
+  Future<ExportPage<CompanyCompletion>> platformCompletionExport({
+    String? after,
+  }) async {
+    final data = await _reportClient.rpc(
+      'gestor_completion_export',
+      params: {'p_after': after},
+    ) as Map<String, dynamic>;
+    return ExportPage(
+      total: (data['total_count'] as num).toInt(),
+      items: (data['items'] as List<dynamic>).map((item) {
+        final row = item as Map<String, dynamic>;
+        return CompanyCompletion(
+          companyId: row['company_id'] as String,
+          company: row['company'] as String,
+          percent: (row['pct'] as num?)?.toDouble(),
+        );
+      }).toList(),
+    );
   }
 
   Future<PlatformActivityReport> platformActivity({

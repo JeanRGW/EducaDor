@@ -63,9 +63,20 @@ class _GestorReportsScreenState extends ConsumerState<GestorReportsScreen> {
     try {
       final repository = ref.read(reportRepositoryProvider);
       if (!current()) return;
-      final companies = requireSingleSnapshot(
-        await repository.platformCompletion(),
+      final companies = await collectStableExport<CompanyCompletion>(
+        fetchPage: (after) => repository.platformCompletionExport(after: after),
+        keyOf: (company) => company.companyId,
+        fieldsOf: (company) => [
+          company.companyId,
+          company.company,
+          company.percent,
+        ],
       );
+      companies.sort((a, b) {
+        final percent = (b.percent ?? -1).compareTo(a.percent ?? -1);
+        if (percent != 0) return percent;
+        return a.company.compareTo(b.company);
+      });
       if (!current()) return;
       final activity = await repository.platformActivity(
         from: period.from,
@@ -108,7 +119,17 @@ class _GestorReportsScreenState extends ConsumerState<GestorReportsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-              'Exportação indisponível com 50 empresas ou mais: não é possível garantir um retrato consistente.',
+              'Exportação limitada a 1.000 empresas. Refine os dados e tente novamente.',
+            ),
+          ),
+        );
+      }
+    } on ExportChanged {
+      if (mounted && valid) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Os dados mudaram durante a exportação. Tente novamente.',
             ),
           ),
         );
@@ -291,7 +312,7 @@ class _GestorReportsScreenState extends ConsumerState<GestorReportsScreen> {
               const Padding(
                 padding: EdgeInsets.fromLTRB(16, 12, 16, 0),
                 child: Text(
-                  'O CSV inclui a conclusão atual e a atividade do período selecionado, consultadas em momentos distintos.',
+                  'O CSV inclui até 1.000 empresas e a atividade do período selecionado, consultados em momentos distintos. A conclusão é lida duas vezes; se mudar, a exportação é cancelada.',
                 ),
               ),
               Padding(

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:file_picker/file_picker.dart';
 import 'dart:ui' as ui;
@@ -83,6 +84,7 @@ Employee _employee(
 
 class _SaveSpy extends FilePicker {
   int calls = 0;
+  final files = <Uint8List>[];
   @override
   Future<String?> saveFile({
     String? dialogTitle,
@@ -94,6 +96,7 @@ class _SaveSpy extends FilePicker {
     bool lockParentWindow = false,
   }) async {
     calls++;
+    files.add(bytes!);
     return null;
   }
 }
@@ -107,6 +110,8 @@ class _Employees extends EmployeeRepository {
   final calls = <String>[];
   bool fail = false;
   Completer<List<Employee>>? pending;
+  Completer<ExportPage<Employee>>? exportPending;
+  final exportAfters = <String?>[];
   final queries = <({String companyId, String search, int offset})>[];
   int? failOffset;
   @override
@@ -129,6 +134,25 @@ class _Employees extends EmployeeRepository {
       items: matching.skip(offset).take(50).toList(),
       totalCount: allRows.length,
       filteredCount: matching.length,
+    );
+  }
+
+  @override
+  Future<ExportPage<Employee>> completionExport(
+    String companyId, {
+    String? after,
+  }) async {
+    exportAfters.add(after);
+    if (exportPending != null) return exportPending!.future;
+    final allRows = [...(companyId == 'company-a' ? rows : [_employee(10)])]
+      ..sort((a, b) => a.id.compareTo(b.id));
+    final start = after == null
+        ? 0
+        : allRows.indexWhere((row) => row.id == after) + 1;
+    final end = (start + 50).clamp(0, allRows.length);
+    return ExportPage(
+      total: allRows.length,
+      items: allRows.sublist(start, end),
     );
   }
 
@@ -352,6 +376,7 @@ Future<ProviderContainer> _show(
     initialLocation: initialLocation,
     routes: [
       GoRoute(path: '/', builder: (_, _) => screen),
+      GoRoute(path: '/empresa/relatorios', builder: (_, _) => screen),
       GoRoute(
         path: '/empresa/funcionarios',
         builder: (_, _) => const EmployeesScreen(),
@@ -801,7 +826,8 @@ void main() {
   ) async {
     final picker = _SaveSpy();
     FilePicker.platform = picker;
-    final employees = _Employees()..pending = Completer<List<Employee>>();
+    final employees = _Employees()
+      ..exportPending = Completer<ExportPage<Employee>>();
     final container = ProviderContainer(
       overrides: [
         sessionProvider.overrideWith(_Session.new),
@@ -848,16 +874,72 @@ void main() {
     await _scrollTo(tester, find.text('Exportar dados em CSV'));
     await tester.tap(find.text('Exportar dados em CSV'));
     await tester.pump();
-    expect(employees.calls, ['company-a']);
+    expect(employees.exportAfters, [null]);
     router.go('/empresa/home');
     await tester.pumpAndSettle();
-    employees.pending!.complete(employees.rows);
+    employees.exportPending!.complete(
+      ExportPage(total: employees.rows.length, items: employees.rows),
+    );
     await tester.pumpAndSettle();
     router.go('/empresa/relatorios');
     await tester.pumpAndSettle();
     expect(find.text('Exportar dados em CSV'), findsOneWidget);
     expect(picker.calls, 0);
     expect(tester.takeException(), isNull);
+  });
+
+  for (final count in [0, 49, 50, 51, 101]) {
+    testWidgets('company CSV exports $count employees across pages', (
+      tester,
+    ) async {
+      final picker = _SaveSpy();
+      FilePicker.platform = picker;
+      final employees = _Employees()
+        ..rows = [for (var i = 0; i < count; i++) _employee(i)];
+      await _show(
+        tester,
+        const CompanyCompletionScreen(),
+        employees: employees,
+        initialLocation: '/empresa/relatorios',
+      );
+      await _scrollTo(tester, find.text('Exportar dados em CSV'));
+      await tester.tap(find.text('Exportar dados em CSV'));
+      await tester.pumpAndSettle();
+      expect(employees.exportAfters, isNotEmpty);
+      if (count == 0) {
+        expect(find.text('Nenhum funcionário para exportar.'), findsOneWidget);
+        expect(picker.calls, 0);
+      } else {
+        expect(picker.calls, 1);
+        final csv = utf8.decode(picker.files.single.skip(3).toList());
+        expect(csv, contains('"Pessoa 1"'));
+        expect(employees.exportAfters.length, 2 * ((count + 49) ~/ 50));
+      }
+    });
+  }
+
+  testWidgets('company CSV rejects more than 1.000 employees', (tester) async {
+    final picker = _SaveSpy();
+    FilePicker.platform = picker;
+    final employees = _Employees()
+      ..rows = [for (var i = 0; i < 1001; i++) _employee(i)];
+    await _show(
+      tester,
+      const CompanyCompletionScreen(),
+      employees: employees,
+      initialLocation: '/empresa/relatorios',
+    );
+    await _scrollTo(tester, find.text('Exportar dados em CSV'));
+    await tester.tap(find.text('Exportar dados em CSV'));
+    await tester.pumpAndSettle();
+    expect(picker.calls, 0);
+    expect(
+      find.text(
+        'Exportação limitada a 1.000 funcionários. Refine os dados e tente novamente.',
+      ),
+      findsOneWidget,
+    );
+    expect(employees.exportAfters, [null]);
   });
 
   testWidgets('reports paginate and switching company drops old pages', (
