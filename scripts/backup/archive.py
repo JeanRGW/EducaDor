@@ -90,7 +90,9 @@ def read_bounded(parent, name, limit):
 
 
 def run_output(args, out, limit):
-    process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                               env={k: os.environ[k] for k in ('PATH', 'HOME', 'GNUPGHOME', 'LANG', 'LC_ALL')
+                                    if k in os.environ})
     try:
         copy_bounded(process.stdout, out, limit)
         if process.wait() != 0:

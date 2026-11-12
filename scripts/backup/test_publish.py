@@ -30,6 +30,9 @@ class FakeS3:
                 raise subprocess.CalledProcessError(1, command)
             self.objects[value('--key')] = Path(value('--body')).read_bytes()
             output = b'{}'
+        elif operation == 'delete-object':
+            del self.objects[value('--key')]
+            output = b'{}'
         elif operation == 'get-object':
             data = self.objects[value('--key')]
             if self.corrupt:
@@ -64,7 +67,7 @@ class PublishTest(unittest.TestCase):
         self.addCleanup(self.runner.stop)
         self.secret = b'x' * 32
 
-    def publish(self, budget=100000, reserve=100, egress=20_000_000, attestations=('true', 'true')):
+    def publish(self, budget=100000, reserve=100, egress=21_000_000, attestations=('true', 'true', 'true')):
         publish.publish(self.root, budget, reserve, egress, self.secret, attestations, 'A' * 40)
 
     def test_recurring_runs_are_reverified_and_never_pruned(self):
@@ -129,15 +132,82 @@ class PublishTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.publish()
 
-    def test_four_runs_preserved_then_storage_cap_blocks(self):
-        for _ in range(4):
+    def test_four_runs_keep_newest_three_and_capacity_blocks_before_pruning(self):
+        order = []
+        for _ in range(5):
+            before = set(self.s3.objects)
             self.publish()
+            new = set(self.s3.objects) - before
+            order.append(next(k.split('/')[2] for k in new if k.endswith('/complete.json')))
+        self.assertEqual(set(order[-3:]), {k.split('/')[2] for k in self.s3.objects})
         before = dict(self.s3.objects)
-        self.assertEqual(4, sum(k.endswith('/complete.json') for k in before))
         with self.assertRaisesRegex(ValueError, 'storage budget'):
             self.publish(budget=sum(map(len, before.values())) + 100)
         self.assertEqual(before, self.s3.objects)
+
+    def test_v2_and_timestamp_ambiguity_block(self):
+        self.publish()
+        key = next(k for k in self.s3.objects if k.endswith('/complete.json'))
+        marker = json.loads(self.s3.objects[key])
+        marker['created_utc'] = '9999-01-01T00:00:00.000000Z'
+        marker['hmac_sha256'] = publish.marker_signature(self.secret, marker)
+        self.s3.objects[key] = json.dumps(marker).encode()
+        before = dict(self.s3.objects)
+        with self.assertRaisesRegex(ValueError, 'time'):
+            self.publish()
+        self.assertEqual(before, self.s3.objects)
+        marker = {'version': 2, 'manifest_sha256': marker['manifest_sha256'],
+                  'signature_sha256': marker['signature_sha256']}
+        marker['hmac_sha256'] = publish.signature(self.secret, key.split('/')[2], marker['manifest_sha256'], marker['signature_sha256'])
+        self.s3.objects[key] = json.dumps(marker).encode()
+        before = dict(self.s3.objects)
+        with self.assertRaisesRegex(ValueError, 'unsupported marker'):
+            self.publish()
+        self.assertEqual(before, self.s3.objects)
+
+    def test_missing_attestation_never_deletes(self):
+        for _ in range(3):
+            self.publish()
+        before = dict(self.s3.objects)
+        with self.assertRaises(ValueError):
+            self.publish(attestations=('true', 'true', 'false'))
+        self.assertEqual(before, self.s3.objects)
         self.assertFalse(any(op == 'delete-object' for op, _ in self.s3.calls))
+
+    def test_marker_identity_is_bound_to_run_and_hmac(self):
+        self.publish()
+        key = next(k for k in self.s3.objects if k.endswith('/complete.json'))
+        marker = json.loads(self.s3.objects[key])
+        self.assertEqual(key.split('/')[2], marker['run_id'])
+        self.assertEqual(3, marker['version'])
+        marker['run_id'] = 'f' * 32
+        self.s3.objects[key] = json.dumps(marker).encode()
+        before = dict(self.s3.objects)
+        with self.assertRaises(ValueError):
+            self.publish()
+        self.assertEqual(before, self.s3.objects)
+
+    def test_interrupted_prune_preserves_three_and_blocks_next_run(self):
+        for _ in range(3):
+            self.publish()
+        original = self.s3.__call__
+        deletes = 0
+        def fail_second_delete(command, **kwargs):
+            nonlocal deletes
+            if 'delete-object' in command:
+                deletes += 1
+                if deletes == 2:
+                    raise subprocess.CalledProcessError(1, command)
+            return original(command, **kwargs)
+        with patch.object(publish.subprocess, 'run', side_effect=fail_second_delete):
+            with self.assertRaises(subprocess.CalledProcessError):
+                self.publish()
+        complete = [k for k in self.s3.objects if k.endswith('/complete.json')]
+        self.assertGreaterEqual(len(complete), 3)
+        before = dict(self.s3.objects)
+        with self.assertRaises(ValueError):
+            self.publish()
+        self.assertEqual(before, self.s3.objects)
 
     def test_tampered_marker_blocks(self):
         self.publish()
