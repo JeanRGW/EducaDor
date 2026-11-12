@@ -35,6 +35,18 @@ jobs:
           node scripts/generate-shell-worker.mjs build/web
           node --test scripts/pwa/*.test.mjs
 
+  backup-offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - run: BACKUP_DOCKER_TEST=1 python3 -m unittest discover -s scripts/backup -v
+      - name: Test pinned AWS CLI against loopback fixture
+        run: |
+          python3 -m venv "$RUNNER_TEMP/backup-cli"
+          "$RUNNER_TEMP/backup-cli/bin/pip" install 'awscli==1.36.40'
+          PATH="$RUNNER_TEMP/backup-cli/bin:$PATH" BACKUP_CLI_TEST=1 python3 -m unittest discover -s scripts/backup -p test_cli_integration.py -v
+
   scripts-and-functions:
     runs-on: ubuntu-latest
     timeout-minutes: 10

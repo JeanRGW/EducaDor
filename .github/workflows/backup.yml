@@ -36,15 +36,24 @@ jobs:
       BACKUP_MULTIPART_RESERVE_ATTESTED: ${{ vars.BACKUP_MULTIPART_RESERVE_ATTESTED }}
       BACKUP_RECIPIENT_FINGERPRINT: ${{ vars.BACKUP_RECIPIENT_FINGERPRINT }}
       BACKUP_PUBLIC_KEY: ${{ vars.BACKUP_PUBLIC_KEY }}
-      BACKUP_HMAC_KEY_HEX: ${{ secrets.BACKUP_HMAC_KEY_HEX }}
-      AWS_ACCESS_KEY_ID: ${{ secrets.BACKUP_S3_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_S3_SECRET_ACCESS_KEY }}
+      BACKUP_SIGNER_FINGERPRINT: ${{ vars.BACKUP_SIGNER_FINGERPRINT }}
       AWS_DEFAULT_REGION: sa-east-1
       AWS_EC2_METADATA_DISABLED: 'true'
-      PGDATABASE: ${{ secrets.BACKUP_DATABASE_URL }}
     steps:
       - uses: actions/checkout@v4
+      - name: Install pinned AWS CLI (transitive dependencies require review)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m venv "$RUNNER_TEMP/backup-aws-venv"
+          "$RUNNER_TEMP/backup-aws-venv/bin/pip" install --disable-pip-version-check 'awscli==1.36.40' >/dev/null
       - name: Dump, encrypt, and publish
+        env:
+          BACKUP_HMAC_KEY_HEX: ${{ secrets.BACKUP_HMAC_KEY_HEX }}
+          BACKUP_SIGNING_PRIVATE_KEY: ${{ secrets.BACKUP_SIGNING_PRIVATE_KEY }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.BACKUP_S3_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_S3_SECRET_ACCESS_KEY }}
+          PGDATABASE: ${{ secrets.BACKUP_DATABASE_URL }}
         shell: bash
         run: |
           set -euo pipefail
@@ -53,17 +62,16 @@ jobs:
           trap 'rm -rf "$work"' EXIT
           export GNUPGHOME="$work/gnupg"
           mkdir -m 700 "$GNUPGHOME"
-          python3 -m venv "$work/aws-venv"
-          "$work/aws-venv/bin/pip" install --disable-pip-version-check 'awscli==1.36.40' >/dev/null
-          export PATH="$work/aws-venv/bin:$PATH"
+          export PATH="$RUNNER_TEMP/backup-aws-venv/bin:$PATH"
           export AWS_CONFIG_FILE="$work/aws-config" AWS_SHARED_CREDENTIALS_FILE="$work/aws-credentials"
           export AWS_MAX_ATTEMPTS=1 AWS_RETRY_MODE=standard AWS_PAGER=''
           unset AWS_PROFILE AWS_DEFAULT_PROFILE AWS_SESSION_TOKEN AWS_SECURITY_TOKEN AWS_CA_BUNDLE
           printf '[default]\nregion = sa-east-1\ns3 =\n    addressing_style = path\n' > "$AWS_CONFIG_FILE"
           touch "$AWS_SHARED_CREDENTIALS_FILE"
-          BACKUP_CLI_TEST=1 python3 -m unittest discover -s scripts/backup -p test_cli_integration.py -v
-          printf '%s' "$BACKUP_PUBLIC_KEY" | gpg --batch --quiet --import
+          printf '%s' "$BACKUP_PUBLIC_KEY" | gpg --batch --quiet --import 2>/dev/null
+          printf '%s' "$BACKUP_SIGNING_PRIVATE_KEY" | gpg --batch --quiet --import 2>/dev/null
+          unset BACKUP_SIGNING_PRIVATE_KEY
           pg_dump --no-owner --no-acl --file "$work/dump.sql" 2>/dev/null || { echo 'Database dump failed.' >&2; exit 1; }
-          python3 scripts/backup/archive.py pack "$work/dump.sql" "$work/archive" --recipient "$BACKUP_RECIPIENT_FINGERPRINT"
+          python3 scripts/backup/archive.py pack "$work/dump.sql" "$work/archive" --recipient "$BACKUP_RECIPIENT_FINGERPRINT" --signer "$BACKUP_SIGNER_FINGERPRINT"
           rm "$work/dump.sql"
           python3 scripts/backup/publish.py "$work/archive"

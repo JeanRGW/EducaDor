@@ -161,6 +161,19 @@ def pack(source, destination, recipient, signer):
         os.close(source_fd)
 
 
+def verify_signature(manifest_data, signature, signer, root):
+    fingerprint(signer)
+    manifest_path, signature_path = root / 'manifest', root / 'signature'
+    manifest_path.write_bytes(manifest_data)
+    signature_path.write_bytes(signature)
+    from io import BytesIO
+    status = BytesIO()
+    run_output(['gpg', '--batch', '--status-fd', '1', '--verify', str(signature_path), str(manifest_path)], status, 65536)
+    valid = [line.split() for line in status.getvalue().decode('ascii').splitlines() if line.startswith('[GNUPG:] VALIDSIG ')]
+    if len(valid) != 1 or valid[0][-1] != signer:
+        raise ValueError('untrusted signer')
+
+
 def unpack(source, destination, signer):
     fingerprint(signer)
     source_fd = directory(source)
@@ -171,15 +184,7 @@ def unpack(source, destination, signer):
                 root = Path(temp)
                 manifest_data = read_bounded(source_fd, 'manifest.json', 100000)
                 signature = read_bounded(source_fd, 'manifest.sig', 65536)
-                manifest_path, signature_path = root / 'manifest', root / 'signature'
-                manifest_path.write_bytes(manifest_data)
-                signature_path.write_bytes(signature)
-                from io import BytesIO
-                status = BytesIO()
-                run_output(['gpg', '--batch', '--status-fd', '1', '--verify', str(signature_path), str(manifest_path)], status, 65536)
-                valid = [line.split() for line in status.getvalue().decode('ascii').splitlines() if line.startswith('[GNUPG:] VALIDSIG ')]
-                if len(valid) != 1 or valid[0][-1] != signer:
-                    raise ValueError('untrusted signer')
+                verify_signature(manifest_data, signature, signer, root)
                 manifest = json.loads(manifest_data)
                 if not isinstance(manifest, dict) or set(manifest) != {'version', 'parts'} or manifest['version'] != 2:
                     raise ValueError('invalid manifest')

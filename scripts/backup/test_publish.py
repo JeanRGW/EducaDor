@@ -38,6 +38,7 @@ class FakeS3:
             output = b'{}'
         else:
             raise AssertionError(operation)
+        kwargs['stdout'].write(output)
         return subprocess.CompletedProcess(command, 0, output)
 
 
@@ -48,8 +49,12 @@ class PublishTest(unittest.TestCase):
         self.root = Path(self.temp.name)
         part = b'encrypted data'
         (self.root / '0000.gpgpart').write_bytes(part)
-        (self.root / 'manifest.json').write_text(json.dumps({'version': 1, 'parts': [
+        (self.root / 'manifest.json').write_text(json.dumps({'version': 2, 'parts': [
             {'name': '0000.gpgpart', 'size': len(part), 'sha256': archive.digest(part)}]}))
+        (self.root / 'manifest.sig').write_bytes(b'signature')
+        self.verify = patch.object(archive, 'verify_signature')
+        self.verify.start()
+        self.addCleanup(self.verify.stop)
         self.s3 = FakeS3()
         self.env = patch.dict('os.environ', {'BACKUP_S3_ENDPOINT': 'https://test.storage.supabase.co/storage/v1/s3'})
         self.env.start()
@@ -60,28 +65,29 @@ class PublishTest(unittest.TestCase):
         self.secret = b'x' * 32
 
     def publish(self, budget=100000, reserve=100, egress=20_000_000, attestations=('true', 'true')):
-        publish.publish(self.root, budget, reserve, egress, self.secret, attestations)
+        publish.publish(self.root, budget, reserve, egress, self.secret, attestations, 'A' * 40)
 
-    def test_success_uses_prior_metadata_only_and_never_prunes(self):
+    def test_prior_marker_is_quarantined_and_never_pruned(self):
         self.publish()
-        previous = set(self.s3.objects)
-        self.s3.calls.clear()
-        self.publish()
-        prior_gets = [args[args.index('--key') + 1] for op, args in self.s3.calls if op == 'get-object'
-                      and args[args.index('--key') + 1] in previous]
-        self.assertEqual(len(prior_gets), 2)
-        self.assertFalse(any(key.endswith('.gpgpart') for key in prior_gets))
-        self.assertEqual(len(self.s3.objects), 6)
-        self.assertFalse(any(op == 'delete-object' for op, _ in self.s3.calls))
-
-    def test_replayed_marker_never_triggers_pruning(self):
-        for _ in range(4):
+        previous = dict(self.s3.objects)
+        with self.assertRaisesRegex(ValueError, 'operator intervention'):
             self.publish()
-        old_marker = next(k for k in self.s3.objects if k.endswith('/complete.json'))
-        self.s3.objects[old_marker] = bytes(self.s3.objects[old_marker])
-        self.publish()
-        self.assertEqual(len(self.s3.objects), 15)
+        self.assertEqual(previous, self.s3.objects)
         self.assertFalse(any(op == 'delete-object' for op, _ in self.s3.calls))
+
+    def test_failure_after_marker_put_is_quarantined(self):
+        original = self.s3.__call__
+        def interrupted(command, **kwargs):
+            args = command[command.index('s3api') + 1:]
+            if args[0] == 'get-object' and args[args.index('--key') + 1].endswith('/complete.json'):
+                raise subprocess.CalledProcessError(1, command)
+            return original(command, **kwargs)
+        with patch.object(publish.subprocess, 'run', side_effect=interrupted):
+            with self.assertRaises(subprocess.CalledProcessError):
+                self.publish()
+        self.assertTrue(any(k.endswith('/complete.json') for k in self.s3.objects))
+        with self.assertRaisesRegex(ValueError, 'operator intervention'):
+            self.publish()
 
     def test_realistic_egress_estimate_and_pre_network_failure(self):
         entries = [{'size': 40_000_000}] * 15
