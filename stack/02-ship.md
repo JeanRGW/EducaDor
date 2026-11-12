@@ -77,7 +77,9 @@ at the audit baseline. No production target is inferred from the staging config.
 Backups have an unresolved capacity/security contract: a 500MB database can exceed
 the 50MB object cap and three dumps can exceed the shared 1GB Storage allocation.
 Compression/chunking needs checksums, encryption/key custody, a total budget and a
-tested restore path. DB dumps alone do not back up uploaded lesson objects.
+tested restore path. DB dumps alone do not back up uploaded lesson objects. An offline
+archive prototype and explicit activation blockers are documented in
+[backup recovery](14-backup-recovery.md); no remote backup workflow is implemented.
 
 FCM requires operator-provided Firebase Spark project, service account, public web
 configuration/VAPID key, approved web origins and Android configuration, plus
