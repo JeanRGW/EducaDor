@@ -76,10 +76,10 @@ environments and behavior are reviewed. PR preview automation is not implemented
 at the audit baseline. No production target is inferred from the staging config.
 
 B2 backup activation is approved and the scheduled workflow is enabled, gated by
-`BACKUP_ENABLED` and (for manual runs) the `confirm` input. The remaining
-operator gates are hosted restore validation, verified B2 lifecycle/versioning,
-and key custody; DB dumps alone do not back up uploaded object bytes. See
-[backup recovery](14-backup-recovery.md).
+the repository-level `BACKUP_ENABLED` variable and (for manual runs) the `confirm`
+input. The remaining operator gates are hosted restore validation, verified B2
+lifecycle/versioning, and key custody; DB dumps alone do not back up uploaded
+object bytes. See [backup recovery](14-backup-recovery.md).
 
 FCM requires operator-provided Firebase Spark project, service account, public web
 configuration/VAPID key, approved web origins and Android configuration, plus
