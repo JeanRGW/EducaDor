@@ -51,13 +51,13 @@ test('backup installs and checks the PGDG PostgreSQL 17 client before dumping', 
   assert.match(backup, /echo "PG_DUMP=\$PG_DUMP" >> "\$GITHUB_ENV"/);
   assert.ok(backup.indexOf('- name: Install PostgreSQL 17 client') < backup.indexOf('- name: Dump database'));
   assert.match(backup, /PGDATABASE: \$\{\{ secrets\.BACKUP_DATABASE_URL \}\}/);
-  assert.match(backup, /"\$PG_DUMP" --no-owner --no-acl/);
+  assert.match(backup, /"\$PG_DUMP" --dbname "\$PGDATABASE" --no-owner --no-acl/);
 });
 
 test('backup uses a restorable data-only public and auth dump', () => {
-  assert.match(backup, /"\$PG_DUMP" --no-owner --no-acl --data-only --schema=public --schema=auth/);
+  assert.match(backup, /"\$PG_DUMP" --dbname "\$PGDATABASE" --no-owner --no-acl --data-only --schema=public --schema=auth/);
   assert.match(backup, /--exclude-table-data=auth\.schema_migrations/);
-  assert.doesNotMatch(backup, /"\$PG_DUMP" --no-owner --no-acl --file/);
+  assert.doesNotMatch(backup, /"\$PG_DUMP" --dbname "\$PGDATABASE" --no-owner --no-acl --file/);
   assert.match(backup, /PGDATABASE: \$\{\{ secrets\.BACKUP_DATABASE_URL \}\}/);
 });
 

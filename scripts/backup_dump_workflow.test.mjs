@@ -24,6 +24,24 @@ test('dump step preserves stdout/exit handling', () => {
             'the step must exit non-zero after printing the diagnostic');
 });
 
+test('dump step validates the connection URL before invoking pg_dump', () => {
+  const check = dumpStep.indexOf('scripts/backup/check_db_url.py');
+  const dump = dumpStep.indexOf('"$PG_DUMP" --dbname "$PGDATABASE"');
+  assert.ok(check > 0, 'the URL validation helper is missing from the dump step');
+  assert.ok(dump > check, 'pg_dump must only run after URL validation');
+  assert.match(dumpStep, /PGDATABASE="\$PGDATABASE" python3 scripts\/backup\/check_db_url\.py/);
+  assert.doesNotMatch(dumpStep, /check_db_url\.py[^\n]*\|\| true/);
+});
+
+test('dump step passes the URL explicitly and never positionally', () => {
+  const invocation = dumpStep.match(/"\$PG_DUMP" ([^\n]*)/);
+  assert.ok(invocation, 'the pg_dump invocation is missing');
+  assert.match(invocation[1], /^--dbname "\$PGDATABASE" --no-owner --no-acl/);
+  assert.doesNotMatch(dumpStep, /"\$PG_DUMP"\s+"\$PGDATABASE"/);
+  assert.doesNotMatch(dumpStep, /echo[^\n]*PGDATABASE|printf[^\n]*PGDATABASE/);
+  assert.doesNotMatch(dumpStep, /set -x/);
+});
+
 test('dump step prints only the redacted, bounded diagnostic', () => {
   assert.match(dumpStep, /python3 scripts\/backup\/redact\.py "\$errors"/);
   assert.doesNotMatch(dumpStep, /cat "\$errors"/);

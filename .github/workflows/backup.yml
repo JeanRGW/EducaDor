@@ -99,13 +99,18 @@ jobs:
           work="$RUNNER_TEMP/educador-backup"
           errors="$work/pg.err"
           status=0
+          # Reject a bare database name before pg_dump treats it as a local
+          # socket. The helper prints presence flags only, never the URL.
+          env -i PATH="$PATH" HOME="$HOME" PGDATABASE="$PGDATABASE" python3 scripts/backup/check_db_url.py
           # Data-only: a fresh project owns the schema, so CREATE SCHEMA must not
           # collide. Auth rows are included so public.profiles -> auth.users FKs
           # can be restored; auth.schema_migrations is provider bookkeeping and
           # would conflict with the target's own Auth migration history.
-          # stderr goes to private scratch instead of /dev/null: a silent failure
-          # hides IPv6-only hosts and pooler/sslmode problems.
-          env -i PATH="$PATH" HOME="$HOME" PGDATABASE="$PGDATABASE" "$PG_DUMP" --no-owner --no-acl --data-only --schema=public --schema=auth --exclude-table-data=auth.schema_migrations --file "$work/dump.sql" 2>"$errors" || status=$?
+          # The URL is passed explicitly via --dbname: libpq does not expand a
+          # postgresql:// URI supplied only through PGDATABASE. stderr goes to
+          # private scratch instead of /dev/null: a silent failure hides
+          # IPv6-only hosts and pooler/sslmode problems.
+          env -i PATH="$PATH" HOME="$HOME" "$PG_DUMP" --dbname "$PGDATABASE" --no-owner --no-acl --data-only --schema=public --schema=auth --exclude-table-data=auth.schema_migrations --file "$work/dump.sql" 2>"$errors" || status=$?
           if [ "$status" -ne 0 ]; then
             echo "Database dump failed (exit $status)." >&2
             rm -f "$work/dump.sql"
