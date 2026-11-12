@@ -225,14 +225,16 @@ void main() {
         expect(request.url.path, '/rest/v1/rpc/own_profile');
         expect(jsonDecode(request.body), isNull);
         return http.Response(
-          jsonEncode([{
-            'full_name': 'Ana Silva',
-            'email': 'ana@example.test',
-            'phone': '123',
-            'birth_date': '1990-01-01',
-            'address': 'Rua A',
-            'gender': gender?.name,
-          }]),
+          jsonEncode([
+            {
+              'full_name': 'Ana Silva',
+              'email': 'ana@example.test',
+              'phone': '123',
+              'birth_date': '1990-01-01',
+              'address': 'Rua A',
+              'gender': gender?.name,
+            },
+          ]),
           200,
         );
       });
