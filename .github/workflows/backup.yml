@@ -1,7 +1,8 @@
 name: Encrypted database backup
 
 on:
-  # The job remains hard-disabled until explicit authorization.
+  # Activation is approved; every run still requires BACKUP_ENABLED and, when
+  # manually dispatched, the confirmation input.
   schedule:
     - cron: '17 3 * * *'
   workflow_dispatch:
@@ -21,9 +22,10 @@ concurrency:
 
 jobs:
   backup:
-    # Hard-disabled pending signed archive integration and independent review.
+    # Activation is approved. A run still needs main, BACKUP_ENABLED == 'true'
+    # and, for manual dispatch, inputs.confirm == true.
     if: >-
-      false && github.ref == 'refs/heads/main' && vars.BACKUP_ENABLED == 'true' &&
+      github.ref == 'refs/heads/main' && vars.BACKUP_ENABLED == 'true' &&
       (github.event_name == 'schedule' || inputs.confirm == true)
     environment: backup-production
     runs-on: ubuntu-latest
@@ -40,6 +42,7 @@ jobs:
       BACKUP_NO_ROLLBACK_CLOCK_ATTESTED: ${{ vars.BACKUP_NO_ROLLBACK_CLOCK_ATTESTED }}
       BACKUP_RECIPIENT_FINGERPRINT: ${{ vars.BACKUP_RECIPIENT_FINGERPRINT }}
       BACKUP_PUBLIC_KEY: ${{ vars.BACKUP_PUBLIC_KEY }}
+      BACKUP_SIGNING_PUBLIC_KEY: ${{ vars.BACKUP_SIGNING_PUBLIC_KEY }}
       BACKUP_SIGNER_FINGERPRINT: ${{ vars.BACKUP_SIGNER_FINGERPRINT }}
       AWS_DEFAULT_REGION: ${{ vars.AWS_DEFAULT_REGION || 'us-east-005' }}
       AWS_EC2_METADATA_DISABLED: 'true'
@@ -95,8 +98,15 @@ jobs:
           export GNUPGHOME="$work/signing-home"
           mkdir -m 700 "$GNUPGHOME"
           printf '%s' "$BACKUP_PUBLIC_KEY" | env -i PATH="$PATH" HOME="$HOME" GNUPGHOME="$GNUPGHOME" gpg --batch --quiet --import 2>/dev/null
+          printf '%s' "$BACKUP_SIGNING_PUBLIC_KEY" | env -i PATH="$PATH" HOME="$HOME" GNUPGHOME="$GNUPGHOME" gpg --batch --quiet --import 2>/dev/null
           printf '%s' "$BACKUP_SIGNING_PRIVATE_KEY" | env -i PATH="$PATH" HOME="$HOME" GNUPGHOME="$GNUPGHOME" gpg --batch --quiet --import 2>/dev/null
           unset BACKUP_SIGNING_PRIVATE_KEY
+          for fpr in "$BACKUP_RECIPIENT_FINGERPRINT" "$BACKUP_SIGNER_FINGERPRINT"; do
+            if [ -z "$fpr" ] || ! env -i PATH="$PATH" HOME="$HOME" GNUPGHOME="$GNUPGHOME" gpg --batch --list-keys "$fpr" >/dev/null 2>&1; then
+              echo 'Missing encryption or signing public key.' >&2
+              exit 1
+            fi
+          done
           env -i PATH="$PATH" HOME="$HOME" GNUPGHOME="$GNUPGHOME" python3 scripts/backup/archive.py pack "$work/dump.sql" "$work/archive" --recipient "$BACKUP_RECIPIENT_FINGERPRINT" --signer "$BACKUP_SIGNER_FINGERPRINT"
           env -i PATH="$PATH" HOME="$HOME" GNUPGHOME="$GNUPGHOME" gpgconf --kill gpg-agent
           rm -rf "$GNUPGHOME" "$work/dump.sql"
@@ -113,6 +123,15 @@ jobs:
           export GNUPGHOME="$work/verify-home"
           mkdir -m 700 "$GNUPGHOME"
           printf '%s' "$BACKUP_PUBLIC_KEY" | env -i PATH="$PATH" HOME="$HOME" GNUPGHOME="$GNUPGHOME" gpg --batch --quiet --import 2>/dev/null
+          printf '%s' "$BACKUP_SIGNING_PUBLIC_KEY" | env -i PATH="$PATH" HOME="$HOME" GNUPGHOME="$GNUPGHOME" gpg --batch --quiet --import 2>/dev/null
+          # Verification needs the signing public key; fail closed before upload
+          # when either public key is missing or does not match its fingerprint.
+          for fpr in "$BACKUP_RECIPIENT_FINGERPRINT" "$BACKUP_SIGNER_FINGERPRINT"; do
+            if [ -z "$fpr" ] || ! env -i PATH="$PATH" HOME="$HOME" GNUPGHOME="$GNUPGHOME" gpg --batch --list-keys "$fpr" >/dev/null 2>&1; then
+              echo 'Missing encryption or signing public key.' >&2
+              exit 1
+            fi
+          done
           export PATH="$RUNNER_TEMP/backup-aws-venv/bin:$PATH"
           export AWS_CONFIG_FILE="$work/aws-config" AWS_SHARED_CREDENTIALS_FILE="$work/aws-credentials"
           export AWS_MAX_ATTEMPTS=1 AWS_RETRY_MODE=standard AWS_PAGER=''

@@ -22,15 +22,16 @@
 
 `database.yml` is implemented: isolated database rebuild, declarative drift check,
 SQL regressions and invitation-handler tests, without staging credentials or deploy.
-The remaining workflows below are planned at the audit baseline. See the
+The workflows below are listed at the audit baseline. See the
 [implementation review](08-implementation-roadmap.md) for PR assignments; an
-assigned workflow is not enabled infrastructure.
+assigned workflow is not enabled infrastructure unless listed as enabled here.
+The backup workflow is activated and gated as described below.
 
 | File | Trigger | Does |
 |---|---|---|
 | `ci.yml` | PR/push | `flutter analyze`, `flutter test`, `flutter build web` (no deploy) |
 | `deploy-pages.yml` | `main` | build web with `--dart-define` secrets → Pages deploy |
-| `backup.yml` | daily cron / manual | DB-only `pg_dump` → B2 `educador-backups` (`s3.us-east-005.backblazeb2.com`), daily 7 + weekly 4; hard-disabled pending activation, no object bytes |
+| `backup.yml` | daily cron / manual | DB-only `pg_dump` → B2 `educador-backups` (`s3.us-east-005.backblazeb2.com`), daily 7 + weekly 4; enabled, each run gated by `BACKUP_ENABLED` (manual also needs confirm), no object bytes |
 | `keepalive.yml` | daily cron | light authed query to reset Supabase 7-day pause timer |
 
 Public staging inputs (`SUPABASE_URL`, `SUPABASE_ANON_KEY` publishable key, `CLOUDFLARE_ACCOUNT_ID`) may be versioned; use environment-specific public values for other projects. True secrets (Actions, never in repo): `CLOUDFLARE_API_TOKEN, SUPABASE_DB_URL` (with password). Function secrets (Supabase dashboard): `FCM_SERVICE_ACCOUNT_JSON, STORAGE_S3_*`; the managed Supabase service-role key stays server-side. Future PR previews must use an explicitly approved staging target; preview automation is not implemented at this baseline.
@@ -74,10 +75,11 @@ New deploy/keepalive workflows must remain gated until credentials, protected
 environments and behavior are reviewed. PR preview automation is not implemented
 at the audit baseline. No production target is inferred from the staging config.
 
-B2 backup capacity, lifecycle, security and a tested hosted restore remain activation
-blockers. DB dumps alone do not back up uploaded object bytes. See
-[backup recovery](14-backup-recovery.md); the remote workflow remains hard-disabled
-pending review and explicit authorization.
+B2 backup activation is approved and the scheduled workflow is enabled, gated by
+`BACKUP_ENABLED` and (for manual runs) the `confirm` input. The remaining
+operator gates are hosted restore validation, verified B2 lifecycle/versioning,
+and key custody; DB dumps alone do not back up uploaded object bytes. See
+[backup recovery](14-backup-recovery.md).
 
 FCM requires operator-provided Firebase Spark project, service account, public web
 configuration/VAPID key, approved web origins and Android configuration, plus

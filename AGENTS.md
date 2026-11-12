@@ -13,7 +13,7 @@ Source of truth for backend: `stack/01-backend.md` (data/files/video/push) + `st
 | Video | YouTube Unlisted only | Store `video_provider` (CHECK-gated `'youtube'`) + `video_id`, never MP4 bytes anywhere. Corporate networks must whitelist `youtube.com`. |
 | PWA hosting | Cloudflare Pages, `app.educador.rgw.app` | Serves `build/web`, unlimited BW. Supabase hosts no HTML. |
 | Push | FCM on Firebase Spark (messaging only) | Tokens stored in Supabase `fcm_tokens`. No Firestore/Storage/Hosting. |
-| CI | GitHub Actions | lint/test/build web, Pages deploy, daily keep-alive. DB-only backup to B2 `educador-backups` (`s3.us-east-005.backblazeb2.com`), daily 7 + weekly 4, hard-disabled pending activation; no object bytes. |
+| CI | GitHub Actions | lint/test/build web, Pages deploy, daily keep-alive. DB-only backup to B2 `educador-backups` (`s3.us-east-005.backblazeb2.com`), daily 7 + weekly 4, enabled and gated by `BACKUP_ENABLED` plus manual confirm; no object bytes. |
 
 Free ceilings (recheck dashboard, Sept 2026): Supabase 500MB DB / 1GB Storage / 5GB egress + 5GB cached / 50k MAU / 500k fn calls / 2 projects; R2 deferred (card required); Pages unlimited BW, 500 builds/mo, 20k files, 25MiB/file; FCM unlimited $0. Over Free = warn → restrict, no surprise charge. Domain $0 (uses existing `rgw.app`).
 

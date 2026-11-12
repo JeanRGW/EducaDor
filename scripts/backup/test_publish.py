@@ -329,5 +329,68 @@ class PublishTest(unittest.TestCase):
         self.assertFalse(self.s3.calls)
 
 
+class SigningKeyVerificationTest(unittest.TestCase):
+    """Publisher verification needs the signing public key, not the encryption key."""
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        self.signing_home = self.root / 'signing-home'
+        self.signing_home.mkdir(mode=0o700)
+        env = patch.dict('os.environ', {'GNUPGHOME': str(self.signing_home)})
+        env.start()
+        self.addCleanup(env.stop)
+        subprocess.run(['gpg', '--batch', '--passphrase', '', '--quick-generate-key',
+                        'Recipient <recipient@example.invalid>', 'ed25519', 'default', '0'],
+                       check=True, capture_output=True)
+        keys = subprocess.check_output(['gpg', '--batch', '--with-colons', '--list-keys'],
+                                       stderr=subprocess.DEVNULL).decode()
+        self.recipient = next(line.split(':')[9] for line in keys.splitlines() if line.startswith('fpr:'))
+        subprocess.run(['gpg', '--batch', '--passphrase', '', '--quick-add-key', self.recipient,
+                        'cv25519', 'encr', '0'], check=True, capture_output=True)
+        subprocess.run(['gpg', '--batch', '--passphrase', '', '--quick-generate-key',
+                        'Signer <signer@example.invalid>', 'ed25519', 'sign', '0'],
+                       check=True, capture_output=True)
+        keys = subprocess.check_output(['gpg', '--batch', '--with-colons', '--list-keys',
+                                        'signer@example.invalid'], stderr=subprocess.DEVNULL).decode()
+        self.signer = next(line.split(':')[9] for line in keys.splitlines() if line.startswith('fpr:'))
+        self.recipient_public = subprocess.check_output(['gpg', '--export', self.recipient])
+        self.signing_public = subprocess.check_output(['gpg', '--export', self.signer])
+        dump = self.root / 'input'
+        dump.write_bytes(b'example database dump' * 100)
+        self.parts = self.root / 'parts'
+        archive.pack(dump, self.parts, self.recipient, self.signer)
+
+    def test_publish_fails_closed_without_signing_public_key(self):
+        verification_home = self.root / 'verification-home'
+        verification_home.mkdir(mode=0o700)
+        objects = {}
+        def inventory():
+            return {key: len(value) for key, value in objects.items()}
+        def put(key, path):
+            objects[key] = Path(path).read_bytes()
+        def get(key, size, root):
+            data = objects[key]
+            if len(data) != size:
+                raise ValueError('size mismatch')
+            return data
+        with patch.dict('os.environ', {'GNUPGHOME': str(verification_home)}):
+            subprocess.run(['gpg', '--batch', '--quiet', '--import'], input=self.recipient_public,
+                           check=True, capture_output=True)
+            with patch.object(publish, 'inventory', inventory), patch.object(publish, 'put', put), \
+                 patch.object(publish, 'get', get):
+                with self.assertRaises((ValueError, subprocess.CalledProcessError)):
+                    publish.publish(self.parts, 100000, 100, 32_000_000, b'x' * 32,
+                                    ('true', 'true', 'true'), self.signer)
+                # Fail closed: the encryption key alone must not publish anything.
+                self.assertEqual({}, objects)
+                subprocess.run(['gpg', '--batch', '--quiet', '--import'], input=self.signing_public,
+                               check=True, capture_output=True)
+                publish.publish(self.parts, 100000, 100, 32_000_000, b'x' * 32,
+                                ('true', 'true', 'true'), self.signer)
+        self.assertEqual(4, len(objects))
+
+
 if __name__ == '__main__':
     unittest.main()
