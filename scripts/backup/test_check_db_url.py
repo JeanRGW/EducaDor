@@ -158,5 +158,161 @@ class CheckDbUrlTest(unittest.TestCase):
         self.assertNotIn('secret', errors.getvalue())
 
 
+REF = 'abcdefghijklmnop'
+POOLER_URL = (
+    'postgresql://postgres.abcdefghijklmnop:SuperSecretPw'
+    '@aws-0-sa-east-1.pooler.supabase.com:5432/postgres?sslmode=require'
+)
+DIRECT_URL = (
+    'postgresql://postgres:SuperSecretPw'
+    '@db.abcdefghijklmnop.supabase.co:5432/postgres?sslmode=require'
+)
+
+SECRET_MARKERS = ('SuperSecretPw', 'aws-0-sa-east-1',
+                  'db.abcdefghijklmnop.supabase.co',
+                  'postgres.abcdefghijklmnop')
+
+
+class ProjectRefTest(unittest.TestCase):
+    def validate(self, value, expected=None):
+        return check_db_url.validate(value, expected)
+
+    def assert_no_secrets(self, output):
+        for marker in SECRET_MARKERS:
+            self.assertNotIn(marker, output)
+
+    def test_derives_ref_from_session_pooler_username(self):
+        result = self.validate(POOLER_URL)
+        self.assertTrue(result.ok, result.errors)
+        self.assertEqual(result.project_ref, REF)
+
+    def test_derives_ref_from_direct_host(self):
+        result = self.validate(DIRECT_URL)
+        self.assertTrue(result.ok, result.errors)
+        self.assertEqual(result.project_ref, REF)
+
+    def test_direct_host_is_case_insensitive(self):
+        result = self.validate(
+            'postgresql://postgres:SuperSecretPw'
+            '@DB.ABCDEFGHIJKLMNOP.SUPABASE.CO:5432/postgres?sslmode=require'
+        )
+        self.assertEqual(result.project_ref, REF)
+
+    def test_ipv6_host_without_ref_is_unknown(self):
+        result = self.validate(
+            'postgresql://user:SuperSecretPw@[2001:db8::1]:5432/postgres?sslmode=require'
+        )
+        self.assertTrue(result.ok, result.errors)
+        self.assertEqual(result.project_ref, 'unknown')
+
+    def test_generic_host_and_user_are_unknown(self):
+        result = self.validate(
+            'postgresql://postgres:SuperSecretPw@db.example.com:5432/postgres?sslmode=require'
+        )
+        self.assertTrue(result.ok, result.errors)
+        self.assertEqual(result.project_ref, 'unknown')
+
+    def test_unknown_forms_are_unknown(self):
+        for value in (
+            'postgresql://admin.abcdefghijklmnop:SuperSecretPw@db.example.com:5432/postgres',
+            'postgresql://postgres.:SuperSecretPw@db.example.com:5432/postgres',
+            'postgresql://postgres:SuperSecretPw@db..supabase.co:5432/postgres',
+            'postgresql://postgres:SuperSecretPw@db.abcdefghijklmnop.example.com:5432/postgres',
+            'postgresql://postgres:SuperSecretPw@db.abc-def.supabase.co:5432/postgres',
+            'postgres',
+            '',
+        ):
+            with self.subTest(value=value):
+                self.assertEqual(self.validate(value).project_ref, 'unknown')
+
+    def test_conflicting_sources_are_unknown(self):
+        result = self.validate(
+            'postgresql://postgres.aaaaaaaaaaaaaaaa:SuperSecretPw'
+            '@db.bbbbbbbbbbbbbbbb.supabase.co:5432/postgres?sslmode=require'
+        )
+        self.assertTrue(result.ok, result.errors)
+        self.assertEqual(result.project_ref, 'unknown')
+
+    def test_matching_expected_ref_is_accepted(self):
+        result = self.validate(POOLER_URL, REF)
+        self.assertTrue(result.ok, result.errors)
+        result = self.validate(DIRECT_URL, REF)
+        self.assertTrue(result.ok, result.errors)
+
+    def test_mismatching_expected_ref_fails_closed(self):
+        result = self.validate(POOLER_URL, 'zzzzzzzzzzzzzzzz')
+        self.assertFalse(result.ok)
+        message = ' '.join(result.errors)
+        self.assertIn('BACKUP_EXPECTED_PROJECT_REF=zzzzzzzzzzzzzzzz', message)
+        self.assertIn(f'({REF})', message)
+        self.assert_no_secrets(check_db_url.render(result))
+
+    def test_expected_ref_with_unknown_derivation_fails_closed(self):
+        result = self.validate(
+            'postgresql://user:SuperSecretPw@[2001:db8::1]:5432/postgres?sslmode=require',
+            REF,
+        )
+        self.assertFalse(result.ok)
+        self.assertIn('cannot be derived', ' '.join(result.errors))
+        self.assert_no_secrets(check_db_url.render(result))
+
+    def test_unset_or_blank_expected_ref_is_not_checked(self):
+        for expected in (None, '', '   '):
+            with self.subTest(expected=expected):
+                result = self.validate(
+                    'postgresql://postgres:SuperSecretPw@db.example.com:5432/postgres',
+                    expected,
+                )
+                self.assertTrue(result.ok, result.errors)
+
+    def test_render_prints_project_ref_only(self):
+        result = self.validate(POOLER_URL, REF)
+        output = check_db_url.render(result)
+        self.assertIn(f'project_ref={REF}', output)
+        self.assert_no_secrets(output)
+        self.assertNotIn(POOLER_URL, output)
+
+        output = check_db_url.render(self.validate(
+            'postgresql://user:SuperSecretPw@[2001:db8::1]:5432/postgres?sslmode=require'
+        ))
+        self.assertIn('project_ref=unknown', output)
+        self.assert_no_secrets(output)
+
+    def test_main_compares_expected_ref_from_environment(self):
+        stream = io.StringIO()
+        with redirect_stdout(stream):
+            status = check_db_url.main([], env={
+                'PGDATABASE': POOLER_URL,
+                'BACKUP_EXPECTED_PROJECT_REF': REF,
+            })
+        self.assertEqual(status, 0)
+        output = stream.getvalue()
+        self.assertIn(f'project_ref={REF}', output)
+        self.assert_no_secrets(output)
+
+        stream = io.StringIO()
+        with redirect_stdout(stream):
+            status = check_db_url.main([], env={
+                'PGDATABASE': POOLER_URL,
+                'BACKUP_EXPECTED_PROJECT_REF': 'zzzzzzzzzzzzzzzz',
+            })
+        self.assertEqual(status, 1)
+        output = stream.getvalue()
+        self.assertIn('Database URL check: invalid', output)
+        self.assertIn('BACKUP_EXPECTED_PROJECT_REF', output)
+        self.assert_no_secrets(output)
+
+    def test_main_accepts_unset_or_blank_expected_ref(self):
+        for env in ({'PGDATABASE': POOLER_URL},
+                    {'PGDATABASE': POOLER_URL,
+                     'BACKUP_EXPECTED_PROJECT_REF': '   '}):
+            with self.subTest(env=env):
+                stream = io.StringIO()
+                with redirect_stdout(stream):
+                    status = check_db_url.main([], env=env)
+                self.assertEqual(status, 0)
+                self.assertIn(f'project_ref={REF}', stream.getvalue())
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -29,8 +29,19 @@ test('dump step validates the connection URL before invoking pg_dump', () => {
   const dump = dumpStep.indexOf('"$PG_DUMP" --dbname "$PGDATABASE"');
   assert.ok(check > 0, 'the URL validation helper is missing from the dump step');
   assert.ok(dump > check, 'pg_dump must only run after URL validation');
-  assert.match(dumpStep, /PGDATABASE="\$PGDATABASE" python3 scripts\/backup\/check_db_url\.py/);
+  assert.match(dumpStep, /PGDATABASE="\$PGDATABASE" (?:BACKUP_EXPECTED_PROJECT_REF="[^"]*" )?python3 scripts\/backup\/check_db_url\.py/);
   assert.doesNotMatch(dumpStep, /check_db_url\.py[^\n]*\|\| true/);
+});
+
+test('dump step compares the derived project ref with an optional variable', () => {
+  assert.match(dumpStep,
+               /^          BACKUP_EXPECTED_PROJECT_REF: \$\{\{ vars\.BACKUP_EXPECTED_PROJECT_REF \}\}$/m);
+  assert.match(dumpStep, /BACKUP_EXPECTED_PROJECT_REF="\$\{BACKUP_EXPECTED_PROJECT_REF:-\}"/);
+  assert.doesNotMatch(dumpStep, /vars\.BACKUP_EXPECTED_PROJECT_REF \|\|/,
+                      'no default ref: when the variable is unset the check is skipped');
+  const wiring = backup.split('\n').filter((line) => line.trim().startsWith('BACKUP_EXPECTED_PROJECT_REF:'));
+  assert.equal(wiring.length, 1, 'the expected ref is wired only into the dump step');
+  assert.ok(dumpStep.includes(wiring[0]), 'the variable must be scoped to the dump step');
 });
 
 test('dump step passes the URL explicitly and never positionally', () => {

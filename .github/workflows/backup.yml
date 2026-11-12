@@ -93,6 +93,7 @@ jobs:
       - name: Dump database
         env:
           PGDATABASE: ${{ secrets.BACKUP_DATABASE_URL }}
+          BACKUP_EXPECTED_PROJECT_REF: ${{ vars.BACKUP_EXPECTED_PROJECT_REF }}
         shell: bash
         run: |
           set -euo pipefail
@@ -101,8 +102,10 @@ jobs:
           errors="$work/pg.err"
           status=0
           # Reject a bare database name before pg_dump treats it as a local
-          # socket. The helper prints presence flags only, never the URL.
-          env -i PATH="$PATH" HOME="$HOME" PGDATABASE="$PGDATABASE" python3 scripts/backup/check_db_url.py
+          # socket. The helper prints presence flags and the public project ref
+          # only, never the URL or password. When BACKUP_EXPECTED_PROJECT_REF is
+          # set, a different or underivable ref fails closed.
+          env -i PATH="$PATH" HOME="$HOME" PGDATABASE="$PGDATABASE" BACKUP_EXPECTED_PROJECT_REF="${BACKUP_EXPECTED_PROJECT_REF:-}" python3 scripts/backup/check_db_url.py
           # Data-only: a fresh project owns the schema, so CREATE SCHEMA must not
           # collide. Auth rows are included so public.profiles -> auth.users FKs
           # can be restored; auth.schema_migrations is provider bookkeeping and
