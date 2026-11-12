@@ -5,10 +5,18 @@ bare value is treated as a database name and pg_dump falls back to a local Unix
 socket. This helper rejects that case, checks the URI structure with
 urllib.parse and prints a summary that never contains the URL, user, password
 or host values.
+
+It also derives the Supabase project ref so a staging -> production promotion
+can prove the secret points at the intended project. The ref is a public
+identifier and is printed; it comes from the session-pooler username
+(postgres.<ref>) or the direct host (db.<ref>.supabase.co). Any other form is
+reported as unknown, and a ref that conflicts with BACKUP_EXPECTED_PROJECT_REF
+fails closed.
 """
 
 from dataclasses import dataclass, field
 import os
+import re
 import sys
 from urllib.parse import parse_qs, urlsplit
 
@@ -21,6 +29,13 @@ SSLMODE_ADVICE = (
     'sslmode is absent. The Supabase pooler requires TLS; append '
     '?sslmode=require (or &sslmode=require when other parameters are present).'
 )
+EXPECTED_REF_ENV = 'BACKUP_EXPECTED_PROJECT_REF'
+UNKNOWN_PROJECT_REF = 'unknown'
+POOLER_USER_PREFIX = 'postgres.'
+DIRECT_HOST_PREFIX = 'db.'
+DIRECT_HOST_SUFFIX = '.supabase.co'
+# Project refs are public identifiers: short alphanumerics in practice.
+PROJECT_REF_PATTERN = re.compile(r'^[A-Za-z0-9]{1,64}$')
 
 
 @dataclass
@@ -31,6 +46,7 @@ class CheckResult:
     user: bool = False
     database: bool = False
     sslmode: bool = False
+    project_ref: str = UNKNOWN_PROJECT_REF
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
 
@@ -46,25 +62,88 @@ def _missing_database_url():
     )
 
 
-def validate(value):
-    """Return a CheckResult for a connection string without echoing it."""
-    result = CheckResult()
+def _ref_from_pooler_user(username):
+    if not username or not username.startswith(POOLER_USER_PREFIX):
+        return None
+    candidate = username[len(POOLER_USER_PREFIX):]
+    return candidate if PROJECT_REF_PATTERN.match(candidate) else None
+
+
+def _ref_from_direct_host(host):
+    if not host:
+        return None
+    label = host.lower()
+    if not label.endswith(DIRECT_HOST_SUFFIX):
+        return None
+    label = label[:-len(DIRECT_HOST_SUFFIX)]
+    if not label.startswith(DIRECT_HOST_PREFIX):
+        return None
+    candidate = label[len(DIRECT_HOST_PREFIX):]
+    return candidate if PROJECT_REF_PATTERN.match(candidate) else None
+
+
+def derive_project_ref(username, host):
+    """Return the project ref carried by the URL, or None when ambiguous.
+
+    Conflicting usernames and hosts yield None so an expected ref cannot be
+    satisfied by a URL that points at two different projects.
+    """
+    candidates = {
+        candidate
+        for candidate in (_ref_from_pooler_user(username),
+                          _ref_from_direct_host(host))
+        if candidate
+    }
+    if len(candidates) == 1:
+        return candidates.pop()
+    return None
+
+
+def _expected_ref(value):
+    """Normalize the expected ref; unset or blank disables the comparison."""
+    if not value:
+        return None
+    value = value.strip()
+    return value or None
+
+
+def _check_expected_project_ref(result, expected):
+    expected = _expected_ref(expected)
+    if expected is None:
+        return
+    if result.project_ref == UNKNOWN_PROJECT_REF:
+        result.errors.append(
+            f'{EXPECTED_REF_ENV}={expected} is set, but the Supabase project '
+            'ref cannot be derived from PGDATABASE. Use the session pooler URL '
+            '(postgres.<project-ref>@...) or the direct '
+            f'db.<project-ref>.supabase.co host. Expected: {EXPECTED_FORM}'
+        )
+    elif result.project_ref != expected:
+        result.errors.append(
+            f'{EXPECTED_REF_ENV}={expected} does not match the project ref in '
+            f'PGDATABASE ({result.project_ref}). Point BACKUP_DATABASE_URL at '
+            'the intended Supabase project or correct the variable.'
+        )
+
+
+def _inspect(value, result):
+    """Populate result from the URL; every value stays out of the output."""
     if not value:
         result.errors.append(_missing_database_url())
-        return result
+        return
     if value != value.strip():
         result.errors.append(
             'PGDATABASE has leading or trailing whitespace. Remove the spaces '
             'or newline around the connection URL.'
         )
-        return result
+        return
     if not value.startswith(SUPPORTED_SCHEMES):
         result.errors.append(
             'PGDATABASE must start with postgresql:// or postgres://. A bare '
             'database name makes pg_dump connect to a local Unix socket instead '
             f'of the database host. Expected: {EXPECTED_FORM}'
         )
-        return result
+        return
 
     result.scheme = value.split('://', 1)[0]
     try:
@@ -77,8 +156,9 @@ def validate(value):
             'PGDATABASE is not a valid URI. Check the port (1-65535) and use '
             f'brackets around IPv6 hosts, for example [2001:db8::1]. Expected: {EXPECTED_FORM}'
         )
-        return result
+        return
 
+    result.project_ref = derive_project_ref(username, host) or UNKNOWN_PROJECT_REF
     if '@' not in parts.netloc:
         result.errors.append(
             'PGDATABASE is missing user information (no @ in the authority). '
@@ -105,13 +185,25 @@ def validate(value):
     result.sslmode = bool(sslmode and sslmode[0].strip())
     if not result.sslmode:
         result.warnings.append(SSLMODE_ADVICE)
+
+
+def validate(value, expected_ref=None):
+    """Return a CheckResult for a connection string without echoing it.
+
+    When expected_ref (BACKUP_EXPECTED_PROJECT_REF) is set and non-empty, the
+    derived project ref must match it; an unknown ref fails closed.
+    """
+    result = CheckResult()
+    _inspect(value, result)
+    _check_expected_project_ref(result, expected_ref)
     return result
 
 
 def render(result):
-    """Render presence flags only; never include values from the URL."""
+    """Render presence flags and the public project ref; never URL values."""
     lines = [
         f'Database URL check: {"ok" if result.ok else "invalid"}',
+        f'project_ref={result.project_ref}',
         f'  scheme: {result.scheme}',
         f'  host: {"present" if result.host else "missing"}',
         f'  port: {"present" if result.port else "missing"}',
@@ -130,7 +222,8 @@ def main(argv=None, env=None):
         print('usage: check_db_url.py (reads PGDATABASE)', file=sys.stderr)
         return 2
     env = os.environ if env is None else env
-    result = validate(env.get('PGDATABASE', ''))
+    result = validate(env.get('PGDATABASE', ''),
+                      env.get(EXPECTED_REF_ENV))
     print(render(result))
     return 0 if result.ok else 1
 
