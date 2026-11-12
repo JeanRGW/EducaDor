@@ -7,6 +7,11 @@ insert into public.company_memberships(user_id,company_id,role) values
   ('a8000000-0000-4000-8000-000000000001','b8000000-0000-4000-8000-000000000001','empresa'),
   ('a8000000-0000-4000-8000-000000000001','b8000000-0000-4000-8000-000000000001','funcionario');
 insert into auth.mfa_factors(id,user_id,factor_type,status,created_at,updated_at) values ('a8000000-0000-4000-8000-000000000002','a8000000-0000-4000-8000-000000000001','totp','unverified',now(),now());
+-- Auth session rows: the application guard rejects tokens without a live session.
+insert into auth.sessions(id,user_id,created_at,updated_at,not_after) values
+ ('a8000000-0000-4000-8000-000000000003','a8000000-0000-4000-8000-000000000001',now(),now(),now()+interval '24 hours')
+ on conflict do nothing;
+
 set local role authenticated;
 select set_config('request.jwt.claims','{"sub":"a8000000-0000-4000-8000-000000000001","session_id":"a8000000-0000-4000-8000-000000000003","aal":"aal1"}',true);
 select public.select_context('gestor',null);

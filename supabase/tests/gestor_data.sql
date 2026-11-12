@@ -17,6 +17,11 @@ insert into profiles(id, full_name, email) values
   ('a1000000-0000-4000-8000-000000000001', 'Multi Role', 'gestor-data@example.test'),
   ('a1000000-0000-4000-8000-000000000002', 'Employee', 'gestor-employee@example.test');
 insert into platform_gestors(user_id) values ('a1000000-0000-4000-8000-000000000001');
+-- Auth session rows: the application guard rejects tokens without a live session.
+insert into auth.sessions(id,user_id,created_at,updated_at,not_after) values
+ ('f1000000-0000-4000-8000-000000000001','a1000000-0000-4000-8000-000000000001',now(),now(),now()+interval '24 hours')
+ on conflict do nothing;
+
 set local role authenticated;
 select set_config('request.jwt.claims',
   '{"sub":"a1000000-0000-4000-8000-000000000001","session_id":"f1000000-0000-4000-8000-000000000001","user_role":"gestor"}', true);

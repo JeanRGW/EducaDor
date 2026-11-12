@@ -1,5 +1,5 @@
 import { admin, caller, preflight, respond } from '../_shared/invites.ts';
-import { certificateRequest, verifiedSessionId } from './request.ts';
+import { certificateRequest } from './request.ts';
 
 Deno.serve(async (req) => {
   const blocked = preflight(req);
@@ -9,10 +9,8 @@ Deno.serve(async (req) => {
   try {
     const { courseId, companyId } = certificateRequest(await req.json());
     // This JWT has been verified by caller(); session_id is not accepted from the body.
-    const jwt = req.headers.get('authorization')!.replace(/^Bearer\s+/i, '');
-    const sessionId = verifiedSessionId(jwt);
     const { data, error } = await admin.rpc('issue_employee_certificate', {
-      p_user: current.id, p_session: sessionId, p_company: companyId, p_course: courseId,
+      p_user: current.id, p_session: current.session, p_company: companyId, p_course: courseId,
     });
     if (error) {
       if (error.message === 'Course incomplete') return respond(req, { error: 'Course incomplete' }, 409);

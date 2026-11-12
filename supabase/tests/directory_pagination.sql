@@ -11,6 +11,11 @@ create function pg_temp.expect_error(statement text,expected text) returns void 
   begin execute statement; exception when others then if sqlerrm=expected then return; end if; raise; end;
   raise exception 'Expected error %',expected;
 end $$;
+-- Auth session rows: the application guard rejects tokens without a live session.
+insert into auth.sessions(id,user_id,created_at,updated_at,not_after) values
+ ('cc000000-0000-4000-8000-000000000001','aa000000-0000-4000-8000-000000000001',now(),now(),now()+interval '24 hours')
+ on conflict do nothing;
+
 set local role authenticated;
 select set_config('request.jwt.claims','{"sub":"aa000000-0000-4000-8000-000000000001","session_id":"cc000000-0000-4000-8000-000000000001"}',true);
 select pg_temp.expect_error('select platform_professionals_page()','Forbidden');

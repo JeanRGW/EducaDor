@@ -67,6 +67,37 @@ its three Auth identities first, and is disabled by default. It is not required
 for an empty installation. SQL tests create independent Auth fixtures; never run
 them against staging. Bootstrap the real first gestor with the operator script.
 
+## Session revocation boundary
+
+An access JWT stays cryptographically valid until it expires even after a password
+reset or factor deletion removes its `auth.sessions` row. Application authorization
+therefore rechecks the live session on every authenticated path:
+
+- `public.require_live_session()` requires a UUID `session_id` claim and a matching
+  `auth.sessions(id, user_id)` row whose `not_after` is null or in the future.
+  `require_mfa_if_enrolled()`, and therefore `context_role()`,
+  `own_company_id()`, `select_context()` and the other guarded RPCs, call it first.
+- Every table with direct `authenticated` access has a restrictive policy calling
+  `mfa_access_allowed()` (the existing `mfa_*` policies for identity/notification
+  tables, `session_live_*` for the rest); `storage.objects` has the same gate.
+  Revoked-session reads return an authorization error or no rows and writes fail.
+- Service-role RPCs that accept user and session IDs (`issue_employee_certificate`,
+  `claim_push_recipients`, `accept_membership_invite`) call
+  `require_live_session_id()`. It locks the Auth session row `FOR SHARE` inside the
+  mutation transaction, so a revocation committed before the check always denies.
+  A revocation racing an already-started mutation waits for that transaction; it
+  cannot roll back work that acquired the share lock first. This is in-flight
+  semantics, not a distributed "kill" of a completed request.
+- `accept_membership_invite` takes `p_session`; the old three-argument signature
+  remains revoked from clients and fails closed so a rolling function deployment
+  cannot grant access without a live session.
+
+Not covered: Auth's own endpoints (challenge, unenrollment, sign-out, password
+recovery), already-issued private signed URLs until they expire, and the public
+bucket. Revoking only a refresh token without deleting the session row is not
+detected. The gate adds one primary-key lookup to protected requests and keeps the
+existing verified-factor lookup; report queries remain guarded owner reads.
+
 ## Normal hosted deployment
 
 ```bash
