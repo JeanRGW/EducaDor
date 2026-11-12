@@ -130,7 +130,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                               end: Alignment.topRight,
                               colors: [
                                 AppColors.primary,
-                                context.successForeground,
+                                AppColors.accentTeal,
                               ],
                             ),
                             borderRadius: BorderRadius.circular(16),
