@@ -3,10 +3,14 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../app/theme.dart';
 import '../../data/models/models.dart';
 import '../../data/repositories/gestor_providers.dart';
+import '../../data/repositories/repositories.dart';
+import '../../data/session/session_controller.dart';
+import '../reports/csv_export.dart';
 import '../../shared/widgets/app_icons.dart';
 import '../../shared/widgets/admin_styles.dart';
 import '../../shared/widgets/charts.dart';
@@ -23,6 +27,108 @@ class GestorReportsScreen extends ConsumerStatefulWidget {
 class _GestorReportsScreenState extends ConsumerState<GestorReportsScreen> {
   late ReportPeriod _period;
   int _offset = 0;
+  bool _exporting = false;
+
+  Future<void> _export() async {
+    final session = ref.read(sessionProvider).value;
+    if (session == null ||
+        session.active?.role != Role.gestor ||
+        session.needsMfa ||
+        session.needsPassword) {
+      return;
+    }
+    final period = _period;
+    var valid = true;
+    final router = GoRouter.maybeOf(context);
+    const reportPath = '/gestor/relatorios';
+    void routeChanged() {
+      if (router?.routerDelegate.currentConfiguration.uri.path != reportPath) {
+        valid = false;
+      }
+    }
+
+    router?.routerDelegate.addListener(routeChanged);
+    if (router != null) routeChanged();
+    final subscription = ref.listenManual(sessionProvider, (previous, next) {
+      if (next.value?.user.id != session.user.id ||
+          next.value?.needsMfa == true ||
+          next.value?.needsPassword == true ||
+          next.value?.active?.role != Role.gestor ||
+          next.value?.active?.companyId != session.active?.companyId) {
+        valid = false;
+      }
+    });
+    bool current() => valid && mounted;
+    setState(() => _exporting = true);
+    try {
+      final repository = ref.read(reportRepositoryProvider);
+      if (!current()) return;
+      final companies = requireSingleSnapshot(
+        await repository.platformCompletion(),
+      );
+      if (!current()) return;
+      final activity = await repository.platformActivity(
+        from: period.from,
+        to: period.to,
+      );
+      if (!current()) return;
+      final rows = <List<String>>[
+        ['Relatório', 'Período inicial', 'Período final', 'Nome', 'Valor'],
+        for (final company in companies)
+          [
+            'Conclusão atual por empresa',
+            '',
+            '',
+            company.company,
+            company.percent?.toString().replaceAll('.', ',') ?? 'Sem dados',
+          ],
+        for (final entry in activity.popularContent)
+          [
+            'Conteúdo mais popular (top 10)',
+            formatDate(period.from),
+            formatDate(period.to),
+            entry.title,
+            entry.completions.toString(),
+          ],
+        for (final entry in activity.engagement)
+          [
+            'Usuários ativos por mês',
+            formatDate(period.from),
+            formatDate(period.to),
+            '${entry.month.month.toString().padLeft(2, '0')}/${entry.month.year}',
+            entry.activeUsers.toString(),
+          ],
+      ];
+      await saveCsv(
+        reportFilename('relatorio-gestor', DateTime.now()),
+        encodeCsv(rows),
+      );
+    } on ExportTooLarge {
+      if (mounted && valid) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Exportação indisponível com 50 empresas ou mais: não é possível garantir um retrato consistente.',
+            ),
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted && valid) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Não foi possível exportar o relatório. Tente novamente.',
+            ),
+          ),
+        );
+      }
+    } finally {
+      subscription.close();
+      router?.routerDelegate.removeListener(routeChanged);
+      if (mounted) setState(() => _exporting = false);
+    }
+  }
 
   @override
   void initState() {
@@ -52,7 +158,7 @@ class _GestorReportsScreenState extends ConsumerState<GestorReportsScreen> {
         child: child,
       ),
     );
-    if (selected == null || !mounted) return;
+    if (selected == null || !mounted || _exporting) return;
     final days =
         DateTime.utc(selected.end.year, selected.end.month, selected.end.day)
             .difference(
@@ -107,15 +213,21 @@ class _GestorReportsScreenState extends ConsumerState<GestorReportsScreen> {
           backgroundColor: AppColors.surface,
           titleTextStyle: AdminStyles.pageTitle,
           title: const Text('Relatórios e Análises'),
-          actions: const [
+          actions: [
             IconButton(
-              tooltip: 'Exportar CSV',
-              onPressed: null,
-              icon: SvgIcon(
-                AppIcons.fileDownload,
-                size: 20,
-                color: AppColors.textMuted,
-              ),
+              tooltip: _exporting ? 'Exportando CSV' : 'Exportar CSV',
+              onPressed: _exporting ? null : _export,
+              icon: _exporting
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const SvgIcon(
+                      AppIcons.fileDownload,
+                      size: 20,
+                      color: AppColors.textMuted,
+                    ),
             ),
           ],
         ),
@@ -137,7 +249,7 @@ class _GestorReportsScreenState extends ConsumerState<GestorReportsScreen> {
                     borderRadius: 8,
                     color: AppColors.background,
                     padding: EdgeInsets.zero,
-                    onTap: _pickPeriod,
+                    onTap: _exporting ? null : _pickPeriod,
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 12,
@@ -170,7 +282,9 @@ class _GestorReportsScreenState extends ConsumerState<GestorReportsScreen> {
               ),
               const Padding(
                 padding: EdgeInsets.fromLTRB(16, 12, 16, 0),
-                child: Text('Exportações disponíveis em breve.'),
+                child: Text(
+                  'O CSV inclui a conclusão atual e a atividade do período selecionado, consultadas em momentos distintos.',
+                ),
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),

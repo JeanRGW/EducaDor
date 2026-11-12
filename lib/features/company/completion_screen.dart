@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../app/theme.dart';
+import '../../data/models/models.dart';
 import '../../data/repositories/company_providers.dart';
+import '../../data/repositories/repositories.dart';
 import '../../data/session/session_controller.dart';
 import '../../shared/widgets/admin_styles.dart';
 import '../../shared/widgets/app_icons.dart';
 import '../../shared/widgets/charts.dart';
 import '../../shared/widgets/common.dart';
 import '../gestor/widgets.dart' show DataSkeleton;
+import '../reports/csv_export.dart';
 import 'widgets.dart';
 
 class CompanyCompletionScreen extends ConsumerStatefulWidget {
@@ -22,6 +26,97 @@ class _CompanyCompletionScreenState
     extends ConsumerState<CompanyCompletionScreen> {
   int _lastPage = 0;
   String? _companyId;
+  bool _exporting = false;
+
+  Future<void> _export() async {
+    final session = ref.read(sessionProvider).value;
+    final companyId = session?.active?.companyId;
+    if (session == null ||
+        session.active?.role != Role.empresa ||
+        companyId == null ||
+        session.needsMfa ||
+        session.needsPassword) {
+      return;
+    }
+    var valid = true;
+    final router = GoRouter.maybeOf(context);
+    const reportPath = '/empresa/relatorios';
+    void routeChanged() {
+      if (router?.routerDelegate.currentConfiguration.uri.path != reportPath) {
+        valid = false;
+      }
+    }
+
+    router?.routerDelegate.addListener(routeChanged);
+    if (router != null) routeChanged();
+    final subscription = ref.listenManual(sessionProvider, (previous, next) {
+      if (next.value?.user.id != session.user.id ||
+          next.value?.needsMfa == true ||
+          next.value?.needsPassword == true ||
+          next.value?.active?.role != Role.empresa ||
+          next.value?.active?.companyId != companyId) {
+        valid = false;
+      }
+    });
+    bool current() => valid && mounted;
+    setState(() => _exporting = true);
+    try {
+      final repository = ref.read(employeeRepositoryProvider);
+      if (!current()) return;
+      final page = await repository.page(companyId);
+      if (!mounted || !valid) return;
+      final employees = requireSingleSnapshot(
+        page.items,
+        total: page.filteredCount,
+      );
+      if (employees.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Nenhum funcionário para exportar.')),
+        );
+        return;
+      }
+      final rows = <List<String>>[
+        ['Funcionário', 'Departamento', 'Cargo', 'Conclusão (%)'],
+        for (final employee in employees)
+          [
+            employee.fullName,
+            employee.department,
+            employee.jobTitle,
+            employee.hasCompletion
+                ? employee.completionPct.toString().replaceAll('.', ',')
+                : 'Sem dados',
+          ],
+      ];
+      await saveCsv(
+        reportFilename('conclusao-funcionarios', DateTime.now()),
+        encodeCsv(rows),
+      );
+    } on ExportTooLarge {
+      if (mounted && valid) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Exportação indisponível para mais de 50 funcionários: não é possível garantir um retrato consistente.',
+            ),
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted && valid) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Não foi possível exportar os dados. Tente novamente.',
+            ),
+          ),
+        );
+      }
+    } finally {
+      subscription.close();
+      router?.routerDelegate.removeListener(routeChanged);
+      if (mounted) setState(() => _exporting = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -206,11 +301,12 @@ class _CompanyCompletionScreenState
                               child: Text('Exportar relatório em PDF'),
                             ),
                           ),
-                          const Tooltip(
-                            message: 'Exportação em CSV disponível em breve.',
-                            child: FilledButton(
-                              onPressed: null,
-                              child: Text('Exportar dados em CSV'),
+                          FilledButton(
+                            onPressed: _exporting ? null : _export,
+                            child: Text(
+                              _exporting
+                                  ? 'Exportando CSV...'
+                                  : 'Exportar dados em CSV',
                             ),
                           ),
                         ];
@@ -236,7 +332,7 @@ class _CompanyCompletionScreenState
                     ),
                     const SizedBox(height: 8),
                     const Text(
-                      'Exportações disponíveis em breve.',
+                      'O CSV contém a conclusão atual dos funcionários desta empresa.',
                       style: CompanyStyles.caption,
                     ),
                   ],
