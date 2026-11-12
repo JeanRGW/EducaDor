@@ -58,9 +58,13 @@ class RoleShell extends StatelessWidget {
     return Scaffold(
       body: navigationShell,
       bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          border: Border(top: BorderSide(color: AppColors.border)),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          border: Border(
+            top: BorderSide(
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
+          ),
         ),
         child: SafeArea(
           top: false,
@@ -115,8 +119,10 @@ class _TabButton extends StatelessWidget {
             SvgIcon(
               item.icon,
               color: selected
-                  ? AppColors.successDarkGreen
-                  : AppColors.textMuted,
+                  ? (Theme.of(context).brightness == Brightness.dark
+                        ? Theme.of(context).colorScheme.primary
+                        : context.successForeground)
+                  : Theme.of(context).colorScheme.outline,
               size: compact ? 20 : 24,
             ),
             const SizedBox(height: 4),
@@ -131,8 +137,10 @@ class _TabButton extends StatelessWidget {
                     fontSize: compact ? 10 : 10.5,
                     fontWeight: FontWeight.w500,
                     color: selected
-                        ? AppColors.successDarkGreen
-                        : AppColors.textMuted,
+                        ? (Theme.of(context).brightness == Brightness.dark
+                              ? Theme.of(context).colorScheme.primary
+                              : context.successForeground)
+                        : Theme.of(context).colorScheme.outline,
                   ),
                 ),
               ),

@@ -35,10 +35,10 @@ class AppCard extends StatelessWidget {
       width: double.infinity,
       padding: padding,
       decoration: BoxDecoration(
-        color: color ?? AppColors.surface,
+        color: color ?? Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(borderRadius),
         border: showBorder
-            ? Border.all(color: AppColors.border)
+            ? Border.all(color: Theme.of(context).colorScheme.outlineVariant)
             : Border.all(color: Colors.transparent),
       ),
       child: child,
@@ -77,7 +77,7 @@ class SectionHeader extends StatelessWidget {
               title,
               style: TextStyle(
                 fontFamily: AppFonts.outfit,
-                color: AppColors.textPrimary,
+                color: Theme.of(context).colorScheme.onSurface,
                 fontSize: compact ? 14 : 17,
                 fontWeight: FontWeight.w700,
               ),
@@ -94,7 +94,7 @@ class SectionHeader extends StatelessWidget {
                     fontSize: compact ? 12 : 14,
                     fontWeight: FontWeight.w600,
                     color: compact
-                        ? AppColors.successDarkGreen
+                        ? context.successForeground
                         : AppColors.primary,
                   ),
                 ),
@@ -155,15 +155,15 @@ class AvatarBadge extends StatelessWidget {
       width: size,
       height: size,
       alignment: Alignment.center,
-      decoration: const BoxDecoration(
-        color: AppColors.successBg,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.secondaryContainer,
         shape: BoxShape.circle,
       ),
       child: Text(
         initials,
         style: TextStyle(
           fontFamily: AppFonts.outfit,
-          color: AppColors.successDarkGreen,
+          color: Theme.of(context).colorScheme.onSecondaryContainer,
           fontWeight: FontWeight.w800,
           fontSize: size * 0.36,
         ),
@@ -191,7 +191,7 @@ class ProgressBar extends StatelessWidget {
       child: LinearProgressIndicator(
         value: value.clamp(0.0, 1.0),
         minHeight: height,
-        backgroundColor: AppColors.chipBg,
+        backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
         valueColor: AlwaysStoppedAnimation<Color>(color),
       ),
     );
@@ -234,7 +234,7 @@ class FilterChips extends StatelessWidget {
   final List<String> options;
   final int selected;
   final ValueChanged<int> onSelected;
-  final Color activeColor;
+  final Color? activeColor;
   final bool outlined;
   final bool plainInactive;
   final bool solidSelection;
@@ -244,7 +244,7 @@ class FilterChips extends StatelessWidget {
     required this.options,
     required this.selected,
     required this.onSelected,
-    this.activeColor = AppColors.successDarkGreen,
+    this.activeColor,
     this.outlined = false,
     this.plainInactive = false,
     this.solidSelection = false,
@@ -253,6 +253,7 @@ class FilterChips extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final compact = outlined || plainInactive;
+    final accent = activeColor ?? context.successForeground;
     return SizedBox(
       height: compact ? 28 : 36,
       child: ListView.separated(
@@ -270,17 +271,21 @@ class FilterChips extends StatelessWidget {
                 color: outlined
                     ? active
                           ? solidSelection
-                                ? activeColor
-                                : AppColors.successBg
-                          : AppColors.background
+                                ? accent
+                                : context.successSurface
+                          : Theme.of(context).scaffoldBackgroundColor
                     : active
-                    ? activeColor
+                    ? accent
                     : plainInactive
                     ? Colors.transparent
-                    : AppColors.chipBg,
+                    : Theme.of(context).colorScheme.surfaceContainerHigh,
                 borderRadius: BorderRadius.circular(20),
                 border: outlined
-                    ? Border.all(color: active ? activeColor : AppColors.border)
+                    ? Border.all(
+                        color: active
+                            ? accent
+                            : Theme.of(context).colorScheme.outlineVariant,
+                      )
                     : null,
               ),
               child: Text(
@@ -292,13 +297,13 @@ class FilterChips extends StatelessWidget {
                       ? active
                             ? solidSelection
                                   ? Colors.white
-                                  : activeColor
-                            : const Color(0xFF475569)
+                                  : accent
+                            : Theme.of(context).colorScheme.onSurfaceVariant
                       : active
                       ? Colors.white
                       : plainInactive
-                      ? const Color(0xFF475569)
-                      : AppColors.textPrimary,
+                      ? Theme.of(context).colorScheme.onSurfaceVariant
+                      : Theme.of(context).colorScheme.onSurface,
                 ),
               ),
             ),
@@ -334,23 +339,35 @@ class SearchField extends StatelessWidget {
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: compact
-            ? const TextStyle(fontSize: 13, color: Color(0xFF475569))
+            ? TextStyle(
+                fontSize: 13,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              )
             : null,
         prefixIcon:
             prefixIcon ??
-            const SvgIcon(AppIcons.search, color: AppColors.textMuted),
+            SvgIcon(
+              AppIcons.search,
+              color: Theme.of(context).colorScheme.outline,
+            ),
         prefixIconConstraints: compact
             ? const BoxConstraints(minWidth: 40, minHeight: 36)
             : null,
         filled: true,
-        fillColor: compact ? AppColors.background : AppColors.surface,
+        fillColor: compact
+            ? Theme.of(context).scaffoldBackgroundColor
+            : Theme.of(context).colorScheme.surface,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(compact ? 8 : 14),
-          borderSide: const BorderSide(color: AppColors.border),
+          borderSide: BorderSide(
+            color: Theme.of(context).colorScheme.outlineVariant,
+          ),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(compact ? 8 : 14),
-          borderSide: const BorderSide(color: AppColors.border),
+          borderSide: BorderSide(
+            color: Theme.of(context).colorScheme.outlineVariant,
+          ),
         ),
         focusedBorder: compact
             ? OutlineInputBorder(
@@ -387,7 +404,9 @@ class StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final deltaColor = positive ? AppColors.success : AppColors.danger;
+    final deltaColor = positive
+        ? context.successForeground
+        : context.dangerForeground;
     return AppCard(
       padding: const EdgeInsets.all(14),
       child: Column(
@@ -398,10 +417,10 @@ class StatCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
-                    color: AppColors.textSecondary,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
               ),
@@ -411,11 +430,11 @@ class StatCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: AppFonts.outfit,
               fontSize: 24,
               fontWeight: FontWeight.w800,
-              color: AppColors.textPrimary,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
           if (delta != null) ...[
@@ -470,11 +489,13 @@ class FormFieldLabel extends StatelessWidget {
         Text(
           compact ? label : label.toUpperCase(),
           style: compact
-              ? AdminStyles.fieldLabel
-              : const TextStyle(
+              ? AdminStyles.fieldLabel(context).copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                )
+              : TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.textMuted,
+                  color: Theme.of(context).colorScheme.outline,
                   letterSpacing: 0.6,
                 ),
         ),
@@ -508,16 +529,19 @@ class FormFieldLabel extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: selected,
           isExpanded: true,
           icon: const SvgIcon(AppIcons.chevronDown, color: AppColors.primary),
-          style: const TextStyle(color: AppColors.textPrimary, fontSize: 15),
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurface,
+            fontSize: 15,
+          ),
           items: items
               .map((e) => DropdownMenuItem<String>(value: e, child: Text(e)))
               .toList(),
