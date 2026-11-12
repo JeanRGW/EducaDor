@@ -561,6 +561,14 @@ class GestorDashboard {
   });
 }
 
+class ExportPage<T> {
+  final int total;
+  final int limit;
+  final List<T> items;
+
+  const ExportPage({required this.total, required this.items, this.limit = 50});
+}
+
 class CompanyCompletion {
   final String companyId;
   final String company;
