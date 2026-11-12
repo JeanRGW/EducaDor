@@ -158,7 +158,7 @@ class _GestorReportsScreenState extends ConsumerState<GestorReportsScreen> {
         child: child,
       ),
     );
-    if (selected == null || !mounted) return;
+    if (selected == null || !mounted || _exporting) return;
     final days =
         DateTime.utc(selected.end.year, selected.end.month, selected.end.day)
             .difference(
@@ -249,7 +249,7 @@ class _GestorReportsScreenState extends ConsumerState<GestorReportsScreen> {
                     borderRadius: 8,
                     color: AppColors.background,
                     padding: EdgeInsets.zero,
-                    onTap: _pickPeriod,
+                    onTap: _exporting ? null : _pickPeriod,
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 12,
