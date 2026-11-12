@@ -255,6 +255,44 @@ class PublishTest(unittest.TestCase):
         self.assertNotIn('duplicate-day', selected)
         self.assertEqual((2025, 1), datetime.strptime(times['14'], '%Y-%m-%dT%H:%M:%S.%fZ').isocalendar()[:2])
 
+    def test_daily_weekly_publication_across_iso_year_rollover(self):
+        class Clock(datetime):
+            current = None
+
+            @classmethod
+            def now(cls, tz=None):
+                return cls.current.replace(tzinfo=tz)
+
+        start = datetime(2024, 12, 15, 12)
+        runs_by_date = {}
+        with patch.object(publish, 'datetime', Clock):
+            for offset in range(35):
+                Clock.current = start + timedelta(days=offset)
+                before = set(self.s3.objects)
+                publish.publish(self.root, 100000, 100, 32_000_000, self.secret,
+                                ('true', 'true', 'true'), 'A' * 40, daily=7, weekly=4)
+                created = set(self.s3.objects) - before
+                run = next(key.split('/')[2] for key in created if key.endswith('/complete.json'))
+                runs_by_date[Clock.current.date().isoformat()] = run
+
+        # Jan 12 is ISO 2025-W02; Dec 29 belongs to ISO 2024-W52.
+        dates = {'2025-01-12', '2025-01-13', '2025-01-14', '2025-01-15',
+                 '2025-01-16', '2025-01-17', '2025-01-18', '2025-01-05', '2024-12-29'}
+        expected = {f'{publish.PREFIX}{runs_by_date[day]}/{name}' for day in dates
+                    for name in ('complete.json', 'manifest.json', 'manifest.sig', '0000.gpgpart')}
+        self.assertEqual(expected, set(self.s3.objects))
+        self.assertTrue(any(op == 'delete-object' for op, _ in self.s3.calls))
+
+    def test_run_cap_fails_without_deletion(self):
+        for i in range(publish.MAX_RUNS):
+            self.s3.objects[f'{publish.PREFIX}{i:032x}/complete.json'] = b'x'
+        before = dict(self.s3.objects)
+        with self.assertRaisesRegex(ValueError, 'too many prior runs'):
+            publish.publish(self.root, 100000, 100, 32_000_000, self.secret,
+                            ('true', 'true', 'true'), 'A' * 40, daily=7, weekly=4)
+        self.assertEqual(before, self.s3.objects)
+        self.assertFalse(any(op == 'delete-object' for op, _ in self.s3.calls))
+
     def test_pruning_reads_candidate_metadata_not_body(self):
         self.publish()
         oldest = next(k.split('/')[2] for k in self.s3.objects if k.endswith('/complete.json'))
