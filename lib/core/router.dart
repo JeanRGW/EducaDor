@@ -69,6 +69,9 @@ final routerProvider = Provider<GoRouter>((ref) {
           (sessionState.isLoading || sessionState.value?.active == null)) {
         pendingLocation = state.uri.toString();
       }
+      if (sessionState.hasError) {
+        return loc == '/session-error' ? null : '/session-error';
+      }
       if (sessionState.isLoading) {
         return loc == '/splash' ||
                 loc == '/invite/accept' ||
@@ -76,9 +79,6 @@ final routerProvider = Provider<GoRouter>((ref) {
                 loc == '/reset-password'
             ? null
             : '/splash';
-      }
-      if (sessionState.hasError) {
-        return loc == '/session-error' ? null : '/session-error';
       }
       final session = sessionState.value;
 
