@@ -12,36 +12,29 @@ import publish
 class FakeS3:
     def __init__(self):
         self.objects = {}
-        self.clock = 0
         self.corrupt = False
         self.fail_put = False
-        self.deleted = []
+        self.calls = []
 
     def __call__(self, command, **kwargs):
         args = command[command.index('s3api') + 1:]
         operation = args[0]
+        self.calls.append((operation, args))
         def value(flag):
             return args[args.index(flag) + 1]
         if operation == 'list-objects-v2':
-            data = {'Contents': [{'Key': k, 'Size': len(v[0]), 'LastModified': v[1]}
-                                 for k, v in self.objects.items()]}
+            data = {'Contents': [{'Key': k, 'Size': len(v)} for k, v in self.objects.items()]}
             output = json.dumps(data).encode()
         elif operation == 'put-object':
             if self.fail_put:
                 raise subprocess.CalledProcessError(1, command)
-            self.clock += 1
-            self.objects[value('--key')] = (Path(value('--body')).read_bytes(), f'{self.clock:08d}')
+            self.objects[value('--key')] = Path(value('--body')).read_bytes()
             output = b'{}'
         elif operation == 'get-object':
-            data = self.objects[value('--key')][0]
+            data = self.objects[value('--key')]
             if self.corrupt:
                 data = bytes([data[0] ^ 1]) + data[1:]
             Path(args[-1]).write_bytes(data)
-            output = b'{}'
-        elif operation == 'delete-object':
-            key = value('--key')
-            self.deleted.append(key)
-            del self.objects[key]
             output = b'{}'
         else:
             raise AssertionError(operation)
@@ -66,19 +59,41 @@ class PublishTest(unittest.TestCase):
         self.addCleanup(self.runner.stop)
         self.secret = b'x' * 32
 
-    def publish(self, budget=100000, reserve=100):
-        publish.publish(self.root, budget, reserve, self.secret)
+    def publish(self, budget=100000, reserve=100, egress=20_000_000, attestations=('true', 'true')):
+        publish.publish(self.root, budget, reserve, egress, self.secret, attestations)
 
-    def test_retention_only_confirmed_and_unknown_preserved(self):
-        self.s3.objects['database/v1/../evil'] = (b'x', '0')
-        self.s3.objects['database/v1/' + 'a' * 32 + '/0000.gpgpart'] = (b'x', '0')
+    def test_success_uses_prior_metadata_only_and_never_prunes(self):
+        self.publish()
+        previous = set(self.s3.objects)
+        self.s3.calls.clear()
+        self.publish()
+        prior_gets = [args[args.index('--key') + 1] for op, args in self.s3.calls if op == 'get-object'
+                      and args[args.index('--key') + 1] in previous]
+        self.assertEqual(len(prior_gets), 2)
+        self.assertFalse(any(key.endswith('.gpgpart') for key in prior_gets))
+        self.assertEqual(len(self.s3.objects), 6)
+        self.assertFalse(any(op == 'delete-object' for op, _ in self.s3.calls))
+
+    def test_replayed_marker_never_triggers_pruning(self):
         for _ in range(4):
             self.publish()
-        markers = [k for k in self.s3.objects if k.endswith('/complete.json')]
-        self.assertEqual(len(markers), 3)
-        self.assertEqual(len(self.s3.deleted), 3)
-        self.assertIn('database/v1/../evil', self.s3.objects)
-        self.assertIn('database/v1/' + 'a' * 32 + '/0000.gpgpart', self.s3.objects)
+        old_marker = next(k for k in self.s3.objects if k.endswith('/complete.json'))
+        self.s3.objects[old_marker] = bytes(self.s3.objects[old_marker])
+        self.publish()
+        self.assertEqual(len(self.s3.objects), 15)
+        self.assertFalse(any(op == 'delete-object' for op, _ in self.s3.calls))
+
+    def test_realistic_egress_estimate_and_pre_network_failure(self):
+        entries = [{'size': 40_000_000}] * 15
+        estimate = publish.egress_estimate(entries, 4000)
+        self.assertGreater(estimate, 600_000_000)
+        self.assertLess(estimate, 620_000_000)
+        with self.assertRaises(ValueError):
+            self.publish(egress=1)
+        self.assertFalse(self.s3.calls)
+        with self.assertRaises(ValueError):
+            self.publish(attestations=('true', 'false'))
+        self.assertFalse(self.s3.calls)
 
     def test_budget_and_upload_failure(self):
         with self.assertRaises(ValueError):
@@ -87,33 +102,34 @@ class PublishTest(unittest.TestCase):
         self.s3.fail_put = True
         with self.assertRaises(subprocess.CalledProcessError):
             self.publish()
-        self.assertFalse(self.s3.deleted)
+        self.assertFalse(self.s3.objects)
 
-    def test_readback_failure_never_marks_complete_or_prunes(self):
+    def test_readback_failure_never_marks_complete(self):
         self.s3.corrupt = True
         with self.assertRaises(ValueError):
             self.publish()
         self.assertFalse(any(k.endswith('/complete.json') for k in self.s3.objects))
-        self.assertFalse(self.s3.deleted)
-
-    def test_untrusted_completed_backup_is_not_pruned(self):
-        self.publish()
-        marker = next(k for k in self.s3.objects if k.endswith('/complete.json'))
-        _, timestamp = self.s3.objects[marker]
-        self.s3.objects[marker] = (b'{"version":1,"manifest_sha256":"' + b'0' * 64 +
-                                   b'","hmac_sha256":"' + b'0' * 64 + b'"}', timestamp)
-        for _ in range(4):
+        with self.assertRaises(ValueError):
             self.publish()
-        self.assertIn(marker, self.s3.objects)
-        self.assertNotIn(marker, self.s3.deleted)
 
-    def test_bad_manifest_name_and_untrusted_marker(self):
+    def test_unknown_and_missing_parts_block_publication(self):
+        self.s3.objects['database/v1/../evil'] = b'x'
+        with self.assertRaises(ValueError):
+            self.publish()
+        self.s3.objects.clear()
+        self.publish()
+        part = next(k for k in self.s3.objects if k.endswith('.gpgpart'))
+        del self.s3.objects[part]
+        with self.assertRaises(ValueError):
+            self.publish()
+
+    def test_bad_manifest_name(self):
         manifest = json.loads((self.root / 'manifest.json').read_text())
         manifest['parts'][0]['name'] = '../secret'
         (self.root / 'manifest.json').write_text(json.dumps(manifest))
         with self.assertRaises(ValueError):
             self.publish()
-        self.assertFalse(self.s3.objects)
+        self.assertFalse(self.s3.calls)
 
 
 if __name__ == '__main__':

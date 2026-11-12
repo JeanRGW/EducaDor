@@ -31,6 +31,9 @@ jobs:
       BACKUP_S3_ENDPOINT: ${{ vars.BACKUP_S3_ENDPOINT }}
       BACKUP_TOTAL_BUDGET_BYTES: ${{ vars.BACKUP_TOTAL_BUDGET_BYTES }}
       BACKUP_NON_BACKUP_RESERVE_BYTES: ${{ vars.BACKUP_NON_BACKUP_RESERVE_BYTES }}
+      BACKUP_EGRESS_BUDGET_BYTES: ${{ vars.BACKUP_EGRESS_BUDGET_BYTES }}
+      BACKUP_EXCLUSIVE_WRITER_ATTESTED: ${{ vars.BACKUP_EXCLUSIVE_WRITER_ATTESTED }}
+      BACKUP_MULTIPART_RESERVE_ATTESTED: ${{ vars.BACKUP_MULTIPART_RESERVE_ATTESTED }}
       BACKUP_RECIPIENT_FINGERPRINT: ${{ vars.BACKUP_RECIPIENT_FINGERPRINT }}
       BACKUP_PUBLIC_KEY: ${{ vars.BACKUP_PUBLIC_KEY }}
       BACKUP_HMAC_KEY_HEX: ${{ secrets.BACKUP_HMAC_KEY_HEX }}
@@ -50,6 +53,15 @@ jobs:
           trap 'rm -rf "$work"' EXIT
           export GNUPGHOME="$work/gnupg"
           mkdir -m 700 "$GNUPGHOME"
+          python3 -m venv "$work/aws-venv"
+          "$work/aws-venv/bin/pip" install --disable-pip-version-check 'awscli==1.36.40' >/dev/null
+          export PATH="$work/aws-venv/bin:$PATH"
+          export AWS_CONFIG_FILE="$work/aws-config" AWS_SHARED_CREDENTIALS_FILE="$work/aws-credentials"
+          export AWS_MAX_ATTEMPTS=1 AWS_RETRY_MODE=standard AWS_PAGER=''
+          unset AWS_PROFILE AWS_DEFAULT_PROFILE AWS_SESSION_TOKEN AWS_SECURITY_TOKEN AWS_CA_BUNDLE
+          printf '[default]\nregion = sa-east-1\ns3 =\n    addressing_style = path\n' > "$AWS_CONFIG_FILE"
+          touch "$AWS_SHARED_CREDENTIALS_FILE"
+          BACKUP_CLI_TEST=1 python3 -m unittest discover -s scripts/backup -p test_cli_integration.py -v
           printf '%s' "$BACKUP_PUBLIC_KEY" | gpg --batch --quiet --import
           pg_dump --no-owner --no-acl --file "$work/dump.sql" 2>/dev/null || { echo 'Database dump failed.' >&2; exit 1; }
           python3 scripts/backup/archive.py pack "$work/dump.sql" "$work/archive" --recipient "$BACKUP_RECIPIENT_FINGERPRINT"
