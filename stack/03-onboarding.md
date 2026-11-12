@@ -48,16 +48,18 @@ wipe and replacement baseline are documented in [Database workflow](07-database.
    deploy Pages with the `web/_redirects` fallback so invitation URLs survive
    refresh. The public file must never contain an admin credential.
 
-From the repository root, an operator with access to the **staging** project
-can link the CLI, review the pending migrations, and deploy the two implemented
-invitation functions:
+Hosted migration application for the staged profile privacy rollout is **blocked**
+until a separately approved safe version-targeted procedure exists. An unbounded
+push would skip the compatibility cutover; see [Profile privacy rollout](14-profile-privacy-rollout.md)
+and [Database workflow](07-database.md) before any migration deployment. Do not
+interpret the invitation Function commands below as approval to deploy migrations.
+
+From the repository root, an authorized operator can separately configure and
+deploy the two implemented invitation functions after confirming their prerequisites:
 
 ```bash
 npx supabase login
 npx supabase link --project-ref lrlqmkamgncdgppyqnvu
-npx supabase db push --dry-run
-# After confirming the linked project and migration list:
-npx supabase db push
 npx supabase secrets set --project-ref lrlqmkamgncdgppyqnvu \
   APP_ORIGIN=https://app.educador.rgw.app \
   ALLOWED_APP_ORIGINS=https://app.educador.rgw.app,https://educador-ayp.pages.dev,http://localhost:8080
