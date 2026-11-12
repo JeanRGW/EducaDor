@@ -22,6 +22,13 @@ test('backup installs and checks the PGDG PostgreSQL 17 client before dumping', 
   assert.match(backup, /pg_dump --no-owner --no-acl/);
 });
 
+test('backup uses a restorable data-only public and auth dump', () => {
+  assert.match(backup, /pg_dump --no-owner --no-acl --data-only --schema=public --schema=auth/);
+  assert.match(backup, /--exclude-table-data=auth\.schema_migrations/);
+  assert.doesNotMatch(backup, /pg_dump --no-owner --no-acl --file/);
+  assert.match(backup, /PGDATABASE: \$\{\{ secrets\.BACKUP_DATABASE_URL \}\}/);
+});
+
 test('backup uses B2 path-style and phase-isolated credentials', () => {
   assert.match(backup, /https:\/\/s3\.us-east-005\.backblazeb2\.com/);
   assert.match(backup, /addressing_style = path/);
