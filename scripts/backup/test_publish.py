@@ -67,15 +67,15 @@ class PublishTest(unittest.TestCase):
     def publish(self, budget=100000, reserve=100, egress=20_000_000, attestations=('true', 'true')):
         publish.publish(self.root, budget, reserve, egress, self.secret, attestations, 'A' * 40)
 
-    def test_prior_marker_is_quarantined_and_never_pruned(self):
+    def test_recurring_runs_are_reverified_and_never_pruned(self):
         self.publish()
         previous = dict(self.s3.objects)
-        with self.assertRaisesRegex(ValueError, 'operator intervention'):
-            self.publish()
-        self.assertEqual(previous, self.s3.objects)
+        self.publish()
+        self.assertTrue(previous.items() <= self.s3.objects.items())
+        self.assertEqual(2, sum(k.endswith('/complete.json') for k in self.s3.objects))
         self.assertFalse(any(op == 'delete-object' for op, _ in self.s3.calls))
 
-    def test_failure_after_marker_put_is_quarantined(self):
+    def test_failure_after_marker_put_can_be_reverified(self):
         original = self.s3.__call__
         def interrupted(command, **kwargs):
             args = command[command.index('s3api') + 1:]
@@ -86,8 +86,8 @@ class PublishTest(unittest.TestCase):
             with self.assertRaises(subprocess.CalledProcessError):
                 self.publish()
         self.assertTrue(any(k.endswith('/complete.json') for k in self.s3.objects))
-        with self.assertRaisesRegex(ValueError, 'operator intervention'):
-            self.publish()
+        self.publish()
+        self.assertEqual(2, sum(k.endswith('/complete.json') for k in self.s3.objects))
 
     def test_realistic_egress_estimate_and_pre_network_failure(self):
         entries = [{'size': 40_000_000}] * 15
@@ -128,6 +128,52 @@ class PublishTest(unittest.TestCase):
         del self.s3.objects[part]
         with self.assertRaises(ValueError):
             self.publish()
+
+    def test_four_runs_preserved_then_storage_cap_blocks(self):
+        for _ in range(4):
+            self.publish()
+        before = dict(self.s3.objects)
+        self.assertEqual(4, sum(k.endswith('/complete.json') for k in before))
+        with self.assertRaisesRegex(ValueError, 'storage budget'):
+            self.publish(budget=sum(map(len, before.values())) + 100)
+        self.assertEqual(before, self.s3.objects)
+        self.assertFalse(any(op == 'delete-object' for op, _ in self.s3.calls))
+
+    def test_tampered_marker_blocks(self):
+        self.publish()
+        marker = next(k for k in self.s3.objects if k.endswith('/complete.json'))
+        data = json.loads(self.s3.objects[marker])
+        data['hmac_sha256'] = '0' * 64
+        self.s3.objects[marker] = json.dumps(data).encode()
+        before = dict(self.s3.objects)
+        with self.assertRaises(ValueError):
+            self.publish()
+        self.assertEqual(before, self.s3.objects)
+
+    def test_tampered_prior_bytes_block_without_deletion(self):
+        self.publish()
+        part = next(k for k in self.s3.objects if k.endswith('.gpgpart'))
+        self.s3.objects[part] = b'x' * len(self.s3.objects[part])
+        before = dict(self.s3.objects)
+        with self.assertRaises(ValueError):
+            self.publish()
+        self.assertEqual(before, self.s3.objects)
+        self.assertFalse(any(op == 'delete-object' for op, _ in self.s3.calls))
+
+    def test_concurrent_writer_blocks_publication(self):
+        original = self.s3.__call__
+        listings = 0
+        def concurrent(command, **kwargs):
+            nonlocal listings
+            if 'list-objects-v2' in command:
+                listings += 1
+                if listings == 2:
+                    self.s3.objects['external'] = b'x'
+            return original(command, **kwargs)
+        with patch.object(publish.subprocess, 'run', side_effect=concurrent):
+            with self.assertRaisesRegex(ValueError, 'inventory changed'):
+                self.publish()
+        self.assertFalse(any(op == 'delete-object' for op, _ in self.s3.calls))
 
     def test_bad_manifest_name(self):
         manifest = json.loads((self.root / 'manifest.json').read_text())

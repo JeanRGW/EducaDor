@@ -129,13 +129,13 @@ def confirmed(run, objects, secret, signer, root):
     for entry in entries:
         if objects[base + entry['name']] != entry['size']:
             raise ValueError('listed part size mismatch')
-    return keys
+    return entries
 
 
-def egress_estimate(entries, manifest_size, signature_size=SIGNATURE_LIMIT):
-    # Read each new part and manifest once, marker once, then all prior metadata at maxima.
+def egress_estimate(entries, manifest_size, signature_size=SIGNATURE_LIMIT, prior_bytes=0):
+    # Every prior object is read once; the storage allocation bounds their combined size.
     return (sum(e['size'] for e in entries) + manifest_size + signature_size + MARKER_LIMIT
-            + MAX_RUNS * (MANIFEST_LIMIT + SIGNATURE_LIMIT + MARKER_LIMIT) + NETWORK_ALLOWANCE)
+            + prior_bytes + NETWORK_ALLOWANCE)
 
 
 def publish(directory, budget, reserve, egress_budget, secret, attestations, signer):
@@ -158,12 +158,14 @@ def publish(directory, budget, reserve, egress_budget, secret, attestations, sig
     if (not 0 < budget <= 1_000_000_000 or reserve <= 0 or reserve >= budget or len(secret) < 32
             or attestations != ('true', 'true')):
         raise ValueError('invalid budget, key or operator attestations')
-    if egress_budget < egress_estimate(entries, len(manifest), len(sig)):
+    needed = sum(e['size'] for e in entries) + len(manifest) + len(sig) + MARKER_LIMIT
+    if needed + reserve > budget:
+        raise ValueError('insufficient reserved storage budget')
+    if egress_budget < egress_estimate(entries, len(manifest), len(sig), budget - reserve - needed):
         raise ValueError('insufficient egress budget')
     # This listing cannot see incomplete multipart uploads. The reserve must include them;
     # operators must independently prohibit/inspect them and all other writers.
     objects = inventory()
-    needed = sum(e['size'] for e in entries) + len(manifest) + len(sig) + MARKER_LIMIT
     if sum(objects.values()) + reserve + needed > budget:
         raise ValueError('insufficient reserved storage budget')
     runs = set()
@@ -182,10 +184,16 @@ def publish(directory, budget, reserve, egress_budget, secret, attestations, sig
         raise ValueError('run collision')
     with tempfile.TemporaryDirectory(prefix='backup-publish-') as tmp:
         root = Path(tmp)
-        # A marker may have been written before an interrupted readback or inventory.
-        # No independent durable proof exists, so even valid prior markers are quarantined.
-        if runs:
-            raise ValueError('prior runs require operator intervention')
+        # A marker is only a candidate, including after interrupted publication.
+        # Verify the signed inventory and all current ciphertext before accepting it.
+        for previous in sorted(runs):
+            previous_entries = confirmed(previous, objects, secret, signer, root)
+            previous_base = PREFIX + previous + '/'
+            for entry in previous_entries:
+                if archive.digest(get(previous_base + entry['name'], entry['size'], root)) != entry['sha256']:
+                    raise ValueError('prior part mismatch')
+        if inventory() != objects:
+            raise ValueError('inventory changed during verification')
         for entry in entries:
             key = base + entry['name']
             put(key, directory / entry['name'])
