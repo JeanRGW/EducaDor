@@ -41,16 +41,23 @@ test('backup installs and checks the PGDG PostgreSQL 17 client before dumping', 
   assert.match(backup, /apt\.postgresql\.org\/pub\/repos\/apt/);
   assert.match(backup, /B97B0AFCAA1A47F044F244A07FCC7D46ACCC4CF8/);
   assert.match(backup, /apt-get install -y postgresql-client-17/);
-  assert.match(backup, /pg_dump --version \| grep -E/);
+  assert.match(backup, /PGBIN=\/usr\/lib\/postgresql\/17\/bin/);
+  assert.match(backup, /PG_DUMP="\$PGBIN\/pg_dump"/);
+  assert.match(backup, /\[ ! -x "\$PG_DUMP" \]/);
+  assert.match(backup, /ls -l \/usr\/lib\/postgresql\/\*\/bin\/pg_dump/);
+  assert.match(backup, /"\$PG_DUMP" --version/);
+  assert.match(backup, /"\$PG_DUMP" --version \| grep -E/);
+  assert.match(backup, /echo "\$PGBIN" >> "\$GITHUB_PATH"/);
+  assert.match(backup, /echo "PG_DUMP=\$PG_DUMP" >> "\$GITHUB_ENV"/);
   assert.ok(backup.indexOf('- name: Install PostgreSQL 17 client') < backup.indexOf('- name: Dump database'));
   assert.match(backup, /PGDATABASE: \$\{\{ secrets\.BACKUP_DATABASE_URL \}\}/);
-  assert.match(backup, /pg_dump --no-owner --no-acl/);
+  assert.match(backup, /"\$PG_DUMP" --no-owner --no-acl/);
 });
 
 test('backup uses a restorable data-only public and auth dump', () => {
-  assert.match(backup, /pg_dump --no-owner --no-acl --data-only --schema=public --schema=auth/);
+  assert.match(backup, /"\$PG_DUMP" --no-owner --no-acl --data-only --schema=public --schema=auth/);
   assert.match(backup, /--exclude-table-data=auth\.schema_migrations/);
-  assert.doesNotMatch(backup, /pg_dump --no-owner --no-acl --file/);
+  assert.doesNotMatch(backup, /"\$PG_DUMP" --no-owner --no-acl --file/);
   assert.match(backup, /PGDATABASE: \$\{\{ secrets\.BACKUP_DATABASE_URL \}\}/);
 });
 
