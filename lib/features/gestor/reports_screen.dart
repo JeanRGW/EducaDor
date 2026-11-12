@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../app/theme.dart';
 import '../../data/models/models.dart';
@@ -30,13 +31,30 @@ class _GestorReportsScreenState extends ConsumerState<GestorReportsScreen> {
 
   Future<void> _export() async {
     final session = ref.read(sessionProvider).value;
-    if (session?.active?.role != Role.gestor) return;
+    if (session == null ||
+        session.active?.role != Role.gestor ||
+        session.needsMfa ||
+        session.needsPassword) {
+      return;
+    }
     final period = _period;
     var valid = true;
+    final router = GoRouter.maybeOf(context);
+    const reportPath = '/gestor/relatorios';
+    void routeChanged() {
+      if (router?.routerDelegate.currentConfiguration.uri.path != reportPath) {
+        valid = false;
+      }
+    }
+
+    router?.routerDelegate.addListener(routeChanged);
+    if (router != null) routeChanged();
     final subscription = ref.listenManual(sessionProvider, (previous, next) {
-      if (next.value?.user.id != session?.user.id ||
+      if (next.value?.user.id != session.user.id ||
+          next.value?.needsMfa == true ||
+          next.value?.needsPassword == true ||
           next.value?.active?.role != Role.gestor ||
-          next.value?.active?.companyId != session?.active?.companyId) {
+          next.value?.active?.companyId != session.active?.companyId) {
         valid = false;
       }
     });
@@ -44,9 +62,9 @@ class _GestorReportsScreenState extends ConsumerState<GestorReportsScreen> {
     setState(() => _exporting = true);
     try {
       final repository = ref.read(reportRepositoryProvider);
-      final companies = await readAllPages(
-        (offset) => repository.platformCompletion(offset: offset),
-        current,
+      if (!current()) return;
+      final companies = requireSingleSnapshot(
+        await repository.platformCompletion(),
       );
       if (!current()) return;
       final activity = await repository.platformActivity(
@@ -85,6 +103,16 @@ class _GestorReportsScreenState extends ConsumerState<GestorReportsScreen> {
         reportFilename('relatorio-gestor', DateTime.now()),
         encodeCsv(rows),
       );
+    } on ExportTooLarge {
+      if (mounted && valid) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Exportação indisponível com 50 empresas ou mais: não é possível garantir um retrato consistente.',
+            ),
+          ),
+        );
+      }
     } catch (_) {
       if (mounted && valid) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -97,6 +125,7 @@ class _GestorReportsScreenState extends ConsumerState<GestorReportsScreen> {
       }
     } finally {
       subscription.close();
+      router?.routerDelegate.removeListener(routeChanged);
       if (mounted) setState(() => _exporting = false);
     }
   }
@@ -254,7 +283,7 @@ class _GestorReportsScreenState extends ConsumerState<GestorReportsScreen> {
               const Padding(
                 padding: EdgeInsets.fromLTRB(16, 12, 16, 0),
                 child: Text(
-                  'O CSV inclui a conclusão atual e a atividade do período selecionado.',
+                  'O CSV inclui a conclusão atual e a atividade do período selecionado, consultadas em momentos distintos.',
                 ),
               ),
               Padding(

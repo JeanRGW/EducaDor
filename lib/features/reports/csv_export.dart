@@ -17,7 +17,7 @@ Uint8List encodeCsv(Iterable<List<String>> rows) => Uint8List.fromList([
   0xbb,
   0xbf,
   ...utf8.encode(
-    '${rows.map((row) => row.map(csvCell).join(',')).join('\r\n')}\r\n',
+    '${rows.map((row) => row.map(csvCell).join(';')).join('\r\n')}\r\n',
   ),
 ]);
 
@@ -31,20 +31,18 @@ String reportFilename(String report, DateTime date) {
   return '${safe.isEmpty ? 'relatorio' : safe}-$day.csv';
 }
 
-Future<List<T>> readAllPages<T>(
-  Future<List<T>> Function(int offset) read,
-  bool Function() valid,
-) async {
-  final result = <T>[];
-  for (var offset = 0; offset <= 100000; offset += 50) {
-    if (!valid()) throw StateError('Context changed');
-    final page = await read(offset);
-    if (!valid()) throw StateError('Context changed');
-    if (page.length > 50) throw StateError('Invalid page');
-    result.addAll(page);
-    if (page.length < 50) return result;
+class ExportTooLarge implements Exception {
+  const ExportTooLarge();
+}
+
+// One RPC response is one database statement snapshot. Never join pages from
+// different snapshots: concurrent changes can reorder them without detection.
+List<T> requireSingleSnapshot<T>(List<T> rows, {int? total}) {
+  if (rows.length > 50 ||
+      (total == null ? rows.length >= 50 : total != rows.length)) {
+    throw const ExportTooLarge();
   }
-  throw StateError('Report exceeds export limit');
+  return rows;
 }
 
 Future<void> saveCsv(String filename, Uint8List bytes) async {

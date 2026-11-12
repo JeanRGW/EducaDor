@@ -1,4 +1,6 @@
 import 'dart:async';
+
+import 'package:file_picker/file_picker.dart';
 import 'dart:ui' as ui;
 
 import 'package:educador/app/theme.dart';
@@ -78,6 +80,23 @@ Employee _employee(
   lastActivity: '',
   lastActivityAt: activityAt,
 );
+
+class _SaveSpy extends FilePicker {
+  int calls = 0;
+  @override
+  Future<String?> saveFile({
+    String? dialogTitle,
+    String? fileName,
+    String? initialDirectory,
+    FileType type = FileType.any,
+    List<String>? allowedExtensions,
+    Uint8List? bytes,
+    bool lockParentWindow = false,
+  }) async {
+    calls++;
+    return null;
+  }
+}
 
 class _Employees extends EmployeeRepository {
   List<Employee> rows = [
@@ -772,6 +791,70 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('leaving a retained report tab cancels a pending export', (
+    tester,
+  ) async {
+    final picker = _SaveSpy();
+    FilePicker.platform = picker;
+    final employees = _Employees()..pending = Completer<List<Employee>>();
+    final container = ProviderContainer(
+      overrides: [
+        sessionProvider.overrideWith(_Session.new),
+        employeeRepositoryProvider.overrideWithValue(employees),
+        reportRepositoryProvider.overrideWithValue(_Reports()),
+      ],
+    );
+    addTearDown(container.dispose);
+    await container.read(sessionProvider.future);
+    final router = GoRouter(
+      initialLocation: '/empresa/relatorios',
+      routes: [
+        StatefulShellRoute.indexedStack(
+          builder: (_, _, shell) => Scaffold(body: shell),
+          branches: [
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: '/empresa/relatorios',
+                  builder: (_, _) => const CompanyCompletionScreen(),
+                ),
+              ],
+            ),
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: '/empresa/home',
+                  builder: (_, _) => const Text('Outra aba'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await _scrollTo(tester, find.text('Exportar dados em CSV'));
+    await tester.tap(find.text('Exportar dados em CSV'));
+    await tester.pump();
+    expect(employees.calls, ['company-a']);
+    router.go('/empresa/home');
+    await tester.pumpAndSettle();
+    employees.pending!.complete(employees.rows);
+    await tester.pumpAndSettle();
+    router.go('/empresa/relatorios');
+    await tester.pumpAndSettle();
+    expect(find.text('Exportar dados em CSV'), findsOneWidget);
+    expect(picker.calls, 0);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('reports paginate and switching company drops old pages', (
     tester,

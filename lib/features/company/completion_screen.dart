@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../app/theme.dart';
 import '../../data/models/models.dart';
@@ -30,10 +31,28 @@ class _CompanyCompletionScreenState
   Future<void> _export() async {
     final session = ref.read(sessionProvider).value;
     final companyId = session?.active?.companyId;
-    if (session?.active?.role != Role.empresa || companyId == null) return;
+    if (session == null ||
+        session.active?.role != Role.empresa ||
+        companyId == null ||
+        session.needsMfa ||
+        session.needsPassword) {
+      return;
+    }
     var valid = true;
+    final router = GoRouter.maybeOf(context);
+    const reportPath = '/empresa/relatorios';
+    void routeChanged() {
+      if (router?.routerDelegate.currentConfiguration.uri.path != reportPath) {
+        valid = false;
+      }
+    }
+
+    router?.routerDelegate.addListener(routeChanged);
+    if (router != null) routeChanged();
     final subscription = ref.listenManual(sessionProvider, (previous, next) {
-      if (next.value?.user.id != session?.user.id ||
+      if (next.value?.user.id != session.user.id ||
+          next.value?.needsMfa == true ||
+          next.value?.needsPassword == true ||
           next.value?.active?.role != Role.empresa ||
           next.value?.active?.companyId != companyId) {
         valid = false;
@@ -43,12 +62,13 @@ class _CompanyCompletionScreenState
     setState(() => _exporting = true);
     try {
       final repository = ref.read(employeeRepositoryProvider);
-      final employees = await readAllPages(
-        (offset) async =>
-            (await repository.page(companyId, offset: offset)).items,
-        current,
-      );
+      if (!current()) return;
+      final page = await repository.page(companyId);
       if (!mounted || !valid) return;
+      final employees = requireSingleSnapshot(
+        page.items,
+        total: page.filteredCount,
+      );
       if (employees.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Nenhum funcionário para exportar.')),
@@ -71,6 +91,16 @@ class _CompanyCompletionScreenState
         reportFilename('conclusao-funcionarios', DateTime.now()),
         encodeCsv(rows),
       );
+    } on ExportTooLarge {
+      if (mounted && valid) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Exportação indisponível para mais de 50 funcionários: não é possível garantir um retrato consistente.',
+            ),
+          ),
+        );
+      }
     } catch (_) {
       if (mounted && valid) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -83,6 +113,7 @@ class _CompanyCompletionScreenState
       }
     } finally {
       subscription.close();
+      router?.routerDelegate.removeListener(routeChanged);
       if (mounted) setState(() => _exporting = false);
     }
   }
