@@ -196,7 +196,6 @@ class _AddCompanyScreenState extends ConsumerState<AddCompanyScreen> {
           PrimaryButton(
             _busy ? 'Criando...' : 'Criar empresa e convite',
             compact: true,
-            color: AppColors.primary,
             onPressed: _busy ? null : _submit,
           ),
         ],

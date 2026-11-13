@@ -257,7 +257,7 @@ void main() {
   );
 
   testWidgets(
-    'company and employee invitations share compact forms and blue actions',
+    'company and employee invitations share compact forms and scheme actions',
     (tester) async {
       for (final role in [Role.empresa, Role.funcionario]) {
         await _show(tester, InvitePersonScreen(role: role));
@@ -267,13 +267,16 @@ void main() {
               .compact,
           isTrue,
         );
-        expect(
-          tester.widget<PrimaryButton>(find.byType(PrimaryButton)).compact,
-          isTrue,
+        final button = tester.widget<PrimaryButton>(
+          find.byType(PrimaryButton),
         );
+        expect(button.compact, isTrue);
+        // No literal colour: the action follows the active scheme.
+        expect(button.color, isNull);
+        final theme = Theme.of(tester.element(find.byType(PrimaryButton)));
         expect(
-          tester.widget<PrimaryButton>(find.byType(PrimaryButton)).color,
-          AppColors.primary,
+          theme.filledButtonTheme.style!.backgroundColor!.resolve({}),
+          theme.colorScheme.primary,
         );
         expect(
           Theme.of(

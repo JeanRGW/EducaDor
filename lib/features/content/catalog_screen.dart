@@ -118,10 +118,6 @@ class _ContentCatalogScreenState extends ConsumerState<ContentCatalogScreen> {
     floatingActionButton: widget.platform
         ? FloatingActionButton(
             tooltip: 'Adicionar curso',
-            backgroundColor: AppColors.primary,
-            shape: const CircleBorder(
-              side: BorderSide(color: Colors.white, width: 2),
-            ),
             onPressed: () async {
               await context.push('/gestor/trail/add');
               if (mounted) {
@@ -130,7 +126,10 @@ class _ContentCatalogScreenState extends ConsumerState<ContentCatalogScreen> {
                 _load();
               }
             },
-            child: const SvgIcon(AppIcons.compose, color: Colors.white),
+            child: SvgIcon(
+              AppIcons.compose,
+              color: Theme.of(context).colorScheme.onPrimary,
+            ),
           )
         : null,
     body: RefreshIndicator(

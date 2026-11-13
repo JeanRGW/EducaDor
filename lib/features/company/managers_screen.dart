@@ -120,15 +120,14 @@ class _CompanyManagersScreenState extends ConsumerState<CompanyManagersScreen> {
         ),
         floatingActionButton: FloatingActionButton(
           tooltip: 'Convidar gestor da empresa',
-          backgroundColor: AppColors.primary,
-          shape: const CircleBorder(
-            side: BorderSide(color: Colors.white, width: 2),
-          ),
           onPressed: () async {
             await context.push('/empresa/manager/add');
             if (mounted) setState(_refresh);
           },
-          child: const SvgIcon(AppIcons.plus, color: Colors.white),
+          child: SvgIcon(
+            AppIcons.plus,
+            color: Theme.of(context).colorScheme.onPrimary,
+          ),
         ),
         body: ListView(
           padding: const EdgeInsets.all(16),

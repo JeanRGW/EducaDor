@@ -81,16 +81,15 @@ class _CompaniesScreenState extends ConsumerState<CompaniesScreen> {
         title: const Text('Empresas Registradas'),
       ),
       floatingActionButton: FloatingActionButton(
-        backgroundColor: AppColors.primary,
-        shape: const CircleBorder(
-          side: BorderSide(color: Colors.white, width: 2),
-        ),
         tooltip: 'Adicionar empresa',
         onPressed: () async {
           await context.push('/gestor/company/add');
           if (mounted) await _refresh();
         },
-        child: const SvgIcon(AppIcons.plus, color: Colors.white),
+        child: SvgIcon(
+          AppIcons.plus,
+          color: Theme.of(context).colorScheme.onPrimary,
+        ),
       ),
       body: RefreshIndicator(
         onRefresh: _refresh,

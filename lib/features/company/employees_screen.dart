@@ -84,11 +84,7 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
           title: const Text('Funcionários cadastrados'),
         ),
         floatingActionButton: FloatingActionButton(
-          backgroundColor: AppColors.primary,
           tooltip: 'Convidar funcionário',
-          shape: const CircleBorder(
-            side: BorderSide(color: Colors.white, width: 2),
-          ),
           onPressed: companyId == null
               ? null
               : () async {
@@ -97,7 +93,10 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
                     await _refresh();
                   }
                 },
-          child: const SvgIcon(AppIcons.plus, color: Colors.white),
+          child: SvgIcon(
+            AppIcons.plus,
+            color: Theme.of(context).colorScheme.onPrimary,
+          ),
         ),
         body: RefreshIndicator(
           onRefresh: _refresh,

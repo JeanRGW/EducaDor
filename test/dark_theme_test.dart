@@ -1,5 +1,6 @@
 import 'package:educador/app/theme.dart';
 import 'package:educador/shared/widgets/admin_styles.dart';
+import 'package:educador/shared/widgets/common.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -94,5 +95,51 @@ void main() {
   test('light theme stays light', () {
     expect(AppTheme.light.brightness, Brightness.light);
     expect(AppTheme.light.scaffoldBackgroundColor, AppColors.background);
+  });
+
+  testWidgets('primary button follows the active scheme', (tester) async {
+    for (final theme in [AppTheme.light, AppTheme.dark]) {
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: theme,
+          home: Scaffold(body: PrimaryButton('Continuar')),
+        ),
+      );
+      final button = tester.widget<FilledButton>(find.byType(FilledButton));
+      expect(
+        button.style?.backgroundColor?.resolve({}),
+        theme.colorScheme.primary,
+      );
+      expect(
+        button.style?.foregroundColor?.resolve({}),
+        theme.colorScheme.onPrimary,
+      );
+    }
+  });
+
+  testWidgets('floating action keeps the scheme foreground legible', (
+    tester,
+  ) async {
+    final theme = AppTheme.dark;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: theme,
+        home: Scaffold(
+          floatingActionButton: const FloatingActionButton(
+            onPressed: null,
+            child: Icon(Icons.add),
+          ),
+        ),
+      ),
+    );
+    expect(
+      theme.floatingActionButtonTheme.backgroundColor,
+      theme.colorScheme.primary,
+    );
+    expect(
+      theme.floatingActionButtonTheme.foregroundColor,
+      theme.colorScheme.onPrimary,
+    );
   });
 }

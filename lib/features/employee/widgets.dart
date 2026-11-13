@@ -27,8 +27,8 @@ abstract class EmployeeStyles {
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
+        backgroundColor: base.colorScheme.primary,
+        foregroundColor: base.colorScheme.onPrimary,
         minimumSize: const Size(0, 48),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),

@@ -562,8 +562,13 @@ void main() {
       final addButton = tester.widget<FloatingActionButton>(
         find.byType(FloatingActionButton),
       );
-      expect(addButton.backgroundColor, AppColors.primary);
-      expect(addButton.shape, isA<CircleBorder>());
+      expect(addButton.backgroundColor, isNull);
+      expect(addButton.shape, isNull);
+      final addTheme = Theme.of(
+        tester.element(find.byType(FloatingActionButton)),
+      ).floatingActionButtonTheme;
+      expect(addTheme.backgroundColor, AppColors.primary);
+      expect(addTheme.shape, isA<CircleBorder>());
       expect(tester.takeException(), isNull);
     },
   );

@@ -36,8 +36,8 @@ abstract class CompanyStyles {
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
+        backgroundColor: base.colorScheme.primary,
+        foregroundColor: base.colorScheme.onPrimary,
         minimumSize: const Size(0, 44),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
