@@ -124,11 +124,20 @@ class PrimaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final background = color ?? colors.primary;
+    // Explicit colours (e.g. success actions) keep their own contrast, while
+    // the default follows the scheme so dark mode does not fall back to blue.
+    final foreground = color == null
+        ? colors.onPrimary
+        : ThemeData.estimateBrightnessForColor(background) == Brightness.dark
+        ? Colors.white
+        : colors.onPrimary;
     final btn = FilledButton(
       onPressed: onPressed,
       style: FilledButton.styleFrom(
-        backgroundColor: color ?? AppColors.primary,
-        foregroundColor: Colors.white,
+        backgroundColor: background,
+        foregroundColor: foreground,
         minimumSize: Size(expanded ? double.infinity : 120, compact ? 46 : 52),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         textStyle: TextStyle(

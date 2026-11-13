@@ -72,10 +72,6 @@ class NotificationSettingsTile extends ConsumerWidget {
                   size: 20,
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
-                activeThumbColor: Colors.white,
-                activeTrackColor: context.successForeground,
-                inactiveThumbColor: Theme.of(context).colorScheme.outline,
-                inactiveTrackColor: Theme.of(context).scaffoldBackgroundColor,
                 title: Text(
                   'Notificações',
                   style: AdminStyles.body(context).copyWith(

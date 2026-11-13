@@ -187,7 +187,6 @@ class _InvitePersonScreenState extends ConsumerState<InvitePersonScreen> {
             PrimaryButton(
               _busy ? 'Criando convite...' : 'Criar convite',
               compact: true,
-              color: AppColors.primary,
               onPressed: _busy ? null : _submit,
             ),
           ],

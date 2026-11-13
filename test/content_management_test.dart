@@ -428,10 +428,14 @@ void main() {
       );
       expect(find.text('Editar'), findsOneWidget);
       expect(find.text('Liberar para'), findsNothing);
+      final fab = tester.widget<FloatingActionButton>(
+        find.byType(FloatingActionButton),
+      );
+      expect(fab.shape, isNull);
       expect(
-        tester
-            .widget<FloatingActionButton>(find.byType(FloatingActionButton))
-            .shape,
+        Theme.of(
+          tester.element(find.byType(FloatingActionButton)),
+        ).floatingActionButtonTheme.shape,
         isA<CircleBorder>(),
       );
       await tester.tap(find.byType(Switch));

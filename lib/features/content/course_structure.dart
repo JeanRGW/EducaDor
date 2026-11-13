@@ -159,12 +159,12 @@ class _CourseStructureState extends ConsumerState<CourseStructure> {
     backgroundColor: Colors.transparent,
     floatingActionButton: FloatingActionButton(
       tooltip: 'Adicionar módulo',
-      backgroundColor: AppColors.primary,
-      shape: const CircleBorder(
-        side: BorderSide(color: Colors.white, width: 2),
-      ),
       onPressed: _busy || widget.disabled ? null : _module,
-      child: const SvgIcon(AppIcons.plus, color: Colors.white, size: 24),
+      child: SvgIcon(
+        AppIcons.plus,
+        color: Theme.of(context).colorScheme.onPrimary,
+        size: 24,
+      ),
     ),
     body: ListView(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 104),
@@ -427,12 +427,12 @@ class _ModuleLessonsState extends ConsumerState<ModuleLessons> {
     backgroundColor: Colors.transparent,
     floatingActionButton: FloatingActionButton(
       tooltip: 'Adicionar aula',
-      backgroundColor: AppColors.primary,
-      shape: const CircleBorder(
-        side: BorderSide(color: Colors.white, width: 2),
-      ),
       onPressed: widget.disabled || _loading ? null : _edit,
-      child: const SvgIcon(AppIcons.plus, size: 24, color: Colors.white),
+      child: SvgIcon(
+        AppIcons.plus,
+        size: 24,
+        color: Theme.of(context).colorScheme.onPrimary,
+      ),
     ),
     body: ListView(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 104),

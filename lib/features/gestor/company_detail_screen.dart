@@ -310,7 +310,6 @@ class _CompanyEditorState extends ConsumerState<_CompanyEditor> {
           PrimaryButton(
             _busy ? 'Salvando...' : 'Salvar dados da empresa',
             compact: true,
-            color: AppColors.primary,
             onPressed: _busy ? null : _save,
           ),
         ],

@@ -640,12 +640,16 @@ void main() {
         find.byTooltip('Situação de licença ainda não disponível.'),
         findsOneWidget,
       );
-      expect(
-        tester
-            .widget<FloatingActionButton>(find.byType(FloatingActionButton))
-            .backgroundColor,
-        AppColors.primary,
+      final fab = tester.widget<FloatingActionButton>(
+        find.byType(FloatingActionButton),
       );
+      // FABs inherit the theme so dark mode is not forced to the light blue.
+      expect(fab.backgroundColor, isNull);
+      final fabTheme = Theme.of(
+        tester.element(find.byType(FloatingActionButton)),
+      ).floatingActionButtonTheme;
+      expect(fabTheme.backgroundColor, AppColors.primary);
+      expect(fabTheme.shape, isA<CircleBorder>());
       final progress = find.byType(ProgressBar).first;
       final caption = find.text('Progresso de Conclusão').first;
       expect(
