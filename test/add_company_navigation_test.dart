@@ -7,20 +7,30 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
-class _Invites extends InvitationRepository {
-  int calls = 0;
+Company _company(String name) => Company(
+  id: 'company-1',
+  name: name,
+  cnpj: '',
+  responsibleName: '',
+  email: '',
+  phone: '',
+  address: '',
+  city: '',
+  state: '',
+  field: '',
+  employeeCount: 0,
+  active: true,
+  registeredAt: '2026-11-16',
+  initials: 'EM',
+);
+
+class _Companies extends CompanyRepository {
+  final names = <String>[];
+
   @override
-  Future<String> invite({
-    required Role role,
-    required String name,
-    required String email,
-    String? companyId,
-    Map<String, String>? company,
-    String? department,
-    String? jobTitle,
-  }) async {
-    calls++;
-    return 'https://example.test/invite';
+  Future<Company> create({required String name}) async {
+    names.add(name);
+    return _company(name);
   }
 }
 
@@ -30,7 +40,7 @@ void main() {
       testWidgets(
         'add company ${save ? 'success' : 'back'} navigates safely (pushed: $pushed)',
         (tester) async {
-          final invites = _Invites();
+          final companies = _Companies();
           final router = GoRouter(
             initialLocation: pushed ? '/gestor/empresas' : '/add',
             routes: [
@@ -43,17 +53,14 @@ void main() {
                   ),
                 ),
               ),
-              GoRoute(
-                path: '/add',
-                builder: (_, _) => const AddCompanyScreen(),
-              ),
+              GoRoute(path: '/add', builder: (_, _) => const AddCompanyScreen()),
             ],
           );
           addTearDown(router.dispose);
           await tester.pumpWidget(
             ProviderScope(
               overrides: [
-                invitationRepositoryProvider.overrideWithValue(invites),
+                companyRepositoryProvider.overrideWithValue(companies),
               ],
               child: MaterialApp.router(
                 theme: AppTheme.light,
@@ -67,28 +74,14 @@ void main() {
             await tester.pumpAndSettle();
           }
           if (save) {
-            final fields = find.byType(TextField);
-            await tester.enterText(fields.at(0), 'Empresa teste');
-            await tester.enterText(fields.at(2), 'Responsável');
-            await tester.enterText(fields.at(3), 'gestor@example.test');
-            await tester.scrollUntilVisible(
-              find.text('Criar empresa e convite'),
-              200,
-              scrollable: find.byType(Scrollable).first,
-            );
-            await tester.tap(find.text('Criar empresa e convite'));
+            await tester.enterText(find.byType(TextField).first, 'Empresa teste');
+            await tester.tap(find.text('Criar empresa'));
             await tester.pumpAndSettle();
-            expect(find.text('Convite criado'), findsOneWidget);
-            await tester.tap(find.text('Fechar sem copiar'));
-            await tester.pumpAndSettle();
-            await tester.tap(
-              find.widgetWithText(FilledButton, 'Fechar sem copiar'),
-            );
-            await tester.pumpAndSettle();
-            expect(invites.calls, 1);
+            expect(companies.names, ['Empresa teste']);
           } else {
             await tester.tap(find.byTooltip('Voltar'));
             await tester.pumpAndSettle();
+            expect(companies.names, isEmpty);
           }
           expect(find.text('Empresas'), findsOneWidget);
           expect(router.canPop(), isFalse);

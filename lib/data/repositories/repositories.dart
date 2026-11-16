@@ -145,6 +145,19 @@ class CompanyRepository {
         .toList();
   }
 
+  Future<Company> create({required String name}) async {
+    final client =
+        _injectedClient ??
+        _client ??
+        (throw StateError('Configure o Supabase para criar empresas.'));
+    final row = await client
+        .from('companies')
+        .insert({'name': name.trim()})
+        .select()
+        .single();
+    return _company(row);
+  }
+
   Future<Company> byId(String id) async {
     final client =
         _injectedClient ??

@@ -2,15 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/theme.dart';
-import '../../data/models/models.dart';
 import '../../data/repositories/repositories.dart';
 import '../../shared/widgets/app_icons.dart';
 import '../../shared/widgets/admin_styles.dart';
 import '../../shared/widgets/common.dart';
-import '../auth/onboarding_screens.dart';
 import '../content/catalog_screen.dart';
 import '../content/publish_video_screen.dart';
-import 'widgets.dart';
 import 'management_widgets.dart';
 
 export 'companies_screen.dart';
@@ -39,73 +36,41 @@ class AddCompanyScreen extends ConsumerStatefulWidget {
 
 class _AddCompanyScreenState extends ConsumerState<AddCompanyScreen> {
   final _name = TextEditingController();
-  final _cnpj = TextEditingController();
-  final _responsible = TextEditingController();
-  final _email = TextEditingController();
-  final _phone = TextEditingController();
-  final _city = TextEditingController();
-  final _state = TextEditingController();
-  final _address = TextEditingController();
-  final _field = TextEditingController();
   bool _busy = false;
 
   @override
   void dispose() {
-    for (final controller in [
-      _name,
-      _cnpj,
-      _responsible,
-      _email,
-      _phone,
-      _city,
-      _state,
-      _address,
-      _field,
-    ]) {
-      controller.dispose();
-    }
+    _name.dispose();
     super.dispose();
   }
 
   Future<void> _submit() async {
-    if (_name.text.trim().isEmpty ||
-        _responsible.text.trim().isEmpty ||
-        !RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(_email.text.trim())) {
+    if (_name.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Informe empresa, responsável e e-mail válidos.'),
-        ),
+        const SnackBar(content: Text('Informe o nome da empresa.')),
       );
       return;
     }
     setState(() => _busy = true);
     try {
-      final link = await ref
-          .read(invitationRepositoryProvider)
-          .invite(
-            role: Role.empresa,
-            name: _responsible.text,
-            email: _email.text,
-            company: {
-              'name': _name.text.trim(),
-              'cnpj': _cnpj.text.trim(),
-              'responsible': _responsible.text.trim(),
-              'email': _email.text.trim(),
-              'phone': _phone.text.trim(),
-              'city': _city.text.trim(),
-              'state': _state.text.trim(),
-              'address': _address.text.trim(),
-              'field': _field.text.trim(),
-            },
-          );
+      await ref
+          .read(companyRepositoryProvider)
+          .create(name: _name.text);
       if (!mounted) return;
-      await showInviteLink(context, link);
-      if (mounted) leaveManagementPage(context, '/gestor/empresas');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Empresa criada. Abra a empresa para convidar o primeiro gestor '
+            'e completar os dados.',
+          ),
+        ),
+      );
+      leaveManagementPage(context, '/gestor/empresas');
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Não foi possível criar a empresa e o convite.'),
+            content: Text('Não foi possível criar a empresa.'),
           ),
         );
       }
@@ -139,62 +104,18 @@ class _AddCompanyScreenState extends ConsumerState<AddCompanyScreen> {
             hint: 'santa maria',
             controller: _name,
           ),
-          FormFieldLabel(
-            label: 'CNPJ',
-            compact: true,
-            hint: '00.000.000/0001-00',
-            controller: _cnpj,
-          ),
-          FormFieldLabel(
-            label: 'Primeiro gestor da empresa',
-            compact: true,
-            hint: 'Nome completo',
-            controller: _responsible,
-          ),
-          CompanyFieldRow(
-            first: FormFieldLabel(
-              label: 'E-mail do gestor',
-              compact: true,
-              hint: 'admin@comp.com',
-              controller: _email,
-            ),
-            second: FormFieldLabel(
-              label: 'Telefone',
-              compact: true,
-              hint: '(31) 99999-9999',
-              controller: _phone,
+          const SizedBox(height: 12),
+          Text(
+            'O primeiro gestor é convidado depois, na página da empresa. '
+            'Os demais dados podem ser preenchidos quando ela quiser.',
+            style: AdminStyles.body(context).copyWith(
+              fontSize: 13,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
-          FormFieldLabel(
-            label: 'Endereço',
-            compact: true,
-            hint: 'Rua, número, bairro',
-            controller: _address,
-          ),
-          CompanyFieldRow(
-            firstFlex: 3,
-            first: FormFieldLabel(
-              label: 'Cidade',
-              compact: true,
-              hint: 'Belo Horizonte',
-              controller: _city,
-            ),
-            second: FormFieldLabel(
-              label: 'Estado',
-              compact: true,
-              hint: 'MG',
-              controller: _state,
-            ),
-          ),
-          FormFieldLabel(
-            label: 'Área de atuação',
-            compact: true,
-            hint: 'Saúde',
-            controller: _field,
-          ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 20),
           PrimaryButton(
-            _busy ? 'Criando...' : 'Criar empresa e convite',
+            _busy ? 'Criando...' : 'Criar empresa',
             compact: true,
             onPressed: _busy ? null : _submit,
           ),

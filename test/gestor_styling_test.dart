@@ -170,7 +170,7 @@ void main() {
       expect(tester.getTopLeft(find.text('Adicionar empresa')).dx, 48);
       expect(tester.getTopLeft(_field('Nome da Empresa')).dx, 20);
       expect(tester.getSize(_field('Nome da Empresa')).height, closeTo(40, 2));
-      final save = find.widgetWithText(FilledButton, 'Criar empresa e convite');
+      final save = find.widgetWithText(FilledButton, 'Criar empresa');
       final saveSurface = find.descendant(
         of: save,
         matching: find.byType(Material),
@@ -185,55 +185,15 @@ void main() {
     });
   }
 
-  testWidgets('company form keeps validation and invitation data', (
-    tester,
-  ) async {
-    final repo = _Invites();
-    await _show(tester, const AddCompanyScreen(), invites: repo);
-    await tester.scrollUntilVisible(
-      find.text('Criar empresa e convite'),
-      200,
-      scrollable: find.byType(Scrollable).first,
-    );
+  testWidgets('company form asks only for the company name', (tester) async {
+    await _show(tester, const AddCompanyScreen());
+    expect(find.text('Primeiro gestor da empresa'), findsNothing);
+    expect(find.text('E-mail do gestor'), findsNothing);
+    expect(find.text('CNPJ'), findsNothing);
+    expect(find.text('Nome da Empresa'), findsOneWidget);
+    await tester.tap(find.text('Criar empresa'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Criar empresa e convite'));
-    await tester.pumpAndSettle();
-    expect(repo.request, isNull);
-    expect(
-      find.text('Informe empresa, responsável e e-mail válidos.'),
-      findsOneWidget,
-    );
-    await tester.pump(const Duration(seconds: 5));
-    await tester.pumpAndSettle();
-    for (final (label, value) in [
-      ('Nome da Empresa', 'Santa Maria'),
-      ('CNPJ', '00.000.000/0001-00'),
-      ('Primeiro gestor da empresa', 'Pessoa Responsável'),
-      ('E-mail do gestor', 'person@example.test'),
-    ]) {
-      await tester.scrollUntilVisible(
-        _field(label),
-        -200,
-        scrollable: find.byType(Scrollable).first,
-      );
-      await tester.pumpAndSettle();
-      await tester.enterText(_field(label), value);
-    }
-    await tester.scrollUntilVisible(
-      find.text('Criar empresa e convite'),
-      200,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Criar empresa e convite'));
-    await tester.pumpAndSettle();
-    expect(repo.request!.role, Role.empresa);
-    expect(repo.request!.name, 'Pessoa Responsável');
-    expect(repo.request!.email, 'person@example.test');
-    expect(repo.request!.company!['name'], 'Santa Maria');
-    expect(repo.request!.company!['cnpj'], '00.000.000/0001-00');
-    expect(find.text('Convite criado'), findsOneWidget);
-    expect(find.text('Copiar link'), findsOneWidget);
+    expect(find.text('Informe o nome da empresa.'), findsOneWidget);
   });
 
   testWidgets(

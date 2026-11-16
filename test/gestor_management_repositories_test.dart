@@ -396,6 +396,32 @@ void main() {
     );
   });
 
+  test('company creation inserts only the company name', () async {
+    final requests = <http.Request>[];
+    final repo = CompanyRepository(
+      client: _client((request) async {
+        requests.add(request);
+        return http.Response(
+          jsonEncode({
+            'id': 'company',
+            'name': 'Santa Maria',
+            'active': true,
+            'code_prefix': 'EDU',
+            'created_at': '2026-11-16T00:00:00Z',
+          }),
+          201,
+          request: request,
+          headers: {'content-type': 'application/json'},
+        );
+      }),
+    );
+    final company = await repo.create(name: '  Santa Maria  ');
+    expect(company.id, 'company');
+    expect(company.name, 'Santa Maria');
+    expect(requests.single.url.path, '/rest/v1/companies');
+    expect(jsonDecode(requests.single.body), {'name': 'Santa Maria'});
+  });
+
   test('new management reads fail closed without Supabase', () async {
     await expectLater(PeopleRepository().managers(), throwsStateError);
     await expectLater(ProfileRepository().own(), throwsStateError);
