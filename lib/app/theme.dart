@@ -429,6 +429,11 @@ extension AppThemeScheme on ColorScheme {
       isDarkScheme ? const Color(0xFF44242A) : AppColors.dangerBg;
   Color get successForeground =>
       isDarkScheme ? onSecondaryContainer : AppColors.successDarkGreen;
+  /// Line-chart palette: the dark scheme needs two hues, because primary and
+  /// secondary are both the accent teal there and the lines would merge.
+  Color get chartLine => isDarkScheme ? primary : AppColors.chartBlue;
+  Color get chartLineSecondary =>
+      isDarkScheme ? tertiary : AppColors.accentTeal;
   Color get warningForeground =>
       isDarkScheme ? const Color(0xFFF8C867) : AppColors.warning;
   Color get dangerForeground =>

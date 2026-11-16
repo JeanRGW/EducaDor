@@ -75,8 +75,7 @@ void main() {
     );
   });
 
-  test('semantic palette adapts per brightness and matches light values', () {
-    final light = AppTheme.light.colorScheme;
+  test('semantic palette adapts per brightness and matches light values', () {    final light = AppTheme.light.colorScheme;
     final dark = AppTheme.dark.colorScheme;
     expect(light.successSurface, AppColors.successBg);
     expect(light.successForeground, AppColors.successDarkGreen);
@@ -95,6 +94,46 @@ void main() {
   test('light theme stays light', () {
     expect(AppTheme.light.brightness, Brightness.light);
     expect(AppTheme.light.scaffoldBackgroundColor, AppColors.background);
+  });
+
+  test('chart lines stay distinguishable per theme', () {
+    for (final scheme in [
+      AppTheme.light.colorScheme,
+      AppTheme.dark.colorScheme,
+    ]) {
+      expect(scheme.chartLine, isNot(scheme.chartLineSecondary));
+    }
+    final dark = AppTheme.dark.colorScheme;
+    expect(contrast(dark.chartLine, dark.surface), greaterThanOrEqualTo(3));
+    expect(
+      contrast(dark.chartLineSecondary, dark.surface),
+      greaterThanOrEqualTo(3),
+    );
+  });
+
+  testWidgets('active filter chip label uses a legible foreground', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        home: Scaffold(
+          body: FilterChips(
+            options: const ['Todos', 'Vídeo'],
+            selected: 0,
+            onSelected: (_) {},
+            plainInactive: true,
+          ),
+        ),
+      ),
+    );
+    final active = tester.widget<Text>(find.text('Todos'));
+    expect(active.style?.color, AppTheme.dark.colorScheme.onPrimary);
+    final inactive = tester.widget<Text>(find.text('Vídeo'));
+    expect(
+      inactive.style?.color,
+      AppTheme.dark.colorScheme.onSurfaceVariant,
+    );
   });
 
   testWidgets('primary button follows the active scheme', (tester) async {

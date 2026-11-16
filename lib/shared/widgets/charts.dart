@@ -17,14 +17,15 @@ class LineChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return CustomPaint(
       size: Size(double.infinity, height),
       painter: _LinePainter(
         data,
         secondaryData,
-        Theme.of(context).colorScheme.primary,
-        Theme.of(context).colorScheme.secondary,
-        Theme.of(context).colorScheme.outline,
+        scheme.chartLine,
+        scheme.chartLineSecondary,
+        scheme.outline,
       ),
     );
   }

@@ -264,14 +264,14 @@ class GestorDashboardScreen extends ConsumerWidget {
               ),
             ),
           const SizedBox(height: 8),
-          const Wrap(
+          Wrap(
             spacing: 16,
             children: [
               Text(
                 'Empresas',
                 style: TextStyle(
                   fontFamily: AppFonts.inter,
-                  color: AppColors.chartBlue,
+                  color: context.colors.chartLine,
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
                 ),
@@ -280,7 +280,7 @@ class GestorDashboardScreen extends ConsumerWidget {
                 'Usuários',
                 style: TextStyle(
                   fontFamily: AppFonts.inter,
-                  color: AppColors.accentTeal,
+                  color: context.colors.chartLineSecondary,
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
                 ),
