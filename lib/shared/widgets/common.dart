@@ -262,6 +262,11 @@ class FilterChips extends StatelessWidget {
   Widget build(BuildContext context) {
     final compact = outlined || plainInactive;
     final accent = activeColor ?? context.successForeground;
+    // Accent fills are light in the dark theme, so white labels lose contrast.
+    final onAccent =
+        ThemeData.estimateBrightnessForColor(accent) == Brightness.dark
+        ? Colors.white
+        : Theme.of(context).colorScheme.onPrimary;
     return SizedBox(
       height: compact ? 28 : 36,
       child: ListView.separated(
@@ -304,11 +309,11 @@ class FilterChips extends StatelessWidget {
                   color: outlined
                       ? active
                             ? solidSelection
-                                  ? Colors.white
+                                  ? onAccent
                                   : accent
                             : Theme.of(context).colorScheme.onSurfaceVariant
                       : active
-                      ? Colors.white
+                      ? onAccent
                       : plainInactive
                       ? Theme.of(context).colorScheme.onSurfaceVariant
                       : Theme.of(context).colorScheme.onSurface,
