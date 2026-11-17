@@ -184,6 +184,10 @@ class _ContentPlayerState extends ConsumerState<ContentPlayer> {
           }
           final content = snapshot.data!;
           final data = content.lesson.data;
+          final body = (data['body'] as String? ?? '').trim();
+          if (content.lesson.kind == 'animation' && content.urls.isNotEmpty) {
+            return _animationPlayer(context, content, data, body);
+          }
           return ListView(
             padding: const EdgeInsets.all(20),
             children: [
@@ -192,7 +196,7 @@ class _ContentPlayerState extends ConsumerState<ContentPlayer> {
                 style: Theme.of(context).textTheme.labelLarge,
               ),
               const SizedBox(height: 16),
-              if ((data['body'] as String? ?? '').trim().isNotEmpty) ...[
+              if (body.isNotEmpty) ...[
                 SelectableText(data['body'] as String),
                 const SizedBox(height: 20),
               ],
@@ -255,22 +259,98 @@ class _ContentPlayerState extends ConsumerState<ContentPlayer> {
               const SizedBox(height: 24),
               if (_feedback != null)
                 Text(_feedback!, semanticsLabel: _feedback),
-              FilledButton(
-                onPressed: _busy || _complete
-                    ? null
-                    : () => _finish(content.lesson),
-                child: Text(
-                  _complete
-                      ? 'Concluída'
-                      : _busy
-                      ? 'Salvando...'
-                      : 'Concluir aula',
-                ),
-              ),
+              _finishButton(content.lesson),
             ],
           );
         },
       ),
+    ),
+  );
+
+  Widget _animationPlayer(
+    BuildContext context,
+    _LoadedContent content,
+    Map<String, dynamic> data,
+    String body,
+  ) {
+    final zoomable =
+        data['file_key'] is String &&
+        !(data['file_key'] as String).endsWith('.gif');
+    final player = zoomable
+        ? InteractiveViewer(
+            minScale: 1,
+            maxScale: 4,
+            child: Image.network(
+              content.urls.single,
+              width: double.infinity,
+              height: double.infinity,
+              fit: BoxFit.contain,
+              semanticLabel: widget.lesson.title,
+              errorBuilder: (_, _, _) => const Center(
+                child: Text(
+                  'Imagem indisponível. Reabra a aula para tentar novamente.',
+                ),
+              ),
+            ),
+          )
+        : AnimatedLesson(
+            urls: content.urls,
+            frameMs: data['frame_ms'] as int? ?? 1000,
+            gif: data['file_key'] != null,
+          );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                widget.lesson.moduleTitle,
+                style: Theme.of(context).textTheme.labelLarge,
+              ),
+              if (body.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 96),
+                  child: SingleChildScrollView(child: SelectableText(body)),
+                ),
+              ],
+            ],
+          ),
+        ),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: player,
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (_feedback != null) ...[
+                Text(_feedback!, semanticsLabel: _feedback),
+                const SizedBox(height: 12),
+              ],
+              _finishButton(content.lesson),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _finishButton(ContentLesson lesson) => FilledButton(
+    onPressed: _busy || _complete ? null : () => _finish(lesson),
+    child: Text(
+      _complete
+          ? 'Concluída'
+          : _busy
+          ? 'Salvando...'
+          : 'Concluir aula',
     ),
   );
   Widget _question(int index, Map<String, dynamic> question) => Card(
