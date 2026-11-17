@@ -361,6 +361,60 @@ void main() {
     expect(find.text('1 / 2'), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
   });
+  testWidgets('sequence player fills the available screen area', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(390, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final content = _Content()
+      ..current = const ContentLesson(
+        id: 'seq',
+        title: 'Sequência',
+        kind: 'animation',
+        moduleId: 'm',
+        data: {
+          'image_keys': ['lessons/1.png', 'lessons/2.png'],
+          'frame_ms': 1000,
+        },
+      );
+    final container = ProviderContainer(
+      overrides: [
+        sessionProvider.overrideWith(_Session.new),
+        contentRepositoryProvider.overrideWithValue(content),
+        employeeLearningRepositoryProvider.overrideWithValue(
+          _LearningContent(content),
+        ),
+        progressRepositoryProvider.overrideWithValue(_Progress()),
+      ],
+    );
+    addTearDown(container.dispose);
+    await container.read(sessionProvider.future);
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(
+          home: ContentPlayer(
+            courseId: 'course',
+            lesson: EmployeeLesson(
+              id: 'seq',
+              title: 'Sequência',
+              moduleId: 'm',
+              moduleTitle: 'Módulo',
+              kind: 'animation',
+              status: 'not_started',
+              positionSec: 0,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final screen = tester.getSize(find.byType(ContentPlayer));
+    final frame = tester.getSize(find.byType(Image).first);
+    expect(frame.height, greaterThan(screen.height * 0.55));
+    expect(find.text('Concluir aula'), findsOneWidget);
+    expect(find.byType(Scrollable), findsNothing);
+  });
   testWidgets('reduced motion starts GIF and sequence paused', (tester) async {
     await tester.binding.setSurfaceSize(const Size(390, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));
