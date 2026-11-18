@@ -40,6 +40,7 @@ migrate_working_dir/
 /.wrangler/
 /supabase/.branches/
 /supabase/.temp/
+/android/.kotlin/
 
 # Symbolication related
 app.*.symbols

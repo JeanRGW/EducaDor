@@ -1,0 +1,71 @@
+name: Build Android APK
+
+# Manual internal distribution only. Uses the Android public Firebase config
+# and the debug signing key configured in android/app/build.gradle.kts, so the
+# APK is installable but not Play-store ready.
+on:
+  workflow_dispatch:
+    inputs:
+      abi:
+        description: ABI to package
+        type: choice
+        options:
+          - arm64-v8a
+          - armeabi-v7a
+          - x86_64
+        default: arm64-v8a
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-apk-${{ inputs.abi }}
+  cancel-in-progress: false
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4.8.0
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          flutter-version: '3.47.5'
+          channel: stable
+      - run: flutter pub get --enforce-lockfile
+      - name: Build ${{ inputs.abi }} release APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "${{ inputs.abi }}" in
+            arm64-v8a) target=android-arm64 ;;
+            armeabi-v7a) target=android-arm ;;
+            x86_64) target=android-x64 ;;
+            *) echo 'Unsupported ABI.' >&2; exit 1 ;;
+          esac
+          flutter build apk --release --no-pub --split-per-abi \
+            --target-platform "$target" \
+            --dart-define-from-file=config/staging.android.public.json
+      - name: Record artifact digest
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk="build/app/outputs/flutter-apk/app-${{ inputs.abi }}-release.apk"
+          test -f "$apk"
+          {
+            echo "### EducaDor ${{ inputs.abi }} APK"
+            echo '```'
+            ls -lh "$apk"
+            sha256sum "$apk"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: educador-${{ inputs.abi }}-release
+          path: build/app/outputs/flutter-apk/app-${{ inputs.abi }}-release.apk
+          if-no-files-found: error
+          retention-days: 14
