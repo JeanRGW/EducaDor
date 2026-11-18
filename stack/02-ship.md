@@ -30,6 +30,7 @@ The backup workflow is activated and gated as described below.
 | File | Trigger | Does |
 |---|---|---|
 | `ci.yml` | PR/push | `flutter analyze`, `flutter test`, `flutter build web` (no deploy) |
+| `android-apk.yml` | manual only | release APK for the selected ABI (default `arm64-v8a`) with the Android Firebase config; debug-key signing, 14-day artifact |
 | `deploy-pages.yml` | `main` | build web with `--dart-define` secrets → Pages deploy |
 | `backup.yml` | daily cron / manual | DB-only `pg_dump` → B2 `educador-backups` (`s3.us-east-005.backblazeb2.com`), daily 7 + weekly 4; enabled, each run gated by `BACKUP_ENABLED` (manual also needs confirm), no object bytes |
 | `restore-drill.yml` | manual only | destructive hosted restore drill; verifies the newest authenticated archive, wipes and reloads `public`+`auth` in one transaction, dry-run first; see [backup recovery](14-backup-recovery.md) |
