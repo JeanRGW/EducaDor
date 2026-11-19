@@ -348,6 +348,8 @@ void main() {
     expect(find.text('AS'), findsOneWidget);
     expect(find.text('1.234'), findsOneWidget);
     expect(find.text('37,5%'), findsOneWidget);
+    expect(find.text('Organizações'), findsWidgets);
+    expect(find.text('Total de organizações'), findsNothing);
     expect(find.text('47'), findsNothing);
     expect(
       tester.widget<LineChart>(find.byType(LineChart)).secondaryData,
@@ -401,11 +403,11 @@ void main() {
     expect(find.text('Ativas (50)'), findsOneWidget);
     expect(find.text('7'), findsWidgets);
     await tester.scrollUntilVisible(
-      find.text('Carregar mais empresas'),
+      find.text('Carregar mais organizações'),
       1500,
       scrollable: find.byType(Scrollable).first,
     );
-    await tester.tap(find.text('Carregar mais empresas'));
+    await tester.tap(find.text('Carregar mais organizações'));
     await tester.pumpAndSettle();
     expect(repo.calls.last.offset, 50);
     await tester.scrollUntilVisible(
@@ -418,7 +420,7 @@ void main() {
       find.byWidgetPredicate(
         (w) =>
             w is TextField &&
-            w.decoration?.hintText == 'Pesquise o nome da empresa',
+            w.decoration?.hintText == 'Pesquise o nome da organização',
       ),
       -1000,
       scrollable: find.byType(Scrollable).first,
@@ -427,7 +429,7 @@ void main() {
       find.byWidgetPredicate(
         (w) =>
             w is TextField &&
-            w.decoration?.hintText == 'Pesquise o nome da empresa',
+            w.decoration?.hintText == 'Pesquise o nome da organização',
       ),
       ' %_ ',
     );
@@ -476,7 +478,7 @@ void main() {
           findsNothing,
         );
         expect(
-          find.descendant(of: card, matching: find.text('Funcionários')),
+          find.descendant(of: card, matching: find.text('Usuários')),
           findsOneWidget,
         );
       }
@@ -501,13 +503,16 @@ void main() {
   ) async {
     final repo = _Companies()..fail = true;
     await _show(tester, const CompaniesScreen(), companies: repo);
-    expect(find.text('Não foi possível carregar empresas.'), findsOneWidget);
+    expect(
+      find.text('Não foi possível carregar organizações.'),
+      findsOneWidget,
+    );
     repo
       ..fail = false
       ..empty = true;
     await tester.tap(find.text('Tentar novamente'));
     await tester.pumpAndSettle();
-    expect(find.text('Nenhuma empresa cadastrada.'), findsOneWidget);
+    expect(find.text('Nenhuma organização cadastrada.'), findsOneWidget);
   });
 
   testWidgets(
@@ -517,7 +522,7 @@ void main() {
       addTearDown(() => tester.binding.setSurfaceSize(null));
       await _show(tester, const CompaniesScreen(), companies: _Companies());
 
-      final title = find.text('Empresas Registradas');
+      final title = find.text('Organizações');
       expect(tester.getTopLeft(title).dx, 32);
       final titleStyle = DefaultTextStyle.of(tester.element(title)).style;
       expect(titleStyle.fontFamily, AppFonts.outfit);
@@ -528,7 +533,7 @@ void main() {
               find.byWidgetPredicate(
                 (w) =>
                     w is TextField &&
-                    w.decoration?.hintText == 'Pesquise o nome da empresa',
+                    w.decoration?.hintText == 'Pesquise o nome da organização',
               ),
             )
             .height,
@@ -558,7 +563,7 @@ void main() {
       );
       expect(find.text('Convites pendentes'), findsOneWidget);
       expect(find.text('Nenhum convite pendente.'), findsOneWidget);
-      expect(find.text('Convidar gestor da empresa'), findsWidgets);
+      expect(find.text('Convidar gestor da organização'), findsWidgets);
       final addButton = tester.widget<FloatingActionButton>(
         find.byType(FloatingActionButton),
       );
@@ -604,6 +609,7 @@ void main() {
       expect(repo.activityCalls.last, period);
       expect(picker.files, hasLength(1));
       final csv = utf8.decode(picker.files.single.skip(3).toList());
+      expect(csv, contains('"Conclusão atual por organização"'));
       expect(csv, contains('"Empresa; ""A""";"37,5"'));
       expect(
         csv,
@@ -727,7 +733,7 @@ void main() {
     expect(picker.files, isEmpty);
     expect(
       find.text(
-        'Exportação limitada a 1.000 empresas. Refine os dados e tente novamente.',
+        'Exportação limitada a 1.000 organizações. Refine os dados e tente novamente.',
       ),
       findsOneWidget,
     );
@@ -739,7 +745,7 @@ void main() {
     (tester) async {
       final repo = _Reports();
       await _show(tester, const GestorReportsScreen(), reports: repo);
-      final heading = find.text('Conclusão pela Empresa');
+      final heading = find.text('Conclusão por organização');
       expect(
         find.ancestor(of: heading, matching: find.byType(AppCard)),
         findsOneWidget,
@@ -790,7 +796,7 @@ void main() {
     final export = tester.widget<IconButton>(find.byType(IconButton).first);
     expect(export.onPressed, isNotNull);
     expect(export.tooltip, 'Exportar CSV');
-    expect(find.text('Nenhuma empresa cadastrada.'), findsOneWidget);
+    expect(find.text('Nenhuma organização cadastrada.'), findsOneWidget);
     expect(find.text('Nenhuma conclusão no período.'), findsOneWidget);
     final popularEmpty = find.text('Nenhuma conclusão no período.');
     expect(tester.widget<Text>(popularEmpty).style!.fontSize, 12);

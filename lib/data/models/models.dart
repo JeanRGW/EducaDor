@@ -52,8 +52,8 @@ class AccessContext {
 
   String get label => switch (role) {
     Role.gestor => 'Gestor · Plataforma',
-    Role.empresa => 'Gestor da empresa · $companyName',
-    Role.funcionario => 'Funcionário · $companyName',
+    Role.empresa => 'Gestor · $companyName',
+    Role.funcionario => 'Usuário · $companyName',
   };
 }
 
@@ -283,8 +283,8 @@ class ContentAudience {
   const ContentAudience({this.allCompanies = true, this.companyIds = const []});
 
   String get label => allCompanies
-      ? 'Todas as empresas'
-      : '${companyIds.length} ${companyIds.length == 1 ? 'empresa selecionada' : 'empresas selecionadas'}';
+      ? 'Todas as organizações'
+      : '${companyIds.length} ${companyIds.length == 1 ? 'organização selecionada' : 'organizações selecionadas'}';
 }
 
 class CompanyOption {

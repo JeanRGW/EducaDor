@@ -17,20 +17,20 @@ class CompanyProfileScreen extends ConsumerWidget {
     final identity = ref.watch(companyIdentityProvider);
     final dashboard = ref.watch(companyDashboardProvider);
     final company = identity.asData?.value;
-    final name = company?.name ?? session?.active?.companyName ?? 'Empresa';
+    final name = company?.name ?? session?.active?.companyName ?? 'Organização';
     return ProfilePage(
       initials: companyInitials(name),
       name: name,
       subtitle: company == null
           ? identity.isLoading
-                ? 'Carregando dados da empresa...'
+                ? 'Carregando dados da organização...'
                 : 'Dados cadastrais indisponíveis'
           : company.cnpj.isEmpty
           ? 'CNPJ não informado'
           : 'CNPJ: ${company.cnpj}',
       badge: dashboard.asData == null
-          ? 'Gestor da empresa'
-          : '${dashboard.value!.employeeCount} funcionários',
+          ? 'Gestor da organização'
+          : '${dashboard.value!.employeeCount} usuários',
       settings: ProfileAccountSettings(
         editLocation: '/empresa/perfil/edit',
         notices: [
@@ -43,7 +43,7 @@ class CompanyProfileScreen extends ConsumerWidget {
           ],
           if (dashboard.hasError) ...[
             CompanyErrorCard(
-              message: 'Não foi possível carregar o total de funcionários.',
+              message: 'Não foi possível carregar o total de usuários.',
               retry: () => ref.invalidate(companyDashboardProvider),
             ),
             const SizedBox(height: 8),
@@ -51,7 +51,7 @@ class CompanyProfileScreen extends ConsumerWidget {
         ],
         managementActions: [
           ProfileMenuRow(
-            label: 'Gestores da empresa',
+            label: 'Gestores da organização',
             icon: AppIcons.groups,
             onTap: () => context.push('/empresa/gestores'),
           ),

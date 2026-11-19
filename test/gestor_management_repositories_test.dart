@@ -365,7 +365,7 @@ void main() {
     final audience = await repo.audience('course');
     expect(audience.allCompanies, isFalse);
     expect(audience.companyIds, ['a', 'b']);
-    expect(audience.label, '2 empresas selecionadas');
+    expect(audience.label, '2 organizações selecionadas');
   });
 
   test('lesson reads paginate within the selected course', () async {

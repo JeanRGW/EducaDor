@@ -18,7 +18,7 @@ final employeeScopeProvider = Provider<EmployeeScope>((ref) {
   if (identity.$1 == null ||
       identity.$2 != Role.funcionario ||
       identity.$3 == null) {
-    throw StateError('Selecione o perfil de funcionário.');
+    throw StateError('Selecione o perfil de usuário.');
   }
   return (userId: identity.$1!, companyId: identity.$3!);
 });

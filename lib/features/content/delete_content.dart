@@ -24,7 +24,7 @@ Future<bool> confirmContentDeletion(
           scrollable: true,
           title: Text('Excluir $label?', style: AdminStyles.formTitle(context)),
           content: Text(
-            '“$title” será excluído permanentemente. $descendants Os pontos obtidos nesse conteúdo deixarão de compor o saldo dos funcionários. Os arquivos enviados permanecerão no armazenamento. Esta ação não pode ser desfeita.',
+            '“$title” será excluído permanentemente. $descendants Os pontos obtidos nesse conteúdo deixarão de compor o saldo dos usuários. Os arquivos enviados permanecerão no armazenamento. Esta ação não pode ser desfeita.',
             style: AdminStyles.body(context),
           ),
           actions: [

@@ -209,7 +209,7 @@ void main() {
             isA<StateError>().having(
               (error) => error.message,
               'message',
-              'Configure o Supabase para carregar empresas.',
+              'Configure o Supabase para carregar organizações.',
             ),
           ),
         );

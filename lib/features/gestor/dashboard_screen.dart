@@ -156,7 +156,7 @@ class GestorDashboardScreen extends ConsumerWidget {
   Widget _metrics(GestorDashboard data) {
     final metrics = [
       StatMetric(
-        label: 'Total de empresas',
+        label: 'Organizações',
         value: formatCount(data.companyCount),
         delta: '+${formatCount(data.newCompanyCount)} este mês',
         icon: AppIcons.building,
@@ -219,7 +219,7 @@ class GestorDashboardScreen extends ConsumerWidget {
             runSpacing: 4,
             children: [
               const Text(
-                'Crescimento da Empresa / Usuários',
+                'Crescimento de organizações e usuários',
                 style: TextStyle(
                   fontFamily: AppFonts.outfit,
                   fontSize: 15,
@@ -246,7 +246,7 @@ class GestorDashboardScreen extends ConsumerWidget {
                   .map(
                     (row) =>
                         '${monthLabel(row.month)}: '
-                        '${row.companies} empresas, ${row.users} usuários',
+                        '${row.companies} organizações, ${row.users} usuários',
                   )
                   .join('; '),
               child: LineChart(
@@ -268,7 +268,7 @@ class GestorDashboardScreen extends ConsumerWidget {
             spacing: 16,
             children: [
               Text(
-                'Empresas',
+                'Organizações',
                 style: TextStyle(
                   fontFamily: AppFonts.inter,
                   color: context.colors.chartLine,

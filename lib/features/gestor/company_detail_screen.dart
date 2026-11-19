@@ -43,14 +43,14 @@ class _CompanyDetailScreenState extends ConsumerState<CompanyDetailScreen> {
         );
       }
       return ManagementPage(
-        title: 'Detalhes da empresa',
+        title: 'Detalhes da organização',
         fallbackLocation: '/gestor/empresas',
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
             if (snapshot.hasError)
               DataErrorCard(
-                message: 'Empresa indisponível. Tente carregar novamente.',
+                message: 'Organização indisponível. Tente carregar novamente.',
                 retry: () => setState(_load),
               )
             else
@@ -75,7 +75,7 @@ class _CompanyEditorState extends ConsumerState<_CompanyEditor> {
   late bool _active;
   bool _busy = false;
   static const _labels = {
-    'name': 'Nome da empresa',
+    'name': 'Nome da organização',
     'cnpj': 'CNPJ',
     'code_prefix': 'Prefixo dos certificados',
     'responsible': 'Pessoa responsável',
@@ -136,7 +136,9 @@ class _CompanyEditorState extends ConsumerState<_CompanyEditor> {
       await ref
           .read(companyRepositoryProvider)
           .update(widget.company.id, fields);
-      if (mounted) showManagementMessage(context, 'Dados da empresa salvos.');
+      if (mounted) {
+        showManagementMessage(context, 'Dados da organização salvos.');
+      }
       await _refreshData();
     } catch (error) {
       if (mounted) {
@@ -158,11 +160,11 @@ class _CompanyEditorState extends ConsumerState<_CompanyEditor> {
     final active = !_active;
     final confirmed = await confirmManagementAction(
       context,
-      title: active ? 'Reativar empresa?' : 'Pausar empresa?',
+      title: active ? 'Reativar organização?' : 'Pausar organização?',
       message: active
-          ? 'Os gestores e funcionários poderão acessar esta empresa novamente.'
-          : 'Os gestores e funcionários perderão acesso a esta empresa enquanto ela estiver pausada. Os vínculos e o progresso serão preservados.',
-      action: active ? 'Reativar empresa' : 'Pausar empresa',
+          ? 'Os gestores e usuários poderão acessar esta organização novamente.'
+          : 'Os gestores e usuários perderão acesso a esta organização enquanto ela estiver pausada. Os vínculos e o progresso serão preservados.',
+      action: active ? 'Reativar organização' : 'Pausar organização',
     );
     if (!confirmed || !mounted) return;
     setState(() => _busy = true);
@@ -174,7 +176,7 @@ class _CompanyEditorState extends ConsumerState<_CompanyEditor> {
         setState(() => _active = active);
         showManagementMessage(
           context,
-          active ? 'Empresa reativada.' : 'Empresa pausada.',
+          active ? 'Organização reativada.' : 'Organização pausada.',
         );
       }
       await _refreshData();
@@ -182,7 +184,7 @@ class _CompanyEditorState extends ConsumerState<_CompanyEditor> {
       if (mounted) {
         showManagementMessage(
           context,
-          'Não foi possível atualizar a empresa. Tente novamente.',
+          'Não foi possível atualizar a organização. Tente novamente.',
         );
       }
     } finally {
@@ -219,7 +221,7 @@ class _CompanyEditorState extends ConsumerState<_CompanyEditor> {
 
   @override
   Widget build(BuildContext context) => ManagementPage(
-    title: 'Detalhes da empresa',
+    title: 'Detalhes da organização',
     fallbackLocation: '/gestor/empresas',
     busy: _busy,
     child: Form(
@@ -232,7 +234,7 @@ class _CompanyEditorState extends ConsumerState<_CompanyEditor> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _active ? 'Empresa ativa' : 'Empresa pausada',
+                  _active ? 'Organização ativa' : 'Organização pausada',
                   style: AdminStyles.cardTitle(context).copyWith(
                     color: _active
                         ? context.successForeground
@@ -270,7 +272,9 @@ class _CompanyEditorState extends ConsumerState<_CompanyEditor> {
                       OutlinedButton(
                         onPressed: _busy ? null : _toggle,
                         child: Text(
-                          _active ? 'Pausar empresa' : 'Reativar empresa',
+                          _active
+                              ? 'Pausar organização'
+                              : 'Reativar organização',
                         ),
                       ),
                       OutlinedButton(
@@ -279,7 +283,7 @@ class _CompanyEditorState extends ConsumerState<_CompanyEditor> {
                             : () => context.push(
                                 '/gestor/company/${widget.company.id}/gestores',
                               ),
-                        child: const Text('Gerenciar gestores da empresa'),
+                        child: const Text('Gerenciar gestores da organização'),
                       ),
                     ],
                   ),
@@ -308,7 +312,7 @@ class _CompanyEditorState extends ConsumerState<_CompanyEditor> {
           _field('field'),
           const SizedBox(height: 4),
           PrimaryButton(
-            _busy ? 'Salvando...' : 'Salvar dados da empresa',
+            _busy ? 'Salvando...' : 'Salvar dados da organização',
             compact: true,
             onPressed: _busy ? null : _save,
           ),

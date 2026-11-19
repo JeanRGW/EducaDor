@@ -30,7 +30,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
       builder: (context) => AlertDialog(
         title: const Text('Resgatar recompensa?'),
         content: Text(
-          '${reward.title}\nCusto: ${reward.cost} pontos. O saldo será descontado nesta empresa.',
+          '${reward.title}\nCusto: ${reward.cost} pontos. O saldo será descontado nesta organização.',
         ),
         actions: [
           TextButton(
@@ -354,7 +354,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                           child: const Text('Carregar mais recompensas'),
                         ),
                       const SectionHeader(
-                        'Ranking da Empresa (Top 3)',
+                        'Ranking da organização (Top 3)',
                         compact: true,
                       ),
                       EmployeeResult(
@@ -363,7 +363,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                         builder: (rows) => rows.isEmpty
                             ? const AppCard(
                                 child: Text(
-                                  'Ainda não há participantes no ranking da empresa.',
+                                  'Ainda não há usuários no ranking da organização.',
                                 ),
                               )
                             : Column(

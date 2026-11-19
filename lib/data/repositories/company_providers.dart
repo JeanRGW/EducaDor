@@ -19,7 +19,7 @@ String _companyId(Ref ref) {
   if (identity.$1 == null ||
       identity.$2 != Role.empresa ||
       identity.$3 == null) {
-    throw StateError('Selecione o perfil de gestor da empresa.');
+    throw StateError('Selecione o perfil de gestor da organização.');
   }
   return identity.$3!;
 }

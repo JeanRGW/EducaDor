@@ -73,7 +73,9 @@ class _AddCompanyScreenState extends ConsumerState<AddCompanyScreen> {
         !RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(_email.text.trim())) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Informe empresa, responsável e e-mail válidos.'),
+          content: Text(
+            'Informe a organização, o responsável e um e-mail válido.',
+          ),
         ),
       );
       return;
@@ -105,7 +107,7 @@ class _AddCompanyScreenState extends ConsumerState<AddCompanyScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Não foi possível criar a empresa e o convite.'),
+            content: Text('Não foi possível criar a organização e o convite.'),
           ),
         );
       }
@@ -119,7 +121,7 @@ class _AddCompanyScreenState extends ConsumerState<AddCompanyScreen> {
     data: AdminStyles.formTheme(Theme.of(context)),
     child: Scaffold(
       appBar: AppBar(
-        title: const Text('Adicionar empresa'),
+        title: const Text('Adicionar organização'),
         leading: IconButton(
           tooltip: 'Voltar',
           icon: SvgIcon(
@@ -134,7 +136,7 @@ class _AddCompanyScreenState extends ConsumerState<AddCompanyScreen> {
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
         children: [
           FormFieldLabel(
-            label: 'Nome da Empresa',
+            label: 'Nome da organização',
             compact: true,
             hint: 'santa maria',
             controller: _name,
@@ -146,7 +148,7 @@ class _AddCompanyScreenState extends ConsumerState<AddCompanyScreen> {
             controller: _cnpj,
           ),
           FormFieldLabel(
-            label: 'Primeiro gestor da empresa',
+            label: 'Primeiro gestor da organização',
             compact: true,
             hint: 'Nome completo',
             controller: _responsible,
@@ -194,7 +196,7 @@ class _AddCompanyScreenState extends ConsumerState<AddCompanyScreen> {
           ),
           const SizedBox(height: 4),
           PrimaryButton(
-            _busy ? 'Criando...' : 'Criar empresa e convite',
+            _busy ? 'Criando...' : 'Criar organização e convite',
             compact: true,
             onPressed: _busy ? null : _submit,
           ),

@@ -80,7 +80,7 @@ class _GestorManagersScreenState extends ConsumerState<GestorManagersScreen> {
       context,
       title: 'Remover acesso de gestor?',
       message:
-          '${member.fullName} perderá somente o acesso de gestor ${platform ? 'da plataforma' : 'desta empresa'}. A conta, os outros perfis e o progresso serão preservados.'
+          '${member.fullName} perderá somente o acesso de gestor ${platform ? 'da plataforma' : 'desta organização'}. A conta, os outros perfis e o progresso serão preservados.'
           '${self && platform ? ' Você sairá do perfil de gestor da plataforma.' : ''}',
       action: 'Remover acesso',
     );
@@ -128,7 +128,7 @@ class _GestorManagersScreenState extends ConsumerState<GestorManagersScreen> {
         : '/gestor/company/${widget.companyId}',
     title: widget.companyId == null
         ? 'Gestores da plataforma'
-        : 'Gestores da empresa',
+        : 'Gestores da organização',
     busy: _busy,
     child: RefreshIndicator(
       onRefresh: () async {
@@ -162,13 +162,13 @@ class _GestorManagersScreenState extends ConsumerState<GestorManagersScreen> {
                     ),
                     if (!snapshot.data!.active)
                       const Text(
-                        'Empresa pausada. Reative para enviar convites.',
+                        'Organização pausada. Reative para enviar convites.',
                       ),
                     const SizedBox(height: 12),
                   ],
                   if (snapshot.hasError)
                     DataErrorCard(
-                      message: 'Não foi possível carregar a empresa.',
+                      message: 'Não foi possível carregar a organização.',
                       retry: () => setState(
                         () => _company = ref
                             .read(companyRepositoryProvider)

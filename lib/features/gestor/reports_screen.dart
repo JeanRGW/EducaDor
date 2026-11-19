@@ -87,7 +87,7 @@ class _GestorReportsScreenState extends ConsumerState<GestorReportsScreen> {
         ['Relatório', 'Período inicial', 'Período final', 'Nome', 'Valor'],
         for (final company in companies)
           [
-            'Conclusão atual por empresa',
+            'Conclusão atual por organização',
             '',
             '',
             company.company,
@@ -119,7 +119,7 @@ class _GestorReportsScreenState extends ConsumerState<GestorReportsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-              'Exportação limitada a 1.000 empresas. Refine os dados e tente novamente.',
+              'Exportação limitada a 1.000 organizações. Refine os dados e tente novamente.',
             ),
           ),
         );
@@ -312,7 +312,7 @@ class _GestorReportsScreenState extends ConsumerState<GestorReportsScreen> {
               const Padding(
                 padding: EdgeInsets.fromLTRB(16, 12, 16, 0),
                 child: Text(
-                  'O CSV inclui até 1.000 empresas e a atividade do período selecionado, consultados em momentos distintos. A conclusão é lida duas vezes; se mudar, a exportação é cancelada.',
+                  'O CSV inclui até 1.000 organizações e a atividade do período selecionado, consultados em momentos distintos. A conclusão é lida duas vezes; se mudar, a exportação é cancelada.',
                 ),
               ),
               Padding(
@@ -334,7 +334,7 @@ class _GestorReportsScreenState extends ConsumerState<GestorReportsScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Conclusão pela Empresa',
+                              'Conclusão por organização',
                               style: AdminStyles.cardTitle(context),
                             ),
                             const SizedBox(height: 8),
@@ -384,11 +384,13 @@ class _GestorReportsScreenState extends ConsumerState<GestorReportsScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Conclusão pela Empresa',
+                              'Conclusão por organização',
                               style: AdminStyles.cardTitle(context),
                             ),
                             SizedBox(height: 12),
-                            _ReportEmptyState('Nenhuma empresa cadastrada.'),
+                            _ReportEmptyState(
+                              'Nenhuma organização cadastrada.',
+                            ),
                           ],
                         ),
                       ),
@@ -397,7 +399,7 @@ class _GestorReportsScreenState extends ConsumerState<GestorReportsScreen> {
                     if (pages.last.asData?.value.length == 50)
                       TextButton(
                         onPressed: () => setState(() => _offset += 50),
-                        child: const Text('Carregar mais empresas'),
+                        child: const Text('Carregar mais organizações'),
                       ),
                     const SizedBox(height: 16),
                     if (activity.hasError)

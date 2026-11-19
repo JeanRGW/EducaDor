@@ -334,7 +334,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               textInputAction: TextInputAction.next,
                               autofillHints: const [AutofillHints.username],
                               decoration: _decoration(
-                                'email@empresa.com',
+                                'email@exemplo.com',
                                 AppIcons.mail,
                               ),
                             ),

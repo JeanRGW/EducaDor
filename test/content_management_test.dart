@@ -330,7 +330,7 @@ void main() {
     expect(repo.companyWrites, 1);
     expect(repo.companyEnabled, isFalse);
     expect(repo.platformEnabled, isTrue);
-    expect(find.text('Pausado pela empresa'), findsOneWidget);
+    expect(find.text('Pausado pela organização'), findsOneWidget);
     await tester.tap(find.byType(Switch));
     await tester.pumpAndSettle();
     expect(repo.companyEnabled, isTrue);
@@ -519,7 +519,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Sem dados'), findsOneWidget);
       expect(
-        find.textContaining('1 empresa liberada', findRichText: true),
+        find.textContaining('1 organização liberada', findRichText: true),
         findsOneWidget,
       );
       expect(tester.takeException(), isNull);

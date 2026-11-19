@@ -145,7 +145,7 @@ class _CourseState extends ConsumerState<_Course> {
                           padding: EdgeInsets.all(16),
                           child: AppCard(
                             child: Text(
-                              'Conteúdo indisponível. O acesso pode ter sido pausado ou removido pela empresa ou pela plataforma.',
+                              'Conteúdo indisponível. O acesso pode ter sido pausado ou removido pela organização ou pela plataforma.',
                             ),
                           ),
                         )
@@ -188,7 +188,7 @@ class _CourseState extends ConsumerState<_Course> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'Disponível para ${ref.watch(sessionProvider).value?.active?.companyName ?? 'sua empresa'}',
+                                    'Disponível para ${ref.watch(sessionProvider).value?.active?.companyName ?? 'sua organização'}',
                                     style: AdminStyles.fieldLabel(context)
                                         .copyWith(
                                           color: context.successForeground,

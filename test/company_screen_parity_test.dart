@@ -85,6 +85,7 @@ Employee _employee(
 class _SaveSpy extends FilePicker {
   int calls = 0;
   final files = <Uint8List>[];
+  final filenames = <String?>[];
   @override
   Future<String?> saveFile({
     String? dialogTitle,
@@ -97,6 +98,7 @@ class _SaveSpy extends FilePicker {
   }) async {
     calls++;
     files.add(bytes!);
+    filenames.add(fileName);
     return null;
   }
 }
@@ -587,15 +589,13 @@ void main() {
         1,
       );
       expect(
-        tester.widget<Text>(find.text('Total de funcionários')).style,
+        tester.widget<Text>(find.text('Total de usuários')).style,
         AdminStyles.fieldLabelFor(
-          Theme.of(
-            tester.element(find.text('Total de funcionários')),
-          ).colorScheme,
+          Theme.of(tester.element(find.text('Total de usuários'))).colorScheme,
         ),
       );
       final employeeMetric = find.ancestor(
-        of: find.text('Total de funcionários'),
+        of: find.text('Total de usuários'),
         matching: find.byType(AppCard),
       );
       final courseMetric = find.ancestor(
@@ -632,7 +632,7 @@ void main() {
             .height,
         closeTo(36, 2),
       );
-      expect(find.text('Todos os funcionários (3)'), findsOneWidget);
+      expect(find.text('Todos os usuários (3)'), findsOneWidget);
       expect(find.textContaining('Ativos'), findsNothing);
       expect(find.text('ATIVO'), findsNothing);
       expect(find.text('De licença'), findsOneWidget);
@@ -773,7 +773,7 @@ void main() {
       const months = ['Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out'];
       expect(
         semantics.properties.label,
-        'Participação mensal: ${[for (var i = 0; i < counts.length; i++) '${months[i]}: ${counts[i]} funcionários'].join(', ')}',
+        'Participação mensal: ${[for (var i = 0; i < counts.length; i++) '${months[i]}: ${counts[i]} usuários'].join(', ')}',
       );
       expect(tester.takeException(), isNull);
     });
@@ -789,10 +789,10 @@ void main() {
       expect(avatar.size, 72);
       expect(avatar.initials, 'GSM');
       expect(find.text('CNPJ: 12.345.678/0001-90'), findsOneWidget);
-      expect(find.text('3 funcionários'), findsOneWidget);
+      expect(find.text('3 usuários'), findsOneWidget);
       expect(find.text('Trocar perfil'), findsOneWidget);
       expect(find.textContaining('24/7'), findsNothing);
-      await tester.tap(find.text('Gestores da empresa'));
+      await tester.tap(find.text('Gestores da organização'));
       await tester.pumpAndSettle();
       expect(find.byType(CompanyManagersScreen), findsOneWidget);
       expect(tester.takeException(), isNull);
@@ -911,11 +911,16 @@ void main() {
       await tester.pumpAndSettle();
       expect(employees.exportAfters, isNotEmpty);
       if (count == 0) {
-        expect(find.text('Nenhum funcionário para exportar.'), findsOneWidget);
+        expect(find.text('Nenhum usuário para exportar.'), findsOneWidget);
         expect(picker.calls, 0);
       } else {
         expect(picker.calls, 1);
         final csv = utf8.decode(picker.files.single.skip(3).toList());
+        expect(
+          csv,
+          startsWith('"Usuário";"Departamento";"Cargo";"Conclusão (%)"'),
+        );
+        expect(picker.filenames.single, startsWith('conclusao-usuarios-'));
         expect(csv, contains('"Pessoa 1"'));
         expect(employees.exportAfters.length, 2 * ((count + 49) ~/ 50));
       }
@@ -939,7 +944,7 @@ void main() {
     expect(picker.calls, 0);
     expect(
       find.text(
-        'Exportação limitada a 1.000 funcionários. Refine os dados e tente novamente.',
+        'Exportação limitada a 1.000 usuários. Refine os dados e tente novamente.',
       ),
       findsOneWidget,
     );
@@ -998,9 +1003,9 @@ void main() {
       await _scrollTo(tester, find.text('Destaques'));
       expect(find.text('Pessoa 51 (TI)'), findsOneWidget);
       await _show(tester, const EmployeesScreen(), employees: employees);
-      expect(find.text('Exibindo 50 de 52 funcionários.'), findsOneWidget);
-      await _scrollTo(tester, find.text('Carregar mais funcionários'));
-      await tester.tap(find.text('Carregar mais funcionários'));
+      expect(find.text('Exibindo 50 de 52 usuários.'), findsOneWidget);
+      await _scrollTo(tester, find.text('Carregar mais usuários'));
+      await tester.tap(find.text('Carregar mais usuários'));
       await tester.pumpAndSettle();
       expect(employees.queries.last.offset, 50);
       await _scrollTo(tester, find.text('Pessoa 51'));
@@ -1011,7 +1016,7 @@ void main() {
         ),
         findsOneWidget,
       );
-      expect(find.text('Carregar mais funcionários'), findsNothing);
+      expect(find.text('Carregar mais usuários'), findsNothing);
     },
   );
 
@@ -1020,7 +1025,7 @@ void main() {
     (tester) async {
       final invites = _Invites();
       await _show(tester, const AddEmployeeScreen(), invites: invites);
-      expect(find.text('Convidar funcionário'), findsOneWidget);
+      expect(find.text('Convidar usuário'), findsOneWidget);
       expect(find.text('DATA DE NASCIMENTO'), findsNothing);
       expect(find.text('NUMERO'), findsNothing);
       for (final (label, value) in [
@@ -1092,17 +1097,14 @@ void main() {
         ),
         findsOneWidget,
       );
-      expect(find.text('Todos os funcionários (52)'), findsOneWidget);
-      expect(
-        find.text('Exibindo 1 de 1 funcionários encontrados.'),
-        findsOneWidget,
-      );
+      expect(find.text('Todos os usuários (52)'), findsOneWidget);
+      expect(find.text('Exibindo 1 de 1 usuário encontrado.'), findsOneWidget);
       expect(employees.queries.last, (
         companyId: 'company-a',
         search: 'Pessoa 51',
         offset: 0,
       ));
-      expect(find.text('Carregar mais funcionários'), findsNothing);
+      expect(find.text('Carregar mais usuários'), findsNothing);
     },
   );
 
@@ -1153,11 +1155,11 @@ void main() {
         ..rows = [for (var i = 0; i < 52; i++) _employee(i)]
         ..failOffset = 50;
       await _show(tester, const EmployeesScreen(), employees: employees);
-      await _scrollTo(tester, find.text('Carregar mais funcionários'));
-      await tester.tap(find.text('Carregar mais funcionários'));
+      await _scrollTo(tester, find.text('Carregar mais usuários'));
+      await tester.tap(find.text('Carregar mais usuários'));
       await tester.pumpAndSettle();
       await _scrollTo(tester, find.text('Tentar novamente'), delta: -180);
-      expect(find.text('Exibindo 50 de 52 funcionários.'), findsOneWidget);
+      expect(find.text('Exibindo 50 de 52 usuários.'), findsOneWidget);
       final callCount = employees.queries.length;
       await tester.pump(const Duration(seconds: 10));
       expect(employees.queries.length, callCount);
@@ -1182,8 +1184,8 @@ void main() {
         employees: employees,
         invites: _Invites(),
       );
-      await _scrollTo(tester, find.text('Carregar mais funcionários'));
-      await tester.tap(find.text('Carregar mais funcionários'));
+      await _scrollTo(tester, find.text('Carregar mais usuários'));
+      await tester.tap(find.text('Carregar mais usuários'));
       await tester.pumpAndSettle();
       await _scrollTo(tester, find.text('Tentar novamente'), delta: -180);
       final retry = tester
@@ -1226,10 +1228,7 @@ void main() {
       retry();
       await tester.pumpAndSettle();
       expect(employees.queries.last, failedQuery);
-      expect(
-        find.text('Exibindo 1 de 1 funcionários encontrados.'),
-        findsOneWidget,
-      );
+      expect(find.text('Exibindo 1 de 1 usuário encontrado.'), findsOneWidget);
     },
   );
 
@@ -1244,8 +1243,8 @@ void main() {
         employees: employees,
         invites: _Invites(),
       );
-      await _scrollTo(tester, find.text('Carregar mais funcionários'));
-      await tester.tap(find.text('Carregar mais funcionários'));
+      await _scrollTo(tester, find.text('Carregar mais usuários'));
+      await tester.tap(find.text('Carregar mais usuários'));
       await tester.pumpAndSettle();
       await _scrollTo(
         tester,

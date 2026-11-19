@@ -172,7 +172,7 @@ class _People extends PeopleRepository {
   Future<void> revokeAccess(String userId, {String? companyId}) async {
     if (reject) {
       throw const ManagementException(
-        'A empresa precisa manter pelo menos um gestor.',
+        'A organização precisa manter pelo menos um gestor.',
       );
     }
     revoked = userId;
@@ -416,20 +416,20 @@ void main() {
       );
       final name = tester.widget<TextField>(
         find.descendant(
-          of: _field('Nome da empresa'),
+          of: _field('Nome da organização'),
           matching: find.byType(TextField),
         ),
       );
       expect(name.decoration!.labelText, isNull);
       expect(
-        tester.getRect(find.text('Nome da empresa').first).bottom,
-        lessThan(tester.getRect(_field('Nome da empresa')).top),
+        tester.getRect(find.text('Nome da organização').first).bottom,
+        lessThan(tester.getRect(_field('Nome da organização')).top),
       );
       expect(find.text('Registro: 01 out 2026'), findsOneWidget);
-      final pause = find.widgetWithText(OutlinedButton, 'Pausar empresa');
+      final pause = find.widgetWithText(OutlinedButton, 'Pausar organização');
       final managers = find.widgetWithText(
         OutlinedButton,
-        'Gerenciar gestores da empresa',
+        'Gerenciar gestores da organização',
       );
       expect(
         OutlinedButtonTheme.of(
@@ -647,13 +647,13 @@ void main() {
       const CompanyDetailScreen(companyId: 'company'),
       companies: repo,
     );
-    await tester.enterText(_field('Nome da empresa'), 'Empresa editada');
+    await tester.enterText(_field('Nome da organização'), 'Empresa editada');
     await tester.scrollUntilVisible(
-      find.text('Salvar dados da empresa'),
+      find.text('Salvar dados da organização'),
       200,
       scrollable: find.byType(Scrollable).first,
     );
-    await _tap(tester, find.text('Salvar dados da empresa'));
+    await _tap(tester, find.text('Salvar dados da organização'));
     expect(repo.saved!['name'], 'Empresa editada');
     expect(repo.saved!['address'], 'Rua A');
     expect(repo.saved!.containsKey('active'), isFalse);
@@ -670,14 +670,17 @@ void main() {
       const CompanyDetailScreen(companyId: 'company'),
       companies: repo,
     );
-    await _tap(tester, find.text('Pausar empresa'));
+    await _tap(tester, find.text('Pausar organização'));
     await _tap(tester, find.text('Cancelar'));
     expect(repo.activeWrites, isEmpty);
-    await _tap(tester, find.text('Pausar empresa'));
-    await _tap(tester, find.widgetWithText(FilledButton, 'Pausar empresa'));
+    await _tap(tester, find.text('Pausar organização'));
+    await _tap(tester, find.widgetWithText(FilledButton, 'Pausar organização'));
     expect(repo.activeWrites, [false]);
-    await _tap(tester, find.text('Reativar empresa'));
-    await _tap(tester, find.widgetWithText(FilledButton, 'Reativar empresa'));
+    await _tap(tester, find.text('Reativar organização'));
+    await _tap(
+      tester,
+      find.widgetWithText(FilledButton, 'Reativar organização'),
+    );
     expect(repo.activeWrites, [false, true]);
   });
 
@@ -688,17 +691,20 @@ void main() {
       const CompanyDetailScreen(companyId: 'company'),
       companies: repo,
     );
-    await tester.enterText(_field('Nome da empresa'), 'Rascunho');
+    await tester.enterText(_field('Nome da organização'), 'Rascunho');
     await tester.scrollUntilVisible(
-      find.text('Salvar dados da empresa'),
+      find.text('Salvar dados da organização'),
       200,
       scrollable: find.byType(Scrollable).first,
     );
-    await _tap(tester, find.text('Salvar dados da empresa'));
+    await _tap(tester, find.text('Salvar dados da organização'));
     expect(repo.saved, isNull);
-    await tester.ensureVisible(_field('Nome da empresa'));
+    await tester.ensureVisible(_field('Nome da organização'));
     expect(
-      tester.widget<TextFormField>(_field('Nome da empresa')).controller!.text,
+      tester
+          .widget<TextFormField>(_field('Nome da organização'))
+          .controller!
+          .text,
       'Rascunho',
     );
   });
@@ -715,7 +721,7 @@ void main() {
       await _tap(tester, find.text('Remover acesso'));
       await _tap(tester, find.widgetWithText(FilledButton, 'Remover acesso'));
       expect(
-        find.text('A empresa precisa manter pelo menos um gestor.'),
+        find.text('A organização precisa manter pelo menos um gestor.'),
         findsOneWidget,
       );
       expect(find.text('Gestor ativo'), findsOneWidget);
@@ -857,7 +863,7 @@ void main() {
     expect(repo.savedCover, 'legacy.webp');
     expect(repo.savedResponsible, 'author');
     expect(find.text('Pausada pela plataforma'), findsNothing);
-    expect(find.text('Empresas selecionadas'), findsWidgets);
+    expect(find.text('Organizações selecionadas'), findsWidgets);
   });
 
   testWidgets(
@@ -1010,20 +1016,20 @@ void main() {
       content: repo,
     );
     expect(find.text('Liberar para'), findsOneWidget);
-    expect(find.text('Empresas selecionadas'), findsWidgets);
+    expect(find.text('Organizações selecionadas'), findsWidgets);
     await _tap(
       tester,
-      find.widgetWithText(OutlinedButton, 'Empresas selecionadas'),
+      find.widgetWithText(OutlinedButton, 'Organizações selecionadas'),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Todas as empresas'), findsWidgets);
+    expect(find.text('Todas as organizações'), findsWidgets);
     await tester.tap(find.text('Outra Empresa'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Confirmar seleção'));
     await tester.pumpAndSettle();
     expect(repo.savedAudience?.allCompanies, isFalse);
     expect(repo.savedAudience?.companyIds, ['a', 'b']);
-    expect(find.text('2 empresas selecionadas'), findsOneWidget);
+    expect(find.text('2 organizações selecionadas'), findsOneWidget);
     expect(find.text('Público atualizado.'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -1121,7 +1127,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Detalhes e edição'), findsNothing);
     expect(
-      find.widgetWithText(OutlinedButton, 'Convidar gestor da empresa'),
+      find.widgetWithText(OutlinedButton, 'Convidar gestor da organização'),
       findsOneWidget,
     );
     expect(find.widgetWithText(OutlinedButton, 'Editar'), findsOneWidget);
@@ -1192,7 +1198,7 @@ void main() {
             );
           }
           await tester.scrollUntilVisible(
-            find.text('Salvar dados da empresa'),
+            find.text('Salvar dados da organização'),
             200,
             scrollable: find.byType(Scrollable).first,
           );

@@ -108,7 +108,7 @@ void main() {
         (w) => w is TextFormField && w.controller?.text == prefix,
       );
       final controller = tester.widget<TextFormField>(field).controller!;
-      final save = find.text('Salvar dados da empresa');
+      final save = find.text('Salvar dados da organização');
       Future<void> saveDraft() async {
         await tester.ensureVisible(save);
         await tester.pumpAndSettle();

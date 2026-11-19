@@ -21,7 +21,7 @@ class CompanyDashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final companyName =
-        ref.watch(sessionProvider).value?.active?.companyName ?? 'Empresa';
+        ref.watch(sessionProvider).value?.active?.companyName ?? 'Organização';
     final result = ref.watch(companyDashboardProvider);
     final data = result.asData?.value;
     final highlights = data?.highlights ?? [];
@@ -61,7 +61,7 @@ class CompanyDashboardScreen extends ConsumerWidget {
                       ).copyWith(fontSize: 16),
                     ),
                     Text(
-                      'Administrador da Empresa',
+                      'Gestor da organização',
                       maxLines: 2,
                       style: AdminStyles.body(context).copyWith(fontSize: 12),
                     ),
@@ -113,7 +113,7 @@ class CompanyDashboardScreen extends ConsumerWidget {
                         ? [
                             Expanded(
                               child: _Metric(
-                                label: 'Total de funcionários',
+                                label: 'Total de usuários',
                                 value: data == null
                                     ? '—'
                                     : '${data.employeeCount}',
@@ -133,7 +133,7 @@ class CompanyDashboardScreen extends ConsumerWidget {
                                     : '${data.activeCourseCount}',
                                 caption: data == null
                                     ? 'Sem dados'
-                                    : 'Disponíveis para a empresa',
+                                    : 'Disponíveis para a organização',
                                 icon: AppIcons.book,
                                 loading: result.isLoading,
                               ),
@@ -162,7 +162,7 @@ class CompanyDashboardScreen extends ConsumerWidget {
                                     : '${data.certificateCount}',
                                 caption: data == null
                                     ? 'Sem dados'
-                                    : 'Emitidos nesta empresa',
+                                    : 'Emitidos nesta organização',
                                 icon: AppIcons.key,
                                 loading: result.isLoading,
                               ),
@@ -213,7 +213,7 @@ class CompanyDashboardScreen extends ConsumerWidget {
                     else
                       Semantics(
                         label:
-                            'Participação mensal: ${data.engagement.map((month) => '${_monthLabel(month.month)}: ${month.activeUsers} funcionários').join(', ')}',
+                            'Participação mensal: ${data.engagement.map((month) => '${_monthLabel(month.month)}: ${month.activeUsers} usuários').join(', ')}',
                         child: ExcludeSemantics(
                           child: LineChart([
                             for (final month in data.engagement)
@@ -226,7 +226,7 @@ class CompanyDashboardScreen extends ConsumerWidget {
                       ),
                     const SizedBox(height: 8),
                     Text(
-                      'Funcionários com atualização de progresso por mês. Baseado na última atualização; mês atual parcial.',
+                      'Usuários com atualização de progresso por mês. Baseado na última atualização; mês atual parcial.',
                       style: CompanyStyles.caption(context),
                     ),
                   ],
@@ -246,7 +246,7 @@ class CompanyDashboardScreen extends ConsumerWidget {
               else if (highlights.isEmpty)
                 AppCard(
                   child: Text(
-                    'Nenhuma conclusão registrada na empresa.',
+                    'Nenhuma conclusão registrada na organização.',
                     style: AdminStyles.body(context),
                   ),
                 )
@@ -286,14 +286,14 @@ class CompanyDashboardScreen extends ConsumerWidget {
                     ),
                   ),
                 Text(
-                  'Maiores conclusões entre todos os funcionários da empresa.',
+                  'Maiores taxas de conclusão entre os usuários da organização.',
                   style: CompanyStyles.caption(context),
                 ),
               ],
               const SizedBox(height: 12),
               TextButton(
                 onPressed: () => context.go('/empresa/funcionarios'),
-                child: const Text('Ver funcionários'),
+                child: const Text('Ver usuários'),
               ),
             ],
           ),

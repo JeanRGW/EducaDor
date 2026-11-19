@@ -85,12 +85,12 @@ class _CompanyCompletionScreenState
       if (!mounted || !valid) return;
       if (employees.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Nenhum funcionário para exportar.')),
+          const SnackBar(content: Text('Nenhum usuário para exportar.')),
         );
         return;
       }
       final rows = <List<String>>[
-        ['Funcionário', 'Departamento', 'Cargo', 'Conclusão (%)'],
+        ['Usuário', 'Departamento', 'Cargo', 'Conclusão (%)'],
         for (final employee in employees)
           [
             employee.fullName,
@@ -102,7 +102,7 @@ class _CompanyCompletionScreenState
           ],
       ];
       await saveCsv(
-        reportFilename('conclusao-funcionarios', DateTime.now()),
+        reportFilename('conclusao-usuarios', DateTime.now()),
         encodeCsv(rows),
       );
     } on ExportTooLarge {
@@ -110,7 +110,7 @@ class _CompanyCompletionScreenState
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-              'Exportação limitada a 1.000 funcionários. Refine os dados e tente novamente.',
+              'Exportação limitada a 1.000 usuários. Refine os dados e tente novamente.',
             ),
           ),
         );
@@ -307,7 +307,7 @@ class _CompanyCompletionScreenState
                           ),
                           SizedBox(height: 12),
                           _Indicator(
-                            'Funcionários com desempenho insuficiente',
+                            'Usuários com desempenho insuficiente',
                             highlighted: true,
                           ),
                           SizedBox(height: 8),
@@ -362,7 +362,7 @@ class _CompanyCompletionScreenState
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'O CSV contém até 1.000 funcionários desta empresa. A conclusão é lida duas vezes; se mudar, a exportação é cancelada.',
+                      'O CSV contém até 1.000 usuários desta organização. A conclusão é lida duas vezes; se mudar, a exportação é cancelada.',
                       style: CompanyStyles.caption(context),
                     ),
                   ],

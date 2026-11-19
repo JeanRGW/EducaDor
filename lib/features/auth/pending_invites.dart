@@ -195,7 +195,7 @@ class _PendingInvitesSectionState extends ConsumerState<PendingInvitesSection> {
           companyName: invite.companyId != null && widget.companyId == null
               ? invite.companyName ??
                     widget.companyNames[invite.companyId] ??
-                    'Empresa'
+                    'Organização'
               : null,
           busy: _busyInvite == invite,
           onRegenerate: _busyInvite == null ? () => _regenerate(invite) : null,

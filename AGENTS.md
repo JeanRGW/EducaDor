@@ -66,6 +66,7 @@ Supabase changes: edit `supabase/schemas/`, then generate and review migrations 
 * Commits follow Conventional Commits: `type(scope): short imperative summary` – e.g. `feat(rewards): add redeem flow`, `fix(auth): refresh session on 401`. Types: `feat/fix/docs/chore`; scope = area touched (`auth`, `reports`, `storage`, `ci`, `docs`).
 * Branches off `main` as `feat/<short-slug>` or `fix/<short-slug>`.
 * Language: user-facing strings in pt-BR; identifiers, comments, commits, docs in English.
+* Use **Organização** and **Usuário** in user-facing copy and exports. Keep existing internal identifiers, routes, and authorization roles (`empresa`, `funcionario`).
 
 ## What to do / not do
 

@@ -81,10 +81,10 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
       child: Scaffold(
         appBar: AppBar(
           automaticallyImplyLeading: false,
-          title: const Text('Funcionários cadastrados'),
+          title: const Text('Usuários cadastrados'),
         ),
         floatingActionButton: FloatingActionButton(
-          tooltip: 'Convidar funcionário',
+          tooltip: 'Convidar usuário',
           onPressed: companyId == null
               ? null
               : () async {
@@ -148,7 +148,7 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
                         children: [
                           Chip(
                             label: Text(
-                              'Todos os funcionários${counts == null ? '' : ' (${counts.totalCount})'}',
+                              'Todos os usuários${counts == null ? '' : ' (${counts.totalCount})'}',
                             ),
                             shape: const StadiumBorder(),
                             backgroundColor: context.successSurface,
@@ -199,7 +199,7 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
                       for (var page = 0; page < pages.length; page++)
                         if (pages[page].hasError)
                           CompanyErrorCard(
-                            message: 'Não foi possível carregar funcionários.',
+                            message: 'Não foi possível carregar usuários.',
                             retry: () => ref.invalidate(
                               companyEmployeesProvider(queries[page]),
                             ),
@@ -213,7 +213,13 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
                         Padding(
                           padding: EdgeInsets.only(bottom: 12),
                           child: Text(
-                            'Exibindo ${employees.length} de ${counts.filteredCount} funcionários${_search.isEmpty ? '.' : ' encontrados.'}',
+                            'Exibindo ${employees.length} de ${counts.filteredCount} '
+                            '${counts.filteredCount == 1 ? 'usuário' : 'usuários'}'
+                            '${_search.isEmpty
+                                ? '.'
+                                : counts.filteredCount == 1
+                                ? ' encontrado.'
+                                : ' encontrados.'}',
                             style: CompanyStyles.caption(context),
                           ),
                         ),
@@ -221,8 +227,8 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
                         AppCard(
                           child: Text(
                             _search.isEmpty
-                                ? 'Nenhum funcionário cadastrado.'
-                                : 'Nenhum funcionário encontrado.',
+                                ? 'Nenhum usuário cadastrado.'
+                                : 'Nenhum usuário encontrado.',
                             style: AdminStyles.body(context),
                           ),
                         ),
@@ -253,7 +259,7 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
                           employees.length < counts.filteredCount)
                         TextButton(
                           onPressed: () => setState(() => _offset += 50),
-                          child: const Text('Carregar mais funcionários'),
+                          child: const Text('Carregar mais usuários'),
                         ),
                     ],
                   ),

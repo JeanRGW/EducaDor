@@ -223,7 +223,7 @@ class _ContentCatalogScreenState extends ConsumerState<ContentCatalogScreen> {
                       ? 'Nenhum conteúdo encontrado.'
                       : widget.platform
                       ? 'Nenhuma trilha publicada. Adicione a primeira trilha.'
-                      : 'Nenhum conteúdo liberado para esta empresa.',
+                      : 'Nenhum conteúdo liberado para esta organização.',
                 ),
               ),
             ),
@@ -287,10 +287,10 @@ class ManagedContentCard extends StatelessWidget {
     final caption = !item.platformEnabled
         ? 'Pausado pela plataforma'
         : !platform && !item.companyEnabled
-        ? 'Pausado pela empresa'
+        ? 'Pausado pela organização'
         : platform
         ? 'Acesso liberado'
-        : 'Liberado para os funcionários';
+        : 'Liberado para os usuários';
     return ClipRRect(
       borderRadius: BorderRadius.circular(16),
       child: AppCard(
@@ -385,8 +385,8 @@ class ManagedContentCard extends StatelessWidget {
                           ),
                           TextSpan(
                             text: item.allCompanies
-                                ? 'Todas as empresas'
-                                : '${item.companyCount} ${item.companyCount == 1 ? 'empresa liberada' : 'empresas liberadas'}',
+                                ? 'Todas as organizações'
+                                : '${item.companyCount} ${item.companyCount == 1 ? 'organização liberada' : 'organizações liberadas'}',
                             style: TextStyle(
                               color: available
                                   ? context.successForeground
@@ -413,8 +413,8 @@ class ManagedContentCard extends StatelessWidget {
                       Expanded(
                         child: Text(
                           platform
-                              ? 'Conclusão nas empresas'
-                              : 'Conclusão dos funcionários',
+                              ? 'Conclusão nas organizações'
+                              : 'Conclusão dos usuários',
                           style: platform
                               ? TextStyle(
                                   fontFamily: AppFonts.inter,
@@ -479,7 +479,7 @@ class ManagedContentCard extends StatelessWidget {
                       ),
                       Semantics(
                         label:
-                            '${platform ? 'Acesso global' : 'Acesso dos funcionários'}: ${item.title}',
+                            '${platform ? 'Acesso global' : 'Acesso dos usuários'}: ${item.title}',
                         child: SizedBox(
                           width: platform ? 52 : null,
                           height: platform ? 48 : null,

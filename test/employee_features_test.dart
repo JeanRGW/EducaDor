@@ -379,9 +379,7 @@ void main() {
       const RewardsScreen(),
       learning: _Learning()..emptyRanking = true,
     );
-    final empty = find.text(
-      'Ainda não há participantes no ranking da empresa.',
-    );
+    final empty = find.text('Ainda não há usuários no ranking da organização.');
     await _visible(tester, empty);
     expect(empty, findsOneWidget);
     expect(find.byKey(const ValueKey('rank-ana')), findsNothing);

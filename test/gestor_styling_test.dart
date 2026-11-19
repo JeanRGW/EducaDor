@@ -167,10 +167,16 @@ void main() {
       await tester.binding.setSurfaceSize(const Size(418, 1100));
       addTearDown(() => tester.binding.setSurfaceSize(null));
       await _show(tester, const AddCompanyScreen(), platform: platform);
-      expect(tester.getTopLeft(find.text('Adicionar empresa')).dx, 48);
-      expect(tester.getTopLeft(_field('Nome da Empresa')).dx, 20);
-      expect(tester.getSize(_field('Nome da Empresa')).height, closeTo(40, 2));
-      final save = find.widgetWithText(FilledButton, 'Criar empresa e convite');
+      expect(tester.getTopLeft(find.text('Adicionar organização')).dx, 48);
+      expect(tester.getTopLeft(_field('Nome da organização')).dx, 20);
+      expect(
+        tester.getSize(_field('Nome da organização')).height,
+        closeTo(40, 2),
+      );
+      final save = find.widgetWithText(
+        FilledButton,
+        'Criar organização e convite',
+      );
       final saveSurface = find.descendant(
         of: save,
         matching: find.byType(Material),
@@ -191,24 +197,24 @@ void main() {
     final repo = _Invites();
     await _show(tester, const AddCompanyScreen(), invites: repo);
     await tester.scrollUntilVisible(
-      find.text('Criar empresa e convite'),
+      find.text('Criar organização e convite'),
       200,
       scrollable: find.byType(Scrollable).first,
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Criar empresa e convite'));
+    await tester.tap(find.text('Criar organização e convite'));
     await tester.pumpAndSettle();
     expect(repo.request, isNull);
     expect(
-      find.text('Informe empresa, responsável e e-mail válidos.'),
+      find.text('Informe a organização, o responsável e um e-mail válido.'),
       findsOneWidget,
     );
     await tester.pump(const Duration(seconds: 5));
     await tester.pumpAndSettle();
     for (final (label, value) in [
-      ('Nome da Empresa', 'Santa Maria'),
+      ('Nome da organização', 'Santa Maria'),
       ('CNPJ', '00.000.000/0001-00'),
-      ('Primeiro gestor da empresa', 'Pessoa Responsável'),
+      ('Primeiro gestor da organização', 'Pessoa Responsável'),
       ('E-mail do gestor', 'person@example.test'),
     ]) {
       await tester.scrollUntilVisible(
@@ -220,12 +226,12 @@ void main() {
       await tester.enterText(_field(label), value);
     }
     await tester.scrollUntilVisible(
-      find.text('Criar empresa e convite'),
+      find.text('Criar organização e convite'),
       200,
       scrollable: find.byType(Scrollable).first,
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Criar empresa e convite'));
+    await tester.tap(find.text('Criar organização e convite'));
     await tester.pumpAndSettle();
     expect(repo.request!.role, Role.empresa);
     expect(repo.request!.name, 'Pessoa Responsável');

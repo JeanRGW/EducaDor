@@ -332,7 +332,7 @@ void main() {
             role == Role.gestor ? findsOneWidget : findsNothing,
           );
           expect(
-            find.text('Gestores da empresa'),
+            find.text('Gestores da organização'),
             role == Role.empresa ? findsOneWidget : findsNothing,
           );
           expect(

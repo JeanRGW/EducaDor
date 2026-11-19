@@ -85,8 +85,8 @@ class _CourseEditorState extends ConsumerState<_CourseEditor> {
     _coverKey = c.coverKey;
     _coverUrl = c.coverUrl;
     _audienceLabel = c.allCompanies
-        ? 'Todas as empresas'
-        : 'Empresas selecionadas';
+        ? 'Todas as organizações'
+        : 'Organizações selecionadas';
   }
 
   @override

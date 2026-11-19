@@ -116,11 +116,11 @@ class _AudiencePickerState extends ConsumerState<_AudiencePicker> {
               children: [
                 SwitchListTile(
                   title: Text(
-                    'Todas as empresas',
+                    'Todas as organizações',
                     style: AdminStyles.body(context),
                   ),
                   subtitle: Text(
-                    'Inclui também as empresas cadastradas no futuro.',
+                    'Inclui também as organizações cadastradas no futuro.',
                     style: TextStyle(
                       fontFamily: AppFonts.inter,
                       fontSize: 11,
@@ -139,7 +139,7 @@ class _AudiencePickerState extends ConsumerState<_AudiencePicker> {
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: SearchField(
-                      'Pesquisar empresa',
+                      'Pesquisar organização',
                       compact: true,
                       prefixIcon: SvgIcon(
                         AppIcons.search,
@@ -152,7 +152,7 @@ class _AudiencePickerState extends ConsumerState<_AudiencePicker> {
                   Padding(
                     padding: const EdgeInsets.all(12),
                     child: Text(
-                      '${_selected.length} empresas selecionadas',
+                      '${_selected.length} ${_selected.length == 1 ? 'organização selecionada' : 'organizações selecionadas'}',
                       style: AdminStyles.body(context).copyWith(fontSize: 12),
                     ),
                   ),
@@ -202,7 +202,7 @@ class _AudiencePickerState extends ConsumerState<_AudiencePicker> {
                       ),
                       subtitle: company.active
                           ? null
-                          : const Text('Empresa inativa'),
+                          : const Text('Organização inativa'),
                       controlAffinity: ListTileControlAffinity.leading,
                       value: _selected.contains(company.id),
                       onChanged: (checked) => setState(() {
@@ -216,13 +216,15 @@ class _AudiencePickerState extends ConsumerState<_AudiencePicker> {
                   if (!_loading && !_error && _companies?.isEmpty == true)
                     const Padding(
                       padding: EdgeInsets.all(20),
-                      child: Text('Nenhuma empresa encontrada.'),
+                      child: Text('Nenhuma organização encontrada.'),
                     ),
                   if (_more)
                     TextButton(
                       onPressed: _loading ? null : () => _load(append: true),
                       child: Text(
-                        _loading ? 'Carregando...' : 'Carregar mais empresas',
+                        _loading
+                            ? 'Carregando...'
+                            : 'Carregar mais organizações',
                       ),
                     ),
                 ],

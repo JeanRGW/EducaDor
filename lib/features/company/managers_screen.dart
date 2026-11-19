@@ -107,7 +107,7 @@ class _CompanyManagersScreenState extends ConsumerState<CompanyManagersScreen> {
       data: CompanyStyles.theme(Theme.of(context)),
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Gestores da empresa'),
+          title: const Text('Gestores da organização'),
           leading: IconButton(
             tooltip: 'Voltar',
             onPressed: () => leaveManagementPage(context, '/empresa/perfil'),
@@ -119,7 +119,7 @@ class _CompanyManagersScreenState extends ConsumerState<CompanyManagersScreen> {
           ),
         ),
         floatingActionButton: FloatingActionButton(
-          tooltip: 'Convidar gestor da empresa',
+          tooltip: 'Convidar gestor da organização',
           onPressed: () async {
             await context.push('/empresa/manager/add');
             if (mounted) setState(_refresh);

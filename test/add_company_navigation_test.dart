@@ -39,7 +39,7 @@ void main() {
                 builder: (context, _) => Scaffold(
                   body: TextButton(
                     onPressed: () => context.push('/add'),
-                    child: const Text('Empresas'),
+                    child: const Text('Organizações'),
                   ),
                 ),
               ),
@@ -63,7 +63,7 @@ void main() {
           );
           await tester.pumpAndSettle();
           if (pushed) {
-            await tester.tap(find.text('Empresas'));
+            await tester.tap(find.text('Organizações'));
             await tester.pumpAndSettle();
           }
           if (save) {
@@ -72,11 +72,11 @@ void main() {
             await tester.enterText(fields.at(2), 'Responsável');
             await tester.enterText(fields.at(3), 'gestor@example.test');
             await tester.scrollUntilVisible(
-              find.text('Criar empresa e convite'),
+              find.text('Criar organização e convite'),
               200,
               scrollable: find.byType(Scrollable).first,
             );
-            await tester.tap(find.text('Criar empresa e convite'));
+            await tester.tap(find.text('Criar organização e convite'));
             await tester.pumpAndSettle();
             expect(find.text('Convite criado'), findsOneWidget);
             await tester.tap(find.text('Fechar sem copiar'));
@@ -90,7 +90,7 @@ void main() {
             await tester.tap(find.byTooltip('Voltar'));
             await tester.pumpAndSettle();
           }
-          expect(find.text('Empresas'), findsOneWidget);
+          expect(find.text('Organizações'), findsOneWidget);
           expect(router.canPop(), isFalse);
           expect(tester.takeException(), isNull);
         },

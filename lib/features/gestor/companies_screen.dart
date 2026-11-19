@@ -78,10 +78,10 @@ class _CompaniesScreenState extends ConsumerState<CompaniesScreen> {
           color: Theme.of(context).colorScheme.onSurface,
           height: 1.2,
         ),
-        title: const Text('Empresas Registradas'),
+        title: const Text('Organizações'),
       ),
       floatingActionButton: FloatingActionButton(
-        tooltip: 'Adicionar empresa',
+        tooltip: 'Adicionar organização',
         onPressed: () async {
           await context.push('/gestor/company/add');
           if (mounted) await _refresh();
@@ -98,7 +98,7 @@ class _CompaniesScreenState extends ConsumerState<CompaniesScreen> {
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
           children: [
             SearchField(
-              'Pesquise o nome da empresa',
+              'Pesquise o nome da organização',
               compact: true,
               prefixIcon: SvgIcon(
                 AppIcons.search,
@@ -121,7 +121,7 @@ class _CompaniesScreenState extends ConsumerState<CompaniesScreen> {
             FilterChips(
               outlined: true,
               options: [
-                'Todas as empresas',
+                'Todas as organizações',
                 counts == null
                     ? 'Ativas'
                     : 'Ativas (${formatCount(counts.activeCount)})',
@@ -144,7 +144,7 @@ class _CompaniesScreenState extends ConsumerState<CompaniesScreen> {
             for (var i = 0; i < pages.length; i++)
               if (pages[i].hasError)
                 DataErrorCard(
-                  message: 'Não foi possível carregar empresas.',
+                  message: 'Não foi possível carregar organizações.',
                   retry: () =>
                       ref.invalidate(gestorCompaniesProvider(_query(i * 50))),
                 ),
@@ -160,8 +160,8 @@ class _CompaniesScreenState extends ConsumerState<CompaniesScreen> {
               AppCard(
                 child: Text(
                   _search.isNotEmpty || _chip != 0
-                      ? 'Nenhuma empresa encontrada.'
-                      : 'Nenhuma empresa cadastrada.',
+                      ? 'Nenhuma organização encontrada.'
+                      : 'Nenhuma organização cadastrada.',
                 ),
               ),
             for (final company in companies) ...[
@@ -172,7 +172,7 @@ class _CompaniesScreenState extends ConsumerState<CompaniesScreen> {
             if (last.asData?.value.items.length == 50)
               TextButton(
                 onPressed: () => setState(() => _offset += 50),
-                child: const Text('Carregar mais empresas'),
+                child: const Text('Carregar mais organizações'),
               ),
           ],
         ),
@@ -276,7 +276,7 @@ class _CompanyCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  'Funcionários',
+                  'Usuários',
                   style: TextStyle(
                     fontFamily: AppFonts.inter,
                     fontSize: 11,
@@ -346,7 +346,7 @@ class _CompanyCard extends StatelessWidget {
                     );
                     if (context.mounted) await onInviteCreated();
                   },
-                  child: const Text('Convidar gestor da empresa'),
+                  child: const Text('Convidar gestor da organização'),
                 ),
               OutlinedButton(
                 onPressed: () async {

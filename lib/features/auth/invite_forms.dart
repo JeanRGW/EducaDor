@@ -144,8 +144,8 @@ class _InvitePersonScreenState extends ConsumerState<InvitePersonScreen> {
           ),
           title: Text(switch (widget.role) {
             Role.gestor => 'Convidar gestor da plataforma',
-            Role.empresa => 'Convidar gestor da empresa',
-            Role.funcionario => 'Convidar funcionário',
+            Role.empresa => 'Convidar gestor da organização',
+            Role.funcionario => 'Convidar usuário',
           }, maxLines: 2),
         ),
         body: ListView(
@@ -166,7 +166,7 @@ class _InvitePersonScreenState extends ConsumerState<InvitePersonScreen> {
               label: platform ? 'E-mail' : 'EMAIL',
               compact: true,
               controller: _email,
-              hint: 'pessoa@empresa.com',
+              hint: 'pessoa@exemplo.com',
             ),
             if (widget.role == Role.funcionario) ...[
               FormFieldLabel(

@@ -70,12 +70,13 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Escolher perfil'), findsOneWidget);
-    expect(find.text(_manager.label), findsOneWidget);
-    expect(find.text(_employee.label), findsOneWidget);
+    expect(find.text('Gestor · Empresa A'), findsOneWidget);
+    expect(find.text('Usuário · Empresa A'), findsOneWidget);
 
     await tester.tap(find.text(_manager.label));
     await tester.pumpAndSettle();
     expect(find.byType(CompanyDashboardScreen), findsOneWidget);
+    expect(find.text('Usuários'), findsOneWidget);
 
     container.read(routerProvider).go('/funcionario/home');
     await tester.pumpAndSettle();
@@ -89,7 +90,7 @@ void main() {
 
     container.read(routerProvider).go('/empresa/perfil');
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Gestores da empresa'));
+    await tester.tap(find.text('Gestores da organização'));
     await tester.pumpAndSettle();
     expect(find.byType(CompanyManagersScreen), findsOneWidget);
 

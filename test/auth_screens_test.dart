@@ -156,7 +156,7 @@ void main() {
       expect(image.fit, BoxFit.cover);
       expect(tester.getTopLeft(photo).dy, 56);
       expect(tester.getSize(photo).height, closeTo(220.55, 0.1));
-      final email = _field('email@empresa.com');
+      final email = _field('email@exemplo.com');
       final password = _field('Sua senha');
       expect(tester.getTopLeft(email).dx, 28);
       expect(tester.getSize(email).width, 345);
@@ -235,7 +235,7 @@ void main() {
             queryParameters: redirect ? {'redirect': invite.toString()} : null,
           ).toString(),
         );
-        await tester.enterText(_field('email@empresa.com'), 'ana@example.test');
+        await tester.enterText(_field('email@exemplo.com'), 'ana@example.test');
         await tester.enterText(_field('Sua senha'), 'password');
         await tester.testTextInput.receiveAction(TextInputAction.done);
         await tester.pump();
@@ -265,7 +265,7 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final session = _Session();
     await _show(tester, session: session);
-    await tester.enterText(_field('email@empresa.com'), 'ana@example.test');
+    await tester.enterText(_field('email@exemplo.com'), 'ana@example.test');
     await tester.enterText(_field('Sua senha'), 'password');
     await tester.tap(find.text('ENTRAR'));
     await tester.pump();
@@ -276,7 +276,7 @@ void main() {
       findsOneWidget,
     );
     expect(
-      tester.widget<TextField>(_field('email@empresa.com')).controller!.text,
+      tester.widget<TextField>(_field('email@exemplo.com')).controller!.text,
       'ana@example.test',
     );
     expect(

@@ -63,7 +63,7 @@ class CompanyRepository {
     final client =
         _injectedClient ??
         _client ??
-        (throw StateError('Configure o Supabase para carregar empresas.'));
+        (throw StateError('Configure o Supabase para carregar organizações.'));
     final data =
         await client.rpc(
               'gestor_companies',
@@ -149,7 +149,7 @@ class CompanyRepository {
     final client =
         _injectedClient ??
         _client ??
-        (throw StateError('Configure o Supabase para carregar empresas.'));
+        (throw StateError('Configure o Supabase para carregar organizações.'));
     final row = await client.from('companies').select().eq('id', id).single();
     return _company(row);
   }
@@ -158,7 +158,7 @@ class CompanyRepository {
     final client =
         _injectedClient ??
         _client ??
-        (throw StateError('Configure o Supabase para carregar empresas.'));
+        (throw StateError('Configure o Supabase para carregar organizações.'));
     try {
       await client.rpc(
         'update_company',
@@ -167,7 +167,7 @@ class CompanyRepository {
     } on PostgrestException catch (error) {
       if (error.code == '23505') {
         throw const ManagementException(
-          'Este CNPJ já está cadastrado em outra empresa.',
+          'Este CNPJ já está cadastrado em outra organização.',
         );
       }
       rethrow;
@@ -178,7 +178,7 @@ class CompanyRepository {
     final client =
         _injectedClient ??
         _client ??
-        (throw StateError('Configure o Supabase para carregar empresas.'));
+        (throw StateError('Configure o Supabase para carregar organizações.'));
     await client.rpc(
       'set_company_active',
       params: {'p_company': id, 'p_active': active},
@@ -261,7 +261,7 @@ class EmployeeRepository {
     final client =
         _injectedClient ??
         _client ??
-        (throw StateError('Configure o Supabase para carregar funcionários.'));
+        (throw StateError('Configure o Supabase para carregar usuários.'));
     final data =
         await client.rpc(
               'company_employees',
@@ -288,7 +288,7 @@ class EmployeeRepository {
     final client =
         _injectedClient ??
         _client ??
-        (throw StateError('Configure o Supabase para carregar funcionários.'));
+        (throw StateError('Configure o Supabase para carregar usuários.'));
     final data = await client.rpc(
       'company_completion_export',
       params: {'p_company': companyId, 'p_after': after},
@@ -305,7 +305,7 @@ class EmployeeRepository {
     final client =
         _injectedClient ??
         _client ??
-        (throw StateError('Configure o Supabase para carregar funcionários.'));
+        (throw StateError('Configure o Supabase para carregar usuários.'));
     final rows =
         await client.rpc(
               'employee_completion',
@@ -369,7 +369,7 @@ class PeopleRepository {
         'Last platform gestor' =>
           'A plataforma precisa manter pelo menos um gestor.',
         'Last company gestor' =>
-          'A empresa precisa manter pelo menos um gestor.',
+          'A organização precisa manter pelo menos um gestor.',
         'Access unavailable' =>
           'Este acesso já foi removido. Atualize a lista.',
         _ => null,

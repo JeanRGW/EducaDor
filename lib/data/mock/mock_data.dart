@@ -171,7 +171,7 @@ class MockData {
       statusLabel: 'Liberado',
       status: ContentStatus.inProgress,
       progress: 75,
-      meta: '12 horas • Liberado para 32 empresas',
+      meta: '12 horas • Liberado para 32 organizações',
     ),
     Course(
       id: 'crs-ergo',
@@ -378,13 +378,13 @@ class MockData {
   // ---- Gestor dashboard stats ----
   static const gestorStats = <StatMetric>[
     StatMetric(
-      label: 'Total de empresas',
+      label: 'Total de organizações',
       value: '47',
       delta: '+4 este mês',
       icon: AppIcons.building,
     ),
     StatMetric(
-      label: 'Total de Usuário',
+      label: 'Total de usuários',
       value: '2,384',
       delta: '+18,2% que o semestre A.',
       icon: AppIcons.groups,
@@ -406,7 +406,7 @@ class MockData {
   // ---- Empresa dashboard stats ----
   static const empresaStats = <StatMetric>[
     StatMetric(
-      label: 'Total de funcionários',
+      label: 'Total de usuários',
       value: '156',
       delta: '+12 inscritos',
       icon: AppIcons.groups,
@@ -451,7 +451,7 @@ class MockData {
       id: 'a3',
       icon: AppIcons.building,
       color: AppColors.primary,
-      text: 'Empresa "Construtora Hadas" cadastrada',
+      text: 'Organização "Construtora Hadas" cadastrada',
       timeAgo: '2 hours ago',
     ),
   ];
@@ -525,11 +525,11 @@ class MockData {
       kindLabel: 'Curso',
       kind: CourseKind.course,
       coverColor: '#0A87C7',
-      subtitle: '12 horas • Liberado para 32 empresas',
+      subtitle: '12 horas • Liberado para 32 organizações',
       statusLabel: 'Liberado',
       status: ContentStatus.inProgress,
       progress: 84,
-      meta: 'Taxa de Conclusão das empresas',
+      meta: 'Taxa de conclusão das organizações',
     ),
     Course(
       id: 'cm-2',
@@ -537,11 +537,11 @@ class MockData {
       kindLabel: 'MODULE',
       kind: CourseKind.module,
       coverColor: '#1565A0',
-      subtitle: '4 horas • 18 empresas designadas',
+      subtitle: '4 horas • 18 organizações selecionadas',
       statusLabel: 'Bloqueado',
       status: ContentStatus.locked,
       progress: 0,
-      meta: 'Taxa de Conclusão das empresas',
+      meta: 'Taxa de conclusão das organizações',
     ),
   ];
 
@@ -552,11 +552,11 @@ class MockData {
       kindLabel: 'Curso',
       kind: CourseKind.course,
       coverColor: '#0A87C7',
-      subtitle: '12 horas • Liberado para os Funcionários',
+      subtitle: '12 horas • Liberado para os usuários',
       statusLabel: 'Liberado',
       status: ContentStatus.inProgress,
       progress: 84,
-      meta: 'Taxa de Conclusão dos funcionários',
+      meta: 'Taxa de conclusão dos usuários',
     ),
   ];
 }

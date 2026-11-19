@@ -431,7 +431,7 @@ void main() {
         throwsA(
           predicate<Object>(
             (error) =>
-                error.toString().contains('Selecione o perfil de funcionário.'),
+                error.toString().contains('Selecione o perfil de usuário.'),
           ),
         ),
       );
@@ -440,7 +440,7 @@ void main() {
         throwsA(
           predicate<Object>(
             (error) =>
-                error.toString().contains('Selecione o perfil de funcionário.'),
+                error.toString().contains('Selecione o perfil de usuário.'),
           ),
         ),
       );
